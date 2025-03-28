@@ -50,9 +50,9 @@ public:
         std::apply([&](auto &...adapter)
                    { ([&]()
                       {
-            CyphalNodeID remore_node_id = transfer.metadata.remote_node_id;
+            CyphalNodeID remote_node_id = transfer.metadata.remote_node_id;
             transfer.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;       
-            int8_t res = adapter.cyphalTxForward(static_cast<CyphalMicrosecond>(0), &transfer.metadata, transfer.payload_size, transfer.payload, transfer.metadata.remote_node_id);
+            int8_t res = adapter.cyphalTxForward(static_cast<CyphalMicrosecond>(0), &transfer.metadata, transfer.payload_size, transfer.payload, remote_node_id);
             all_successful = all_successful && (res > 0); }(), ...); }, adapters);
         return all_successful; // Return success status
     }
