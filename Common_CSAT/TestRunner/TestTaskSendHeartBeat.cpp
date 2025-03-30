@@ -15,6 +15,9 @@
 #include "mock_hal.h"  // Include the mock HAL header
 #endif
 
+void *loopardMemoryAllocate(size_t amount) { return static_cast<void *>(malloc(amount)); };
+void loopardMemoryFree(void *pointer) { free(pointer); };
+
 TEST_CASE("TaskSendHeartBeat: handleTask publishes Heartbeat") {
     // Set up mock environment
     set_current_tick(10240); // Use the mock HAL tick function
@@ -24,6 +27,10 @@ TEST_CASE("TaskSendHeartBeat: handleTask publishes Heartbeat") {
 
     // Create adapters
     LoopardAdapter loopard1, loopard2;
+    loopard1.memory_allocate = loopardMemoryAllocate;
+    loopard1.memory_free = loopardMemoryFree;
+    loopard2.memory_allocate = loopardMemoryAllocate;
+    loopard2.memory_free = loopardMemoryFree;
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);

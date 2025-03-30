@@ -620,9 +620,14 @@ TEST_CASE("Udpard Adapter Forward Send and Receive")
     CHECK(transfer2.metadata.remote_node_id == my_id);
 }
 
+void *loopardMemoryAllocate(size_t amount) { return static_cast<void *>(malloc(amount)); };
+void loopardMemoryFree(void *pointer) { free(pointer); };
+
 TEST_CASE("Loopard Adapter")
 {
     LoopardAdapter adapter;
+    adapter.memory_allocate = loopardMemoryAllocate;
+    adapter.memory_free = loopardMemoryFree;
     Cyphal<LoopardAdapter> cyphal(&adapter);
 
     CyphalTransferMetadata metadata;
@@ -682,6 +687,8 @@ TEST_CASE("Loopard Adapter")
 TEST_CASE("Loopard Send Receive")
 {
     LoopardAdapter adapter;
+    adapter.memory_allocate = loopardMemoryAllocate;
+    adapter.memory_free = loopardMemoryFree;
     Cyphal<LoopardAdapter> cyphal(&adapter);
 
     CyphalTransferMetadata metadata;
@@ -721,6 +728,8 @@ TEST_CASE("Loopard Forward Send Receive")
     CyphalNodeID forward_id = 22;
 
     LoopardAdapter adapter;
+    adapter.memory_allocate = loopardMemoryAllocate;
+    adapter.memory_free = loopardMemoryFree;
     Cyphal<LoopardAdapter> cyphal(&adapter);
     adapter.node_id = my_id;
 
@@ -811,6 +820,8 @@ TEST_CASE("All Combined Unroll")
     rxtx_buffer.clear();
     
     LoopardAdapter loopard_adapter;
+    loopard_adapter.memory_allocate = loopardMemoryAllocate;
+    loopard_adapter.memory_free = loopardMemoryFree;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
 
     UdpardAdapter udpard_adapter;

@@ -8,6 +8,17 @@
 #include "BoxSet.hpp"
 #include "CircularBuffer.hpp"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef void* (*LoopardMemoryAllocate)(size_t amount);
+typedef void (*LoopardMemoryFree)(void* pointer);
+#ifdef __cplusplus
+}
+#endif
+
+
 struct LoopardAdapter
 {
     static constexpr uint8_t SUBSCRIPTIONS = 32;
@@ -15,6 +26,9 @@ struct LoopardAdapter
     CircularBuffer<CyphalTransfer, BUFFER> buffer;
     BoxSet<uint8_t, SUBSCRIPTIONS> subscriptions;
     CyphalNodeID node_id = CYPHAL_NODE_ID_UNSET;
+
+    LoopardMemoryAllocate memory_allocate;
+    LoopardMemoryFree     memory_free;
 };
 
 template <>
@@ -40,7 +54,8 @@ public:
                 .metadata = *metadata,
                 .timestamp_usec = 0,
                 .payload_size = payload_size,
-                .payload = new uint8_t[payload_size]};
+                .payload = adapter_->memory_allocate(payload_size)
+            };
         std::memcpy(transfer.payload, payload, payload_size);
         adapter_->buffer.push(transfer);
         return 1;

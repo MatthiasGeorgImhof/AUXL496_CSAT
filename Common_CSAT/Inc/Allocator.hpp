@@ -4,6 +4,7 @@
 #include <memory>
 #include "o1heap.h"
 #include "canard.h"
+#include "cyphal.hpp"
 
 #include <cstdio>
 #include <cstdint>
@@ -79,6 +80,14 @@ inline void O1HeapAllocator<CanardRxTransfer>::destroy(CanardRxTransfer *p) cons
 {
     o1heapFree(heap, p->payload);
     p->~CanardRxTransfer();
+}
+
+// Specialize destroy for CyphalTransfer
+template <>
+inline void O1HeapAllocator<CyphalTransfer>::destroy(CyphalTransfer *p) const
+{
+    o1heapFree(heap, p->payload);
+    p->~CyphalTransfer();
 }
 
 // Use std::allocate_shared with O1HeapAllocator
