@@ -23,6 +23,8 @@ public:
 	void handleMessage(std::shared_ptr<CyphalTransfer> transfer) const;
 	void handleServices() const;
 
+    inline const ArrayList<TaskHandler, NUM_TASK_HANDLERS> &getHandlers() const { return handlers_; };
+
 private:
 	const ArrayList<TaskHandler, NUM_TASK_HANDLERS> &handlers_;
 };

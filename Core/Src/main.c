@@ -365,14 +365,19 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, AVI_RST_Pin|SCI_RST_Pin|COMM1_RST_Pin|COMM2_RST_Pin
-                          |LED1_Pin|LED2_Pin|LED3_Pin|LED4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, AVI_RST_Pin|SCI_RST_Pin|COMM1_RST_Pin|COMM2_RST_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, ATTENTION_Pin|EPS_RST_Pin|LED5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, ATTENTION_Pin|EPS_RST_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, CAN2_STB_Pin|CAN2_SHTD_Pin|CAN1_STB_Pin|CAN1_SHTD_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, LED1_Pin|LED2_Pin|LED3_Pin|LED4_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LED5_GPIO_Port, LED5_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : AVI_RST_Pin SCI_RST_Pin COMM1_RST_Pin COMM2_RST_Pin
                            LED1_Pin LED2_Pin LED3_Pin LED4_Pin */
