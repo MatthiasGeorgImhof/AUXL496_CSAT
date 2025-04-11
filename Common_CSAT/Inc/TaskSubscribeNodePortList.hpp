@@ -4,6 +4,7 @@
 #include "Task.hpp"
 #include "RegistrationManager.hpp"
 #include "SubscriptionManager.hpp"
+#include "Logger.hpp"
 
 #include "nunavut_assert.h"
 #include "uavcan/node/port/List_1_0.h"

@@ -14,6 +14,12 @@ void RegistrationManager::subscribe(const CyphalPortID port_id, std::shared_ptr<
                                  { return existing_port_id == new_port_id; });
 }
 
+void RegistrationManager::subscribe(const CyphalPortID port_id)
+{
+    subscriptions_.pushOrReplace(port_id, [&](const CyphalPortID &existing_port_id, const CyphalPortID &new_port_id)
+                                 { return existing_port_id == new_port_id; });
+}
+
 /**
  * @brief Unsubscribes a task from a Cyphal port using the provided adapters.
  * @param subscription The Cyphal subscription details.

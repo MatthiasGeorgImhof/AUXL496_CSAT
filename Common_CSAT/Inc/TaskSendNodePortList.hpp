@@ -3,6 +3,7 @@
 
 #include "Task.hpp"
 #include "RegistrationManager.hpp"
+#include "Logger.hpp"
 
 #include <cstddef>
 
@@ -33,18 +34,35 @@ private:
 template <typename... Adapters>
 void TaskSendNodePortList<Adapters...>::handleTaskImpl()
 {
-    uavcan_node_port_List_1_0 data;
+    char publishers[256] = {};
+    char subscribers[256] = {};
+
+	uavcan_node_port_List_1_0 data;
     size_t publication_size = registration_manager_->getPublications().size();
     data.publishers.sparse_list.count = publication_size;
-    for(uint16_t i=0; i<publication_size; ++i) data.publishers.sparse_list.elements[i].value = registration_manager_->getPublications()[i];
+    for(uint16_t i=0; i<publication_size; ++i)
+    {
+    	data.publishers.sparse_list.elements[i].value = registration_manager_->getPublications()[i];
+        char vstring[16] = {};
+        sprintf(vstring, "% 5d", registration_manager_->getPublications()[i]);
+        strcat(publishers, vstring);
+    }
     data.publishers._tag_ = uavcan_node_port_SubjectIDList_1_0_sparse_list_ARRAY_IS_VARIABLE_LENGTH_;
     
     size_t subscription_size = registration_manager_->getSubscriptions().size();
     data.subscribers.sparse_list.count = subscription_size;
-    for(uint16_t i=0; i<subscription_size; ++i) data.subscribers.sparse_list.elements[i].value = registration_manager_->getSubscriptions()[i];
+    for(uint16_t i=0; i<subscription_size; ++i)
+    {
+    	data.subscribers.sparse_list.elements[i].value = registration_manager_->getSubscriptions()[i];
+        char vstring[16] = {};
+        sprintf(vstring, "% 5d", registration_manager_->getSubscriptions()[i]);
+        strcat(subscribers, vstring);
+    }
+    
+    log(LOG_LEVEL_DEBUG, "TaskSendNodePortList: (%s ) (%s )\r\n", publishers, subscribers);
+    
     data.subscribers._tag_ = uavcan_node_port_SubjectIDList_1_0_sparse_list_ARRAY_IS_VARIABLE_LENGTH_;
-    
-    
+
     constexpr size_t PAYLOAD_SIZE = uavcan_node_port_List_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_;
     uint8_t payload[PAYLOAD_SIZE];
 

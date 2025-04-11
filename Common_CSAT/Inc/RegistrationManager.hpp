@@ -44,6 +44,7 @@ public:
      * @param task A shared pointer to the task to be subscribed.
      */
     void subscribe(const CyphalPortID port_id, std::shared_ptr<Task> task);
+    void subscribe(const CyphalPortID port_id);
 
     /**
      * @brief Unsubscribes a task from a Cyphal port using the provided adapters.
