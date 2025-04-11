@@ -25,11 +25,14 @@
 #include <ArrayList.hpp>
 #include "Allocator.hpp"
 #include "RegistrationManager.hpp"
+#include "SubscriptionManager.hpp"
 #include "ServiceManager.hpp"
 #include "ProcessRxQueue.hpp"
 #include "TaskCheckMemory.hpp"
 #include "TaskBlinkLED.hpp"
 #include "TaskSendHeartBeat.hpp"
+#include "TaskSendNodePortList.hpp"
+#include "TaskSubscribeNodePortList.hpp"
 
 #include <cppmain.h>
 #include "Logger.hpp"
@@ -238,9 +241,16 @@ void cppmain(HAL_Handles handles)
 	std::tuple<> empty_adapters = {} ;
 
 	RegistrationManager registration_manager;
+	SubscriptionManager subscription_manager;
 
 	O1HeapAllocator<TaskSendHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSendHeartBeat(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSendHeartBeat, 1000, 100, 0, sercan_adapters));
+
+	O1HeapAllocator<TaskSendNodePortList<Cyphal<CanardAdapter>>> alloc_TaskSendNodePortList(o1heap);
+	registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<CanardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000, 100, 0, canard_adapters));
+
+	O1HeapAllocator<TaskSubscribeNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSubscribeNodePortList(o1heap);
+	registration_manager.add(allocate_unique_custom<TaskSubscribeNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000, 100, sercan_adapters));
 
 	O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, GPIOC, LED1_Pin, 1000, 100));
@@ -249,6 +259,7 @@ void cppmain(HAL_Handles handles)
 	registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, o1heap, 2000, 100));
 
 	ServiceManager service_manager(registration_manager.getHandlers());
+    subscription_manager.subscribe(registration_manager.getSubscriptions(), canard_adapters);
 
 	O1HeapAllocator<CyphalTransfer> allocator(o1heap);
 	LoopManager loop_manager(allocator);

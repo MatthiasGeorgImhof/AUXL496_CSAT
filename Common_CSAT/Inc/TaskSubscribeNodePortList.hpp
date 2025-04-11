@@ -27,7 +27,17 @@ private:
 template <typename... Adapters>
 void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
 {
-    size_t count = buffer.size();
+    char subscribers[256] = {};
+	auto subscriptions = subscription_manager_->getSubscriptions();
+	for(auto sub: subscriptions)
+	{
+        char vstring[16] = {};
+        sprintf(vstring, "% 5d", sub->port_id);
+        strcat(subscribers, vstring);
+	}
+
+	log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList: %d ( %s)\r\n", buffer.size(), subscribers);
+	size_t count = buffer.size();
     for (size_t i = 0; i < count; ++i)
     {
         std::shared_ptr<CyphalTransfer> transfer = buffer.pop();
@@ -36,18 +46,30 @@ void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
         int8_t result = uavcan_node_port_List_1_0_deserialize_(&data, static_cast<const uint8_t*>(transfer->payload), &payload_size); // Pass the address
         if (result != 0)
         {
-            return;
+        	log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList: deserialization\r\n");
+        	return;
         }
+
+        char publishers[256] = {};
+        char subscribers[256] = {};
 
         // Iterate over publishers and subscribers and call subscribe.
         for (size_t j = 0; j < data.publishers.sparse_list.count; ++j)
         {
             subscription_manager_->subscribe(data.publishers.sparse_list.elements[j].value, adapters_);
+            char vstring[16] = {};
+            sprintf(vstring, "% 5d", data.publishers.sparse_list.elements[j].value);
+            strcat(publishers, vstring);
         }
         for (size_t j = 0; j < data.subscribers.sparse_list.count; ++j)
         {
             subscription_manager_->subscribe(data.subscribers.sparse_list.elements[j].value, adapters_);
+            char vstring[16] = {};
+            sprintf(vstring, "% 5d", data.subscribers.sparse_list.elements[j].value);
+            strcat(subscribers, vstring);
         }
+        log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList: (%s ) (%s )\r\n", publishers, subscribers);
+
     }
 }
 
