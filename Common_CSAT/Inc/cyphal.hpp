@@ -60,5 +60,7 @@ typedef struct CyphalSubscription
 	CyphalTransferKind transfer_kind;
 } CyphalSubscription;
 
+typedef CyphalSubscription CyphalPublication;
+
 template <typename Adapter>
 class Cyphal;

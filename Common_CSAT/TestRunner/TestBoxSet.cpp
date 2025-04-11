@@ -26,10 +26,10 @@ void addMultiple(BoxSet<CONTENT, N> &box, int num_elements)
 
 // Helper function to remove multiple elements from a BoxSet. Corrected version.
 template <typename CONTENT, uint8_t N>
-void removeMultiple(BoxSet<CONTENT, N> &box, int num_elements)
+void removeMultiple(BoxSet<CONTENT, N> &box, size_t num_elements)
 {
     size_t count = 0;
-    for (int i = 0; i < N; ++i)
+    for (size_t i = 0; i < N; ++i)
     {
         if (box.is_used(i))
         {

@@ -36,8 +36,8 @@ public:
     }
 
     // Correct override signature (now taking void* as the manager)
-    void registerTask(RegistrationManager* manager, std::shared_ptr<Task> task) {}
-    void unregisterTask(RegistrationManager* manager, std::shared_ptr<Task> task) {}
+    void registerTask(RegistrationManager* /*manager*/, std::shared_ptr<Task> /*task*/) override {}
+    void unregisterTask(RegistrationManager* /*manager*/, std::shared_ptr<Task> /*task*/) override {}
 
     bool message_handled;
     bool task_handled;
@@ -46,7 +46,7 @@ public:
 
 
 TEST_CASE("ServiceManager: Initialization") {
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0);
     std::shared_ptr<MockTask> task2 = std::make_shared<MockTask>(20, 5);
 
@@ -63,7 +63,7 @@ TEST_CASE("ServiceManager: Initialization") {
 }
 
 TEST_CASE("ServiceManager: Handle Message") {
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0);
     std::shared_ptr<MockTask> task2 = std::make_shared<MockTask>(20, 5);
 
@@ -135,7 +135,7 @@ TEST_CASE("ServiceManager: Handle Message") {
 }
 
 TEST_CASE("ServiceManager: Handle Services") {
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0);
     std::shared_ptr<MockTask> task2 = std::make_shared<MockTask>(20, 5);
 
@@ -166,7 +166,7 @@ TEST_CASE("ServiceManager: Handle Services") {
 }
 
 TEST_CASE("ServiceManager: No tasks in handler") {
-     ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers; // empty handler
+     ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers; // empty handler
     ServiceManager manager(handlers);
 
     manager.initializeServices(1000);

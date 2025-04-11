@@ -5,25 +5,50 @@
 #include <stdexcept>
 #include <algorithm> // For std::sort and std::swap
 #include <cstdint>
+#include <utility>  // For std::move
 
 template <typename T, size_t capacity_>
 class ArrayList {
 private:
-	std::array<T, capacity_> data_;
-	size_t count_;
-	T dummy; // Add a dummy member for out of bounds access.
+    std::array<T, capacity_> data_;
+    size_t count_;
+    T dummy;
 
 public:
-	ArrayList() : count_(0), dummy() {} // Initialize dummy here
+    ArrayList() : count_(0), dummy() {}
 
-	void push(const T& value) {
-		if (count_ < capacity_) {
-			data_[count_++] = value;
-		}
+    // Copy constructor (use default)
+    ArrayList(const ArrayList& other) = default;
+
+	// Move constructor
+	ArrayList(ArrayList&& other) noexcept : data_(std::move(other.data_)), count_(other.count_), dummy(std::move(other.dummy)) {
+		other.count_ = 0; // Important: Set the moved-from object to an empty state
 	}
 
-	// Find function returns the item index or capacity if not found
-	template <typename Compare>
+
+    // Copy assignment operator (use default)
+    ArrayList& operator=(const ArrayList& other) = default;
+
+	// Move assignment operator
+	ArrayList& operator=(ArrayList&& other) noexcept {
+		if (this != &other) {
+			data_ = std::move(other.data_);
+			dummy = std::move(other.dummy);
+			count_ = other.count_;
+
+			other.count_ = 0; // Important: Set the moved-from object to an empty state
+		}
+		return *this;
+	}
+
+    void push(const T& value) {
+        if (count_ < capacity_) {
+            data_[count_++] = value;
+        }
+    }
+
+    // ... (rest of your class implementation, unchanged) ...
+    template <typename Compare>
 	size_t find(const T& value, Compare comp) {
 		for (size_t i = 0; i < count_; ++i) {
 			if (comp(data_[i], value))
@@ -113,6 +138,16 @@ public:
             data_[i] = T{}; // Destruct existing object
         }
         count_ = writeIndex;
+    }
+
+	template <typename Predicate>
+    bool containsIf(Predicate pred) const {
+        for (size_t i = 0; i < count_; ++i) {
+            if (pred(data_[i])) {
+                return true;
+            }
+        }
+        return false;
     }
 
 	// Iterator implementation

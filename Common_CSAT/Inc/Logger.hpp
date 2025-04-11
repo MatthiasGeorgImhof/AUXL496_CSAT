@@ -16,6 +16,9 @@
 #ifdef LOGGER_OUTPUT_CYPHAL
 #include "cyphal.hpp"
 #include "loopard_adapter.hpp"
+#include "canard_adapter.hpp"
+#include "serard_adapter.hpp"
+#include "udpard_adapter.hpp"
 #endif
 
 #define LOG_LEVEL_ALERT (7U)
@@ -46,8 +49,11 @@ private:
 #endif
 
 #ifdef LOGGER_OUTPUT_CYPHAL
-    static Cyphal<LoopardAdapter> *adapter_loopard_;
-    static CyphalTransferID loopard_transfer_id_;
+static Cyphal<LoopardAdapter> *adapter_loopard_;
+static Cyphal<CanardAdapter> *adapter_canard_;
+static Cyphal<SerardAdapter> *adapter_serard_;
+static Cyphal<UdpardAdapter> *adapter_udpard_;
+static CyphalTransferID cyphal_transfer_id_;
 
     static void can_transmit_log_message(const char *str, size_t size, unsigned int level);
 #endif
@@ -64,7 +70,10 @@ public:
     static void setUartHandle(UART_HandleTypeDef *huart) { huart_ = huart; };
 #endif
 #ifdef LOGGER_OUTPUT_CYPHAL
-    static void setCyphalLoopardAdapter(Cyphal<LoopardAdapter> *adapter) { adapter_loopard_ = adapter; };
+static void setCyphalLoopardAdapter(Cyphal<LoopardAdapter> *adapter) { adapter_loopard_ = adapter; };
+static void setCyphalCanardAdapter(Cyphal<CanardAdapter> *adapter) { adapter_canard_ = adapter; };
+static void setCyphalSerardAdapter(Cyphal<SerardAdapter> *adapter) { adapter_serard_ = adapter; };
+static void setCyphalUdpardAdapter(Cyphal<UdpardAdapter> *adapter) { adapter_udpard_ = adapter; };
 #endif
 #ifdef LOGGER_OUTPUT_STDERR
     static void setLogStream(std::ostream *stream) { stream_ = stream; };
@@ -77,7 +86,7 @@ public:
 void log(unsigned int level, const char *format, ...);
 #else
 // Dummy inline log function for disabled case.
-inline void log(unsigned int level, const char *format, ...) {}
+inline void log(unsigned int /*level*/, const char */*format*/, ...) {}
 #endif /* LOGGER_ENABLED */
 
 #endif /* LOGGER_HPP_ */

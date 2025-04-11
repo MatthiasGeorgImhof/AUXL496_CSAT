@@ -1,11 +1,12 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
-#include "ServiceManager.hpp"
 #include "loopard_adapter.hpp"
 #include "Allocator.hpp"
 #include "o1heap.h"
 #include "ProcessRxQueue.hpp"
 #include "RegistrationManager.hpp"
+#include "SubscriptionManager.hpp"
+#include "ServiceManager.hpp"
 
 
 void checkTransfers(const CyphalTransfer transfer1, const CyphalTransfer transfer2)
@@ -30,13 +31,11 @@ public:
     }
 
     void handleTaskImpl() override {}
-    void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task)
+    void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task) override
     {
-        CyphalSubscription subscription = {CYPHALPORT, 2, CyphalTransferKindMessage};
-        std::tuple<> adapters;
-        manager->subscribe(subscription, task, adapters);
+        manager->subscribe(CYPHALPORT, task);
     }
-    void unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task) {}
+    void unregisterTask(RegistrationManager */*manager*/, std::shared_ptr<Task> /*task*/) override {}
 
     CyphalTransfer transfer_;
 };
@@ -51,19 +50,17 @@ MockTaskFromBuffer(uint32_t interval, uint32_t tick, const CyphalTransfer transf
     {
         CHECK(buffer.size() == 1);
 
-        for(int i=0; i<buffer.size(); ++i)
+        for(size_t i=0; i<buffer.size(); ++i)
         {
             auto transfer = buffer.pop();
             checkTransfers(transfer_, *transfer);
         }
     }
-    void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task)
+    void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task) override
     {
-        CyphalSubscription subscription = {CYPHALPORT, 2, CyphalTransferKindMessage};
-        std::tuple<> adapters;
-        manager->subscribe(subscription, task, adapters);
+        manager->subscribe(CYPHALPORT, task);
     }
-    void unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task) {}
+    void unregisterTask(RegistrationManager */*manager*/, std::shared_ptr<Task> /*task*/) override {}
 
     CyphalTransfer transfer_;
 };
@@ -91,7 +88,7 @@ TEST_CASE("processTransfer no forwarding")
     transfer.payload = o1heapAllocate(o1heap, sizeof(payload));
     memcpy(transfer.payload, payload, sizeof(payload));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task = std::make_shared<MockTask>(10, 0, transfer);
     CHECK(task.use_count() == 1);
     handlers.push(TaskHandler{port_id, task});
@@ -137,7 +134,7 @@ TEST_CASE("processTransfer with LoopardAdapter")
     transfer.payload = o1heapAllocate(o1heap, sizeof(payload));
     memcpy(transfer.payload, payload, sizeof(payload));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task = std::make_shared<MockTask>(10, 0, transfer);
     CHECK(task.use_count() == 1);
     handlers.push(TaskHandler{port_id, task});
@@ -171,8 +168,8 @@ TEST_CASE("processTransfer with LoopardAdapter")
     CHECK(task.use_count() == 2);
 }
 
-void *canardMemoryAllocate(CanardInstance *ins, size_t amount) { return static_cast<void *>(malloc(amount)); };
-void canardMemoryFree(CanardInstance *ins, void *pointer) { free(pointer); };
+void *canardMemoryAllocate(CanardInstance */*ins*/, size_t amount) { return static_cast<void *>(malloc(amount)); };
+void canardMemoryFree(CanardInstance */*ins*/, void *pointer) { free(pointer); };
 
 TEST_CASE("processTransfer with LoopardAdapter and CanardAdapter")
 {
@@ -208,7 +205,7 @@ TEST_CASE("processTransfer with LoopardAdapter and CanardAdapter")
     transfer.payload = o1heapAllocate(o1heap, sizeof(payload));
     memcpy(transfer.payload, payload, sizeof(payload));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task = std::make_shared<MockTask>(10, 0, transfer);
     CHECK(task.use_count() == 1);
     handlers.push(TaskHandler{port_id, task});
@@ -243,7 +240,6 @@ TEST_CASE("processTransfer with LoopardAdapter and CanardAdapter")
     CHECK(ptr != nullptr);
 
     CyphalTransfer received_transfer_canard;
-    size_t frame_size = 0;
     CHECK(canard_cyphal.cyphalRxReceive(ptr->frame.extended_can_id, &ptr->frame.payload_size, static_cast<const uint8_t *>(ptr->frame.payload), &received_transfer_canard) == 1);
     checkTransfers(transfer, received_transfer_canard);
 
@@ -278,7 +274,7 @@ TEST_CASE("CanProcessRxQueue with CanardAdapter and MockTask")
     transfer.payload = o1heapAllocate(o1heap, sizeof(payload));
     memcpy(transfer.payload, payload, sizeof(payload));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task = std::make_shared<MockTask>(10, 0, transfer);
     CHECK(task.use_count() == 1);
     handlers.push(TaskHandler{port_id, task});
@@ -342,7 +338,7 @@ TEST_CASE("CanProcessRxQueue multiple frames")
     transfer2.payload = o1heapAllocate(o1heap, sizeof(payload2));
     memcpy(transfer2.payload, payload2, sizeof(payload2));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0, transfer1);
     CHECK(task1.use_count() == 1);
     handlers.push(TaskHandler{port_id, task1});
@@ -376,8 +372,8 @@ TEST_CASE("CanProcessRxQueue multiple frames")
     CHECK(allocated_mem == diagnostics.allocated);
 }
 
-void *serardMemoryAllocate(void *const user_reference, const size_t size) { return static_cast<void *>(malloc(size)); };
-void serardMemoryDeallocate(void *const user_reference, const size_t size, void *const pointer) { free(pointer); };
+void *serardMemoryAllocate(void *const /*user_reference*/, const size_t size) { return static_cast<void *>(malloc(size)); };
+void serardMemoryDeallocate(void *const /*user_reference*/, const size_t /*size*/, void *const pointer) { free(pointer); };
 
 TEST_CASE("SerialProcessRxQueue with SerardAdapter and MockTask")
 {
@@ -391,7 +387,7 @@ TEST_CASE("SerialProcessRxQueue with SerardAdapter and MockTask")
     SerardAdapter serard_adapter;
     struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
     serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
-    serard_adapter.ins.node_id = 11;
+    serard_adapter.ins.node_id = node_id;
     serard_adapter.user_reference = &serard_adapter.ins;
     serard_adapter.ins.user_reference = &serard_adapter.ins;
     serard_adapter.reass = serardReassemblerInit();
@@ -412,7 +408,7 @@ TEST_CASE("SerialProcessRxQueue with SerardAdapter and MockTask")
     transfer.payload = o1heapAllocate(o1heap, sizeof(payload));
     memcpy(transfer.payload, payload, sizeof(payload));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<::TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task = std::make_shared<MockTask>(10, 0, transfer);
     CHECK(task.use_count() == 1);
     handlers.push(TaskHandler{port_id, task});
@@ -449,7 +445,7 @@ TEST_CASE("SerialProcessRxQueue multiple frames with Serard")
     SerardAdapter serard_adapter;
     struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
     serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
-    serard_adapter.ins.node_id = 11;
+    serard_adapter.ins.node_id = node_id;
     serard_adapter.user_reference = &serard_adapter.ins;
     serard_adapter.ins.user_reference = &serard_adapter.ins;
     serard_adapter.reass = serardReassemblerInit();
@@ -481,7 +477,7 @@ TEST_CASE("SerialProcessRxQueue multiple frames with Serard")
     transfer2.payload = o1heapAllocate(o1heap, sizeof(payload2));
     memcpy(transfer2.payload, payload2, sizeof(payload2));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<::TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0, transfer1);
     CHECK(task1.use_count() == 1);
     handlers.push(TaskHandler{port_id, task1});
@@ -539,7 +535,7 @@ TEST_CASE("LoopProcessRxQueue with LoopardAdapter and MockTask")
     transfer.payload = o1heapAllocate(o1heap, sizeof(payload));
     memcpy(transfer.payload, payload, sizeof(payload));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<::TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task = std::make_shared<MockTask>(10, 0, transfer);
     CHECK(task.use_count() == 1);
     handlers.push(TaskHandler{port_id, task});
@@ -598,7 +594,7 @@ TEST_CASE("LoopProcessRxQueue multiple frames with LoopardAdapter")
     transfer2.payload = o1heapAllocate(o1heap, sizeof(payload2));
     memcpy(transfer2.payload, payload2, sizeof(payload2));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<::TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(0, 0, transfer1);
     CHECK(task1.use_count() == 1);
     handlers.push(TaskHandler{port_id1, task1});
@@ -654,7 +650,7 @@ TEST_CASE("Full Loop Test with LoopardAdapter and MockTask")
     transfer.payload = o1heapAllocate(o1heap, sizeof(payload));
     memcpy(transfer.payload, payload, sizeof(payload));
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<::TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0, transfer);
     std::shared_ptr<MockTask> task2 = std::make_shared<MockTask>(10, 0, transfer);
     handlers.push(TaskHandler{port_id, task1});
@@ -711,7 +707,7 @@ TEST_CASE("Full Loop Test with LoopardAdapter and MockTaskFromBuffer")
     memcpy(transfer2.payload, payload, sizeof(payload));    
 
 
-    ArrayList<TaskHandler, NUM_TASK_HANDLERS> handlers;
+    ArrayList<::TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTaskFromBuffer> task1 = std::make_shared<MockTaskFromBuffer>(10, 0, transfer2);
     handlers.push(TaskHandler{port_id, task1});
     CHECK(handlers.size() == 1);

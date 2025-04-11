@@ -9,15 +9,15 @@
 #include "CircularBuffer.hpp"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-typedef void* (*LoopardMemoryAllocate)(size_t amount);
-typedef void (*LoopardMemoryFree)(void* pointer);
+    typedef void *(*LoopardMemoryAllocate)(size_t amount);
+    typedef void (*LoopardMemoryFree)(void *pointer);
 #ifdef __cplusplus
 }
 #endif
-
 
 struct LoopardAdapter
 {
@@ -28,7 +28,7 @@ struct LoopardAdapter
     CyphalNodeID node_id = CYPHAL_NODE_ID_UNSET;
 
     LoopardMemoryAllocate memory_allocate;
-    LoopardMemoryFree     memory_free;
+    LoopardMemoryFree memory_free;
 };
 
 template <>
@@ -38,24 +38,17 @@ private:
     LoopardAdapter *adapter_;
 
 public:
-    Cyphal<LoopardAdapter>() = delete;
-    Cyphal<LoopardAdapter>(LoopardAdapter *adapter) : adapter_(adapter) {}
+    Cyphal(LoopardAdapter *adapter) : adapter_(adapter) {}
 
-    int32_t cyphalTxPush(const CyphalMicrosecond tx_deadline_usec,
+    int32_t cyphalTxPush(const CyphalMicrosecond /*tx_deadline_usec*/,
                          const CyphalTransferMetadata *const metadata,
                          const size_t payload_size,
                          const void *const payload)
     {
         if (adapter_->buffer.is_full())
             return 0;
-        const_cast<CyphalTransferMetadata*>(metadata)->remote_node_id = adapter_->node_id;
-        CyphalTransfer transfer =
-            {
-                .metadata = *metadata,
-                .timestamp_usec = 0,
-                .payload_size = payload_size,
-                .payload = adapter_->memory_allocate(payload_size)
-            };
+        const_cast<CyphalTransferMetadata *>(metadata)->remote_node_id = adapter_->node_id;
+        CyphalTransfer transfer = { *metadata, 0, payload_size, adapter_->memory_allocate(payload_size)};
         std::memcpy(transfer.payload, payload, payload_size);
         adapter_->buffer.push(transfer);
         return 1;
@@ -77,17 +70,17 @@ public:
         return 1;
     }
 
-    int8_t cyphalRxSubscribe(const CyphalTransferKind transfer_kind,
+    int8_t cyphalRxSubscribe(const CyphalTransferKind /*transfer_kind*/,
                              const CyphalPortID port_id,
-                             const size_t extent,
-                             const CyphalMicrosecond transfer_id_timeout_usec)
+                             const size_t /*t extent*/,
+                             const CyphalMicrosecond /*transfer_id_timeout_usec*/)
     {
         adapter_->subscriptions.find_or_create(port_id, [](const uint8_t &a, const uint8_t &b)
-                                                                       { return a == b; });
+                                               { return a == b; });
         return 1;
     }
 
-    int8_t cyphalRxUnsubscribe(const CyphalTransferKind transfer_kind,
+    int8_t cyphalRxUnsubscribe(const CyphalTransferKind /*transfer_kind*/,
                                const CyphalPortID port_id)
     {
         uint8_t *subscription = adapter_->subscriptions.find(port_id, [](const uint8_t &a, const uint8_t &b)
@@ -97,7 +90,7 @@ public:
         return 1;
     }
 
-    int32_t cyphalRxReceive(const uint8_t *const frame, size_t *frame_size, CyphalTransfer *out_transfer)
+    int32_t cyphalRxReceive(const uint8_t *const /*frame*/, size_t */*frame_size*/, CyphalTransfer *out_transfer)
     {
         if (adapter_->buffer.is_empty())
             return 0;

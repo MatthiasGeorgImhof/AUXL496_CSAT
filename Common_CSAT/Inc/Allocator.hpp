@@ -30,7 +30,7 @@ public:
         return static_cast<T *>(o1heapAllocate(heap, n * sizeof(T)));
     }
 
-    void deallocate(T *p, std::size_t n) const noexcept
+    void deallocate(T *p, std::size_t /*n*/) const noexcept
     {
         o1heapFree(heap, p);
     }

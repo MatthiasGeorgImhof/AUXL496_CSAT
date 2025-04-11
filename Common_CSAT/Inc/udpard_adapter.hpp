@@ -34,15 +34,15 @@ struct UdpardHeader
     uint8_t header_crc16_big_endian[2];
 };
 
-UdpardNodeID cyphalNodeIdToUdpard(const CyphalNodeID node_id)
+inline UdpardNodeID cyphalNodeIdToUdpard(const CyphalNodeID node_id)
 {
     return node_id == CYPHAL_NODE_ID_UNSET ? UDPARD_NODE_ID_UNSET : static_cast<UdpardNodeID>(node_id);
 }
-CyphalNodeID udpardNodeIdToCyphal(const UdpardNodeID node_id) { return static_cast<CyphalNodeID>(node_id & CYPHAL_NODE_ID_UNSET); }
-UdpardTransferID cyphalTransferIdToUdpard(const CyphalTransferID transfer_id) { return static_cast<UdpardTransferID>(transfer_id); }
-CyphalTransferID udpardTransferIdToCyphal(const UdpardTransferID transfer_id) { return static_cast<CyphalTransferID>(transfer_id); }
+inline CyphalNodeID udpardNodeIdToCyphal(const UdpardNodeID node_id) { return static_cast<CyphalNodeID>(node_id & CYPHAL_NODE_ID_UNSET); }
+inline UdpardTransferID cyphalTransferIdToUdpard(const CyphalTransferID transfer_id) { return static_cast<UdpardTransferID>(transfer_id); }
+inline CyphalTransferID udpardTransferIdToCyphal(const UdpardTransferID transfer_id) { return static_cast<CyphalTransferID>(transfer_id); }
 
-void udpartToCyphalMetadata(const UdpardRxTransfer *udpard, const UdpardHeader *header, CyphalTransferMetadata *cyphal)
+inline void udpartToCyphalMetadata(const UdpardRxTransfer *udpard, const UdpardHeader *header, CyphalTransferMetadata *cyphal)
 {
     cyphal->priority = static_cast<CyphalPriority>(udpard->priority);
     cyphal->transfer_kind = CyphalTransferKindMessage;
@@ -51,7 +51,7 @@ void udpartToCyphalMetadata(const UdpardRxTransfer *udpard, const UdpardHeader *
     cyphal->transfer_id = udpard->transfer_id;
 }
 
-void udpartToCyphalTransfer(const UdpardRxTransfer *udpard, const UdpardHeader *header, CyphalTransfer *cyphal)
+inline void udpartToCyphalTransfer(const UdpardRxTransfer *udpard, const UdpardHeader *header, CyphalTransfer *cyphal)
 {
     udpartToCyphalMetadata(udpard, header, &cyphal->metadata);
     cyphal->payload = static_cast<uint8_t *>(const_cast<void *>(udpard->payload.view.data));
@@ -66,8 +66,7 @@ private:
     UdpardAdapter *adapter_;
 
 public:
-    Cyphal<UdpardAdapter>() = delete;
-    Cyphal<UdpardAdapter>(UdpardAdapter *adapter) : adapter_(adapter) {}
+    Cyphal(UdpardAdapter *adapter) : adapter_(adapter) {}
 
     int32_t cyphalTxPush(const CyphalMicrosecond tx_deadline_usec,
                          const CyphalTransferMetadata *const metadata,
@@ -95,10 +94,10 @@ public:
         return res;
     }
 
-    int8_t cyphalRxSubscribe(const CyphalTransferKind transfer_kind,
+    int8_t cyphalRxSubscribe(const CyphalTransferKind /*transfer_kind*/,
                              const CyphalPortID port_id,
                              const size_t extent,
-                             const CyphalMicrosecond transfer_id_timeout_usec)
+                             const CyphalMicrosecond /*transfer_id_timeout_usec*/)
     {
         UdpardPortSubscription stub = {port_id, {}};
         UdpardPortSubscription *subscription = adapter_->subscriptions.find_or_create(stub, [](const UdpardPortSubscription &a, const UdpardPortSubscription &b)
@@ -109,7 +108,7 @@ public:
         return result >= 0 ? 1 : result;
     }
 
-    int8_t cyphalRxUnsubscribe(const CyphalTransferKind transfer_kind,
+    int8_t cyphalRxUnsubscribe(const CyphalTransferKind /*transfer_kind*/,
                                const CyphalPortID port_id)
     {
         UdpardPortSubscription stub = {port_id, {}};

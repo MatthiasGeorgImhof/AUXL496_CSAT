@@ -1,5 +1,6 @@
 CXX = g++
-CXXFLAGS = -g -MMD -std=c++17
+EXTRA_CXXFLAGS = -Wall -Wextra -pedantic -Werror
+CXXFLAGS = -g -MMD -std=c++20 $(EXTRA_CXXFLAGS)
 
 INCLUDE_PATHS = -I ../Inc \
 				-I $(HOME)/Data/github/can/libcanard/libcanard \
@@ -22,17 +23,22 @@ TEST_FILES = TestArrayList.cpp \
 			 TestO1HeapAllocator.cpp \
 			 TestProcessRxQueue.cpp \
 			 TestRegistrationManager.cpp \
+			 TestSubscriptionManager.cpp \
 			 TestServiceManager.cpp \
 			 TestTask.cpp \
 			 TestTaskBlinkLED.cpp \
 			 TestTaskCheckMemory.cpp \
 			 TestTaskSendHeartBeat.cpp \
+			 TestTaskSendNodePortList.cpp \
+			 TestTaskSubscribeNodePortList.cpp \
              TestBoxSet.cpp \
              TestBoxSetIterator.cpp \
              TestCircularBuffer.cpp \
-             TestMainLoop.cpp 
+             TestMainLoop.cpp \
+			 TestCyphalSubscriptions.cpp
 
 SRC_FILES = ../Src/Logger.cpp \
+            ../Src/RegistrationManager.cpp \
             ../Src/ServiceManager.cpp \
 			../Src/TaskBlinkLED.cpp \
 			../Src/TaskCheckMemory.cpp \
@@ -122,8 +128,24 @@ $(BIN_DIR)/TestTaskSendHeartBeat.o : TestTaskSendHeartBeat.cpp
 	@echo "Compiling $< with extra sources"
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestTaskSendHeartBeat : $(BIN_DIR)/TestTaskSendHeartBeat.o $(BIN_DIR)/mock_hal.o
-	$(CXX) $(BIN_DIR)/TestTaskSendHeartBeat.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/TestTaskSendHeartBeat : $(BIN_DIR)/TestTaskSendHeartBeat.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
+	$(CXX) $(BIN_DIR)/TestTaskSendHeartBeat.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+
+# Rule for TestTaskSendNodePortList with extra sources
+$(BIN_DIR)/TestTaskSendNodePortList.o : TestTaskSendNodePortList.cpp
+	@echo "Compiling $< with extra sources"
+	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskSendNodePortList : $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
+	$(CXX) $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+
+# Rule for TestTaskSubscribeNodePortList with extra sources
+$(BIN_DIR)/TestTaskSubscribeNodePortList.o : TestTaskSubscribeNodePortList.cpp
+	@echo "Compiling $< with extra sources"
+	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskSubscribeNodePortList : $(BIN_DIR)/TestTaskSubscribeNodePortList.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
+	$(CXX) $(BIN_DIR)/TestTaskSubscribeNodePortList.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestTaskBlinkLED with extra sources
 $(BIN_DIR)/TestTaskBlinkLED.o : TestTaskBlinkLED.cpp
@@ -133,8 +155,8 @@ $(BIN_DIR)/TestTaskBlinkLED.o : TestTaskBlinkLED.cpp
 $(BIN_DIR)/TaskBlinkLED.o : ../Src/TaskBlinkLED.cpp
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestTaskBlinkLED : $(BIN_DIR)/TestTaskBlinkLED.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/mock_hal.o
-	$(CXX) $(BIN_DIR)/TestTaskBlinkLED.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/TestTaskBlinkLED : $(BIN_DIR)/TestTaskBlinkLED.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
+	$(CXX) $(BIN_DIR)/TestTaskBlinkLED.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestTaskCheckMemory with extra sources
 $(BIN_DIR)/TestTaskCheckMemory.o : TestTaskCheckMemory.cpp
@@ -144,32 +166,43 @@ $(BIN_DIR)/TestTaskCheckMemory.o : TestTaskCheckMemory.cpp
 $(BIN_DIR)/TaskCheckMemory.o : ../Src/TaskCheckMemory.cpp
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestTaskCheckMemory : $(BIN_DIR)/TestTaskCheckMemory.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o 
-	$(CXX) $(BIN_DIR)/TestTaskCheckMemory.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/TestTaskCheckMemory : $(BIN_DIR)/TestTaskCheckMemory.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TaskCheckMemory.o 
+	$(CXX) $(BIN_DIR)/TestTaskCheckMemory.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TaskCheckMemory.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestMainLoop with extra sources
 $(BIN_DIR)/TestMainLoop.o : TestMainLoop.cpp
 	@echo "Compiling $< with extra sources"
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestMainLoop : $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o
-	$(CXX) $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/TestMainLoop : $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o
+	$(CXX) $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestProcessRxQueue with extra sources
 $(BIN_DIR)/TestProcessRxQueue.o : TestProcessRxQueue.cpp
 	@echo "Compiling $< with extra sources"
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestProcessRxQueue : $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/ServiceManager.o 
-	$(CXX) $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/ServiceManager.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/TestProcessRxQueue : $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/ServiceManager.o 
+	$(CXX) $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestRegistrationManager with extra sources
 $(BIN_DIR)/TestRegistrationManager.o : TestRegistrationManager.cpp
 	@echo "Compiling $< with extra sources"
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestRegistrationManager : $(BIN_DIR)/TestRegistrationManager.o $(BIN_DIR)/mock_hal.o
-	$(CXX) $(BIN_DIR)/TestRegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/RegistrationManager.o : ../Src/RegistrationManager.cpp
+	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestRegistrationManager : $(BIN_DIR)/TestRegistrationManager.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
+	$(CXX) $(BIN_DIR)/TestRegistrationManager.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+
+# Rule for TestSubscriptionManager with extra sources
+$(BIN_DIR)/TestSubscriptionManager.o : TestSubscriptionManager.cpp
+	@echo "Compiling $< with extra sources"
+	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestSubscriptionManager : $(BIN_DIR)/TestSubscriptionManager.o $(BIN_DIR)/mock_hal.o
+	$(CXX) $(BIN_DIR)/TestSubscriptionManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Generic rule for all other tests
 $(BIN_DIR)/%.o : %.cpp

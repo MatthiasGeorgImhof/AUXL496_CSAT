@@ -135,10 +135,10 @@ public:
     MockTask(uint32_t interval, uint32_t tick, const CyphalTransfer transfer) : Task(interval, tick), transfer_(transfer) {}
     ~MockTask() override {}
 
-    void handleMessage(std::shared_ptr<CyphalTransfer> transfer) override {}
+    void handleMessage(std::shared_ptr<CyphalTransfer> /*transfer*/) override {}
     void handleTaskImpl() override {}
-    void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task) {}
-    void unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task) {}
+    void registerTask(RegistrationManager */*manager*/, std::shared_ptr<Task> /*task*/) override {}
+    void unregisterTask(RegistrationManager */*manager*/, std::shared_ptr<Task> /*task*/) override {}
 
     CyphalTransfer transfer_;
 };

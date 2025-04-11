@@ -128,6 +128,7 @@ typedef struct {
 	CyphalPortID port_id;
 	std::shared_ptr<Task> task;
 } TaskHandler;
-constexpr size_t NUM_TASK_HANDLERS = 32;
+
+constexpr CyphalPortID PURE_HANDLER = 0;
 
 #endif /* INC_TASK_HPP_ */

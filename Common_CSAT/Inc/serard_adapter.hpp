@@ -19,12 +19,12 @@ struct SerardAdapter
     BoxSet<SerardRxSubscription, SUBSCRIPTIONS> subscriptions;
 };
 
-SerardNodeID cyphalNodeIdToSerard(const CyphalNodeID node_id) { return node_id == CYPHAL_NODE_ID_UNSET ? SERARD_NODE_ID_UNSET : static_cast<SerardNodeID>(node_id); }
-CyphalNodeID serardNodeIdToCyphal(const SerardNodeID node_id) { return static_cast<CyphalNodeID>(node_id & CYPHAL_NODE_ID_UNSET); }
-SerardTransferID cyphalTransferIdToSerard(const CyphalTransferID transfer_id) { return static_cast<SerardTransferID>(transfer_id); }
-CyphalTransferID serardTransferIdToCyphal(const SerardTransferID transfer_id) { return static_cast<CyphalTransferID>(transfer_id); }
+inline SerardNodeID cyphalNodeIdToSerard(const CyphalNodeID node_id) { return node_id == CYPHAL_NODE_ID_UNSET ? SERARD_NODE_ID_UNSET : static_cast<SerardNodeID>(node_id); }
+inline CyphalNodeID serardNodeIdToCyphal(const SerardNodeID node_id) { return static_cast<CyphalNodeID>(node_id & CYPHAL_NODE_ID_UNSET); }
+inline SerardTransferID cyphalTransferIdToSerard(const CyphalTransferID transfer_id) { return static_cast<SerardTransferID>(transfer_id); }
+inline CyphalTransferID serardTransferIdToCyphal(const SerardTransferID transfer_id) { return static_cast<CyphalTransferID>(transfer_id); }
 
-SerardTransferMetadata cyphalMetadataToSerard(const CyphalTransferMetadata metadata)
+inline SerardTransferMetadata cyphalMetadataToSerard(const CyphalTransferMetadata metadata)
 {
     return SerardTransferMetadata{
         static_cast<SerardPriority>(metadata.priority),
@@ -33,7 +33,8 @@ SerardTransferMetadata cyphalMetadataToSerard(const CyphalTransferMetadata metad
         cyphalNodeIdToSerard(metadata.remote_node_id),
         cyphalTransferIdToSerard(metadata.transfer_id)};
 }
-CyphalTransferMetadata serardMetadataToCyphal(const SerardTransferMetadata metadata)
+
+inline CyphalTransferMetadata serardMetadataToCyphal(const SerardTransferMetadata metadata)
 {
     return CyphalTransferMetadata{
         static_cast<CyphalPriority>(metadata.priority),
@@ -43,7 +44,7 @@ CyphalTransferMetadata serardMetadataToCyphal(const SerardTransferMetadata metad
         serardTransferIdToCyphal(metadata.transfer_id)};
 }
 
-void cyphalMetadataToSerard(const CyphalTransferMetadata *cyphal, SerardTransferMetadata *serard)
+inline void cyphalMetadataToSerard(const CyphalTransferMetadata *cyphal, SerardTransferMetadata *serard)
 {
     serard->priority = static_cast<SerardPriority>(cyphal->priority);
     serard->transfer_kind = static_cast<SerardTransferKind>(cyphal->transfer_kind);
@@ -52,7 +53,7 @@ void cyphalMetadataToSerard(const CyphalTransferMetadata *cyphal, SerardTransfer
     serard->transfer_id = cyphalTransferIdToSerard(cyphal->transfer_id);
 }
 
-void cyphalTransferToSerard(const CyphalTransfer *cyphal, SerardRxTransfer *serard)
+inline void cyphalTransferToSerard(const CyphalTransfer *cyphal, SerardRxTransfer *serard)
 {
     cyphalMetadataToSerard(&cyphal->metadata, &serard->metadata);
     serard->payload = cyphal->payload;
@@ -60,7 +61,7 @@ void cyphalTransferToSerard(const CyphalTransfer *cyphal, SerardRxTransfer *sera
     serard->timestamp_usec = cyphal->timestamp_usec;
 }
 
-void serardMetadataToCyphal(const SerardTransferMetadata *serard, CyphalTransferMetadata *cyphal)
+inline void serardMetadataToCyphal(const SerardTransferMetadata *serard, CyphalTransferMetadata *cyphal)
 {
     cyphal->priority = static_cast<CyphalPriority>(serard->priority);
     cyphal->transfer_kind = static_cast<CyphalTransferKind>(serard->transfer_kind);
@@ -69,7 +70,7 @@ void serardMetadataToCyphal(const SerardTransferMetadata *serard, CyphalTransfer
     cyphal->transfer_id = serard->transfer_id;
 }
 
-void serardTransferToCyphal(const SerardRxTransfer *serard, CyphalTransfer *cyphal)
+inline void serardTransferToCyphal(const SerardRxTransfer *serard, CyphalTransfer *cyphal)
 {
     serardMetadataToCyphal(&serard->metadata, &cyphal->metadata);
     cyphal->payload = serard->payload;
@@ -84,10 +85,9 @@ private:
     SerardAdapter *adapter_;
 
 public:
-    Cyphal<SerardAdapter>() = delete;
-    Cyphal<SerardAdapter>(SerardAdapter *adapter) : adapter_(adapter) {}
+    Cyphal(SerardAdapter *adapter) : adapter_(adapter) {}
 
-    int32_t cyphalTxPush(const CyphalMicrosecond tx_deadline_usec,
+    int32_t cyphalTxPush(const CyphalMicrosecond /*tx_deadline_usec*/,
                          const CyphalTransferMetadata *const metadata,
                          const size_t payload_size,
                          const void *const payload)
@@ -118,8 +118,9 @@ public:
                              const CyphalMicrosecond transfer_id_timeout_usec)
     {
         SerardRxSubscription stub{};
+        stub.port_id = port_id;
         SerardRxSubscription *subscription = adapter_->subscriptions.find_or_create(stub, [port_id](const SerardRxSubscription &a, const SerardRxSubscription &b)
-                                                                                    { return port_id == b.port_id; });
+                                                                                    { return a.port_id == b.port_id; });
         return serardRxSubscribe(&adapter_->ins, static_cast<SerardTransferKind>(transfer_kind), port_id, extent, transfer_id_timeout_usec, subscription);
     }
 
@@ -127,8 +128,9 @@ public:
                                const CyphalPortID port_id)
     {
         SerardRxSubscription stub{};
+        stub.port_id = port_id;
         auto it = adapter_->subscriptions.find(stub, [port_id](const SerardRxSubscription &a, const SerardRxSubscription &b)
-                                               { return port_id == b.port_id; });
+                                               { return a.port_id == b.port_id; });
         auto result = serardRxUnsubscribe(&adapter_->ins, static_cast<SerardTransferKind>(transfer_kind), port_id);
         if (it)
             adapter_->subscriptions.remove(it);

@@ -51,7 +51,7 @@ MockGPIO_PortState gpio_port_state;  //  Only one port
 
 // ----- CAN Mock Functions -----
 
-uint32_t HAL_CAN_AddTxMessage(void *hcan, CAN_TxHeaderTypeDef *pHeader, uint8_t aData[], uint32_t *pTxMailbox)
+uint32_t HAL_CAN_AddTxMessage(void */*hcan*/, CAN_TxHeaderTypeDef *pHeader, uint8_t aData[], uint32_t *pTxMailbox)
 {
     if (pHeader == NULL) return 1; //HAL_ERROR
     if (can_tx_buffer_count < CAN_TX_BUFFER_SIZE) {
@@ -73,7 +73,7 @@ uint32_t HAL_CAN_AddTxMessage(void *hcan, CAN_TxHeaderTypeDef *pHeader, uint8_t 
 }
 
 
-uint32_t HAL_CAN_GetRxMessage(void *hcan, uint32_t Fifo, CAN_RxHeaderTypeDef *pHeader, uint8_t aData[]) {
+uint32_t HAL_CAN_GetRxMessage(void *hcan, uint32_t /*Fifo*/, CAN_RxHeaderTypeDef *pHeader, uint8_t aData[]) {
     if(hcan == NULL || pHeader == NULL || aData == NULL) {
         return 1; //HAL_ERROR
     }
@@ -99,16 +99,16 @@ uint32_t HAL_CAN_GetRxMessage(void *hcan, uint32_t Fifo, CAN_RxHeaderTypeDef *pH
 }
 
 
-uint32_t HAL_CAN_GetTxMailboxesFreeLevel(void *hcan) {
+uint32_t HAL_CAN_GetTxMailboxesFreeLevel(void */*hcan*/) {
     return current_free_mailboxes;
 }
 
-uint32_t HAL_CAN_ConfigFilter(void *hcan, CAN_FilterTypeDef *sFilterConfig) {
+uint32_t HAL_CAN_ConfigFilter(void */*hcan*/, CAN_FilterTypeDef */*sFilterConfig*/) {
     // Mock implementation - for now, just return HAL_OK
     return 0; // HAL_OK
 }
 
-uint32_t HAL_CAN_GetRxFifoFillLevel(void *hcan, uint32_t Fifo) {
+uint32_t HAL_CAN_GetRxFifoFillLevel(void */*hcan*/, uint32_t /*Fifo*/) {
     return current_rx_fifo_fill_level;
 }
 
@@ -116,7 +116,7 @@ uint32_t HAL_CAN_GetRxFifoFillLevel(void *hcan, uint32_t Fifo) {
 
 // ---- UART Mock Functions -----
 
-uint32_t HAL_UART_Transmit(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size, uint32_t Timeout)
+uint32_t HAL_UART_Transmit(UART_HandleTypeDef */*huart*/, uint8_t *pData, uint16_t Size, uint32_t /*Timeout*/)
 {
     if (uart_tx_buffer_count + Size <= UART_TX_BUFFER_SIZE) {
         memcpy(uart_tx_buffer + uart_tx_buffer_count, pData, Size);
@@ -163,7 +163,6 @@ uint32_t HAL_UART_Receive(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Si
 
 uint32_t HAL_UART_Receive_DMA(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size) {
     if (huart == NULL || pData == NULL) return HAL_ERROR;
-    uint32_t start_tick = current_tick;
     uint16_t bytes_received = 0;
 
   while(bytes_received < Size) {
@@ -199,7 +198,7 @@ void HAL_SetTick(uint32_t tick)
 
 // ---- I2C Mock Functions -----
 
-uint32_t HAL_I2C_Master_Transmit(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint8_t *pData, uint16_t Size, uint32_t Timeout)
+uint32_t HAL_I2C_Master_Transmit(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint8_t *pData, uint16_t Size, uint32_t /*Timeout*/)
 {
     if (hi2c == NULL || pData == NULL) {
         return 1; //HAL_ERROR; // Check for NULL pointers
@@ -219,7 +218,7 @@ uint32_t HAL_I2C_Master_Transmit(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, u
     return 0;
 }
 
-uint32_t HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress, uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout) {
+uint32_t HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress, uint16_t /*MemAddSize*/, uint8_t *pData, uint16_t Size, uint32_t /*Timeout*/) {
     if (hi2c == NULL || pData == NULL) {
         return 1; //HAL_ERROR;
     }
@@ -241,7 +240,7 @@ uint32_t HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t
 }
 
 
-uint32_t HAL_I2C_Mem_Write(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress, uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout) {
+uint32_t HAL_I2C_Mem_Write(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress, uint16_t /*MemAddSize*/, uint8_t *pData, uint16_t Size, uint32_t /*Timeout*/) {
     if (hi2c == NULL || pData == NULL) {
         return 1; //HAL_ERROR;
     }
@@ -279,7 +278,7 @@ void HAL_GPIO_Init(GPIO_TypeDef *GPIOx, GPIO_InitTypeDef *GPIO_Init) {
    GPIOx->Init = *GPIO_Init;
 }
 
-GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
+GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin) {
     uint32_t pin_number = 0;
     while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
         pin_number++;
@@ -293,7 +292,7 @@ GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
     }
 }
 
-void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState) {
+void HAL_GPIO_WritePin(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin, GPIO_PinState PinState) {
     uint32_t pin_number = 0;
     while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
         pin_number++;
@@ -307,7 +306,7 @@ void HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState Pin
     }
 }
 
-void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
+void HAL_GPIO_TogglePin(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin) {
     uint32_t pin_number = 0;
     while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
         pin_number++;
@@ -322,7 +321,7 @@ void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
 }
 
 // GPIO Access Functions
-GPIO_PinState get_gpio_pin_state(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
+GPIO_PinState get_gpio_pin_state(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin)
 {
     uint32_t pin_number = 0;
     while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
@@ -337,7 +336,7 @@ GPIO_PinState get_gpio_pin_state(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
     }
 }
 
-void set_gpio_pin_state(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState)
+void set_gpio_pin_state(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin, GPIO_PinState PinState)
 {
     uint32_t pin_number = 0;
     while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
@@ -474,13 +473,12 @@ void set_mocked_uart_rx_event_type(HAL_UART_RxEventTypeTypeDef event_type) {
     mocked_uart_rx_event_type = event_type;
 }
 
-uint32_t HAL_UARTEx_GetRxEventType(UART_HandleTypeDef *huart) {
+uint32_t HAL_UARTEx_GetRxEventType(UART_HandleTypeDef */*huart*/) {
     return mocked_uart_rx_event_type;
 }
 
 uint32_t HAL_UARTEx_ReceiveToIdle_DMA(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size) {
    if (huart == NULL || pData == NULL) return HAL_ERROR;
-    uint32_t start_tick = current_tick;
     uint16_t bytes_received = 0;
 
     while(bytes_received < Size) {

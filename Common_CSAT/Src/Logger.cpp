@@ -24,7 +24,11 @@ std::ostream *Logger::stream_ = &std::cerr;
 #endif
 #ifdef LOGGER_OUTPUT_CYPHAL
 Cyphal<LoopardAdapter> *Logger::adapter_loopard_ = nullptr;
-CyphalTransferID Logger::loopard_transfer_id_ = 0;
+Cyphal<CanardAdapter> *Logger::adapter_canard_ = nullptr;
+Cyphal<SerardAdapter> *Logger::adapter_serard_ = nullptr;
+Cyphal<UdpardAdapter> *Logger::adapter_udpard_ = nullptr;
+
+CyphalTransferID Logger::cyphal_transfer_id_ = 0;
 #endif
 
 constexpr size_t BUFFER_SIZE = 256;
@@ -74,11 +78,14 @@ void Logger::can_transmit_log_message(const char *str, size_t size, unsigned int
             CyphalTransferKindMessage,
             uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_,
             CYPHAL_NODE_ID_UNSET,
-            loopard_transfer_id_,
+            cyphal_transfer_id_,
         };
 
-    adapter_loopard_->cyphalTxPush(0, &metadata, payload_size, payload);
-    ++loopard_transfer_id_;
+        if (adapter_loopard_ != nullptr) adapter_loopard_->cyphalTxPush(0, &metadata, payload_size, payload);
+        if (adapter_canard_ != nullptr) adapter_canard_->cyphalTxPush(0, &metadata, payload_size, payload);
+        if (adapter_serard_ != nullptr) adapter_serard_->cyphalTxPush(0, &metadata, payload_size, payload);
+        if (adapter_udpard_ != nullptr) adapter_udpard_->cyphalTxPush(0, &metadata, payload_size, payload);
+        ++cyphal_transfer_id_;
 }
 #endif /* LOGGER_OUTPUT_CYPHAL */
 

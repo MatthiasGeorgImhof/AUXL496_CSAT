@@ -12,16 +12,12 @@
 
 void TaskCheckMemory::registerTask(RegistrationManager *manager, std::shared_ptr<Task> task)
 {
-	CyphalSubscription subscription = { 0, 0, CyphalTransferKindMessage};
-	std::tuple<> adapters;
-	manager->subscribe(subscription, task, adapters);
+	manager->subscribe(PURE_HANDLER, task);
 }
 
 void TaskCheckMemory::unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task)
 {
-	CyphalSubscription subscription = { 0, 0, CyphalTransferKindMessage};
-	std::tuple<> adapters;
-	manager->unsubscribe(subscription, task, adapters);
+	manager->unsubscribe(PURE_HANDLER, task);
 }
 
 void TaskCheckMemory::handleTaskImpl()

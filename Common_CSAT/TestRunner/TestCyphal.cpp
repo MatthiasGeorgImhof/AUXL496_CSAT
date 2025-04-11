@@ -12,8 +12,8 @@
 #include <cstring>
 #include <algorithm>
 
-void *canardMemoryAllocate(CanardInstance *ins, size_t amount) { return static_cast<void *>(malloc(amount)); };
-void canardMemoryFree(CanardInstance *ins, void *pointer) { free(pointer); };
+void *canardMemoryAllocate(CanardInstance */*ins*/, size_t amount) { return static_cast<void *>(malloc(amount)); };
+void canardMemoryFree(CanardInstance */*ins*/, void *pointer) { free(pointer); };
 
 TEST_CASE("Canard Adapter")
 {
@@ -122,8 +122,7 @@ TEST_CASE("Canard Send Receive")
     CHECK(ptr != nullptr);
 
     CyphalTransfer transfer;
-    size_t frame_size = 0;
-    ;
+    
     CHECK(cyphal.cyphalRxReceive(ptr->frame.extended_can_id, &ptr->frame.payload_size, static_cast<const uint8_t *>(ptr->frame.payload), &transfer) == 1);
     CHECK(strncmp(payload1, static_cast<const char *>(transfer.payload), 5) == 0);
 
@@ -160,7 +159,6 @@ TEST_CASE("Canard Send Forward Receive")
     CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, 123, 100, 2000000) == 1);
 
     CyphalTransfer transfer1, transfer2;
-    size_t frame_size = 0;
 
     CyphalTransferMetadata metadata;
     metadata.priority = CyphalPriorityNominal;
@@ -194,8 +192,8 @@ TEST_CASE("Canard Send Forward Receive")
     CHECK(transfer2.metadata.remote_node_id == my_id);
 }
 
-void *serardMemoryAllocate(void *const user_reference, const size_t size) { return static_cast<void *>(malloc(size)); };
-void serardMemoryDeallocate(void *const user_reference, const size_t size, void *const pointer) { free(pointer); };
+void *serardMemoryAllocate(void *const /*user_reference*/, const size_t size) { return static_cast<void *>(malloc(size)); };
+void serardMemoryDeallocate(void *const /*user_reference*/, const size_t /*size*/, void *const pointer) { free(pointer); };
 
 TEST_CASE("Serard Basics")
 {
@@ -279,12 +277,10 @@ TEST_CASE("Serard Adapter")
     REQUIRE(adapter.subscriptions.size() == 0);
     SUBCASE("cyphalRxSubscribe and Unsubscribe")
     {
-        SerardRxSubscription sub;
         CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, 42, 100, 2000000) == 1);
         CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, 42, 100, 2000000) == 0);
         CHECK(cyphal.cyphalRxUnsubscribe(CyphalTransferKindMessage, 42) == 1);
         CHECK(cyphal.cyphalRxUnsubscribe(CyphalTransferKindMessage, 42) == 0);
-        SerardRxSubscription sub2;
         CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, 43, 100, 2000000) == 1);
         CHECK(cyphal.cyphalRxUnsubscribe(CyphalTransferKindMessage, 43) == 1);
     }
@@ -293,7 +289,6 @@ TEST_CASE("Serard Adapter")
     SUBCASE("cyphalRxSubscribe returns negative on full boxset")
     {
         adapter.subscriptions.clear();
-        SerardRxSubscription sub[SerardAdapter::SUBSCRIPTIONS];
         for (int i = 0; i < SerardAdapter::SUBSCRIPTIONS; ++i)
         {
             CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, i, 100, 2000000) == 1);
@@ -304,7 +299,7 @@ TEST_CASE("Serard Adapter")
 }
 
 static std::vector<uint8_t> rxtx_buffer;
-bool emit(void *user_reference, uint8_t size, const uint8_t *data)
+bool emit(void */*user_reference*/, uint8_t size, const uint8_t *data)
 {
     for (size_t i = 0; i < size; ++i)
         rxtx_buffer.push_back(data[i]);
@@ -446,8 +441,8 @@ TEST_CASE("Cyphal<serard_adapter> Send Forward Receive")
     CHECK(transfer.metadata.remote_node_id == my_id);
 }
 
-void *udpardMemoryAllocate(void *const user_reference, const size_t size) { return static_cast<void *>(malloc(size)); };
-void udpardMemoryDeallocate(void *const user_reference, const size_t size, void *const pointer) { free(pointer); };
+void *udpardMemoryAllocate(void *const /*user_reference*/, const size_t size) { return static_cast<void *>(malloc(size)); };
+void udpardMemoryDeallocate(void *const /*user_reference*/, const size_t /*size*/, void *const pointer) { free(pointer); };
 
 TEST_CASE("Udpard Adapter")
 {
@@ -509,11 +504,9 @@ TEST_CASE("Udpard Adapter")
     REQUIRE(adapter.subscriptions.size() == 0);
     SUBCASE("cyphalRxSubscribe and Unsubscribe")
     {
-        UdpardRxSubscription sub;
-        auto result = cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, 42, 100, 2000000);
+        CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, 42, 100, 2000000) == 1);
         CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, 42, 100, 2000000) == 1);
         CHECK(cyphal.cyphalRxUnsubscribe(CyphalTransferKindMessage, 42) == 1);
-        UdpardRxSubscription sub2;
         CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, 43, 100, 2000000) == 1);
         CHECK(cyphal.cyphalRxUnsubscribe(CyphalTransferKindMessage, 43) == 1);
     }
@@ -522,7 +515,6 @@ TEST_CASE("Udpard Adapter")
     SUBCASE("cyphalRxSubscribe returns negative on full boxset")
     {
         adapter.subscriptions.clear();
-        UdpardRxSubscription sub[UdpardAdapter::SUBSCRIPTIONS];
         for (int i = 0; i < UdpardAdapter::SUBSCRIPTIONS; ++i)
         {
             CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, i, 100, 2000000) == 1);
@@ -653,7 +645,7 @@ TEST_CASE("Loopard Adapter")
     SUBCASE("cyphalTxPush: returns 0 when buffer full")
     {
         // fill the buffer
-        for (int i = 0; i < LoopardAdapter::BUFFER; ++i)
+        for (size_t i = 0; i < LoopardAdapter::BUFFER; ++i)
         {
             CHECK(cyphal.cyphalTxPush(0, &metadata, payload_size, payload) == 1);
         }

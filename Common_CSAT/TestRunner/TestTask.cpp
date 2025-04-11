@@ -101,7 +101,7 @@ public:
         handleTaskImplCalled = true;
     }
 
-    void handleMessage(std::shared_ptr<CyphalTransfer> transfer) override {
+    void handleMessage(std::shared_ptr<CyphalTransfer> /*transfer*/) override {
         // Not used in this test
     }
 
