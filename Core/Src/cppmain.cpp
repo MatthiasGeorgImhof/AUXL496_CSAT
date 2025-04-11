@@ -21,6 +21,7 @@
 #define NUNAVUT_ASSERT(x) assert(x)
 #endif
 
+#include "cyphal_subscriptions.hpp"
 #include <CircularBuffer.hpp>
 #include <ArrayList.hpp>
 #include "Allocator.hpp"
@@ -242,12 +243,18 @@ void cppmain(HAL_Handles handles)
 
 	RegistrationManager registration_manager;
 	SubscriptionManager subscription_manager;
+	registration_manager.subscribe(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+	registration_manager.subscribe(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+	registration_manager.subscribe(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
+	registration_manager.publish(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+	registration_manager.publish(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+	registration_manager.publish(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
 
 	O1HeapAllocator<TaskSendHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSendHeartBeat(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSendHeartBeat, 1000, 100, 0, sercan_adapters));
 
-	O1HeapAllocator<TaskSendNodePortList<Cyphal<CanardAdapter>>> alloc_TaskSendNodePortList(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<CanardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000, 100, 0, canard_adapters));
+	O1HeapAllocator<TaskSendNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSendNodePortList(o1heap);
+	registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000, 100, 0, sercan_adapters));
 
 	O1HeapAllocator<TaskSubscribeNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSubscribeNodePortList(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskSubscribeNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000, 100, sercan_adapters));

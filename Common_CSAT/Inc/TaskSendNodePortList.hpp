@@ -59,7 +59,7 @@ void TaskSendNodePortList<Adapters...>::handleTaskImpl()
         strcat(subscribers, vstring);
     }
     
-    log(LOG_LEVEL_DEBUG, "TaskSendNodePortList: (%s ) (%s )\r\n", publishers, subscribers);
+    log(LOG_LEVEL_DEBUG, "TaskSendNodePortList: %d (%s ) %d (%s )\r\n", publication_size, publishers, subscription_size, subscribers);
     
     data.subscribers._tag_ = uavcan_node_port_SubjectIDList_1_0_sparse_list_ARRAY_IS_VARIABLE_LENGTH_;
 
