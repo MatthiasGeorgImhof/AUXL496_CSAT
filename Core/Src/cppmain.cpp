@@ -92,7 +92,7 @@ constexpr size_t SERIAL_BUFFER_SIZE = 4;
 using SerialCircularBuffer = CircularBuffer<SerialFrame, SERIAL_BUFFER_SIZE>;
 SerialCircularBuffer serial_buffer;
 
-constexpr size_t CAN_RX_BUFFER_SIZE = 32;
+constexpr size_t CAN_RX_BUFFER_SIZE = 64;
 CircularBuffer<CanRxFrame, CAN_RX_BUFFER_SIZE> can_rx_buffer;
 
 CanardTransferMetadata convert(const SerardTransferMetadata serard)
@@ -197,7 +197,7 @@ void cppmain(HAL_Handles handles)
 
 	CanardAdapter canard_adapter;
 	canard_adapter.ins = canardInit(&canardMemoryAllocate, &canardMemoryDeallocate);
-	canard_adapter.que = canardTxInit(16, CANARD_MTU_CAN_CLASSIC);
+	canard_adapter.que = canardTxInit(512, CANARD_MTU_CAN_CLASSIC);
 	Cyphal<CanardAdapter> canard_cyphal(&canard_adapter);
 	canard_cyphal.setNodeID(cyphal_node_id);
 
