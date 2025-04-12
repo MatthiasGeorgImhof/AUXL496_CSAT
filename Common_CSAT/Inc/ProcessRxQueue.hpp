@@ -118,24 +118,29 @@ public:
 
     void CanProcessTxQueue(CanardAdapter *adapter, CAN_HandleTypeDef *hcan)
     {
-        log(LOG_LEVEL_DEBUG, "CanProcessTxQueue: %2d %2d %8x\r\n", adapter->que.capacity, adapter->que.size, canardTxPeek(&adapter->que));
         for (const CanardTxQueueItem *ti = NULL; (ti = canardTxPeek(&adapter->que)) != NULL;)
         {
             if (HAL_CAN_GetTxMailboxesFreeLevel(hcan) == 0)
                 return;
+
+            size_t que_capacity = adapter->que.capacity;
+            size_t que_size = adapter->que.size;
+            constexpr size_t BUFFER_SIZE = 256;
+            char hex_string_buffer[BUFFER_SIZE];
+            uchar_buffer_to_hex(static_cast<const unsigned char*>(ti->frame.payload), ti->frame.payload_size, hex_string_buffer, BUFFER_SIZE);
+            log(LOG_LEVEL_DEBUG, "CanProcessTxQueue %2d %2d: %4x %s\r\n", que_size, que_capacity, ti->frame.extended_can_id, hex_string_buffer);
 
             CAN_TxHeaderTypeDef header;
             header.ExtId = ti->frame.extended_can_id;
             header.DLC = ti->frame.payload_size;
             header.RTR = CAN_RTR_DATA;
             header.IDE = CAN_ID_EXT;
-            log(LOG_LEVEL_DEBUG, "CanProcessTxQueue: %2d %2d\r\n", adapter->que.capacity, adapter->que.size);
-            log(LOG_LEVEL_DEBUG, "CanProcessTxQueue: %4d %4d\r\n", header.ExtId, header.DLC);
             uint32_t mailbox;
             if (HAL_CAN_AddTxMessage(hcan, &header, static_cast<uint8_t *>(const_cast<void *>(ti->frame.payload)), &mailbox) != HAL_OK)
                 return;
             adapter->ins.memory_free(&adapter->ins, canardTxPop(&adapter->que, ti));
-            log(LOG_LEVEL_DEBUG, "CanProcessTxQueue: %2d %2d\r\n", adapter->que.capacity, adapter->que.size);
+
+
         }
     }
 };

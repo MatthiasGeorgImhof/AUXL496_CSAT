@@ -7,6 +7,7 @@
 
 #include "cyphal.hpp"
 #include <CircularBuffer.hpp>
+#include <Logger.hpp>
 
 #ifdef __arm__
 #include "stm32l4xx_hal.h"
@@ -81,7 +82,8 @@ protected:
 	void publish(size_t payload_size, uint8_t* payload, void* data,
 			int8_t (*serialize)(const void* const, uint8_t* const,  size_t* const), CyphalPortID port_id)
 	{
-		serialize(data, payload, &payload_size);
+		int8_t result = serialize(data, payload, &payload_size);
+		if (result < 0) log(LOG_LEVEL_ERROR, "ERROR Task.publish serialization %d\r\n", result);
 
 		CyphalTransferMetadata metadata =
 		{
@@ -100,6 +102,7 @@ protected:
 				all_successful = all_successful && (res > 0);
 			}(), ...);
 				}, adapters_);
+		if (! all_successful) log(LOG_LEVEL_ERROR, "ERROR Task.publish push\r\n");
 	}
 
 protected:

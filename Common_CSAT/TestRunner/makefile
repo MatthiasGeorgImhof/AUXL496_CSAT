@@ -182,8 +182,8 @@ $(BIN_DIR)/TestProcessRxQueue.o : TestProcessRxQueue.cpp
 	@echo "Compiling $< with extra sources"
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestProcessRxQueue : $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/ServiceManager.o 
-	$(CXX) $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/TestProcessRxQueue : $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/Logger.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/ServiceManager.o 
+	$(CXX) $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/Logger.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestRegistrationManager with extra sources
 $(BIN_DIR)/TestRegistrationManager.o : TestRegistrationManager.cpp
