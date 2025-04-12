@@ -197,42 +197,56 @@ TEST_CASE("TaskSendNodePortList: main loop snippet")
     GPIO_TypeDef GPIOC;
     uint16_t LED1_Pin = 1;
 
-
     char buffer[4192] __attribute__((aligned(256)));
     O1HeapInstance *heap = o1heapInit(buffer, 4192);
     REQUIRE(heap != nullptr);
-	O1HeapAllocator<CanardRxTransfer> alloc(heap);
+    O1HeapAllocator<CanardRxTransfer> alloc(heap);
 
-	LoopardAdapter loopard_adapter;
-	Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
-	loopard_cyphal.setNodeID(cyphal_node_id);
+    LoopardAdapter loopard_adapter;
+    Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
+    loopard_cyphal.setNodeID(cyphal_node_id);
 
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
 
-	RegistrationManager registration_manager;
-	SubscriptionManager subscription_manager;
-	registration_manager.subscribe(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
-	registration_manager.subscribe(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
-	registration_manager.subscribe(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
-	registration_manager.publish(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
-	registration_manager.publish(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
-	registration_manager.publish(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
+    RegistrationManager registration_manager;
+    SubscriptionManager subscription_manager;
+    registration_manager.subscribe(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+    registration_manager.subscribe(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+    registration_manager.subscribe(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
+    registration_manager.publish(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+    registration_manager.publish(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+    registration_manager.publish(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
 
-	O1HeapAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>>> alloc_TaskSendHeartBeat(heap);
-	registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>>>(alloc_TaskSendHeartBeat, 1000, 100, 0, adapters));
+    O1HeapAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>>> alloc_TaskSendHeartBeat(heap);
+    registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>>>(alloc_TaskSendHeartBeat, 1000, 100, 0, adapters));
 
-	O1HeapAllocator<TaskSendNodePortList<Cyphal<LoopardAdapter>>> alloc_TaskSendNodePortList(heap);
-	registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000, 100, 0, adapters));
+    O1HeapAllocator<TaskSendNodePortList<Cyphal<LoopardAdapter>>> alloc_TaskSendNodePortList(heap);
+    registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000, 100, 0, adapters));
 
-	O1HeapAllocator<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>> alloc_TaskSubscribeNodePortList(heap);
-	registration_manager.add(allocate_unique_custom<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000, 100, adapters));
+    O1HeapAllocator<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>> alloc_TaskSubscribeNodePortList(heap);
+    registration_manager.add(allocate_unique_custom<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000, 100, adapters));
 
-	O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(heap);
-	registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, &GPIOC, LED1_Pin, 1000, 100));
+    O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(heap);
+    registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, &GPIOC, LED1_Pin, 1000, 100));
 
-	O1HeapAllocator<TaskCheckMemory> alloc_TaskCheckMemory(heap);
-	registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, heap, 2000, 100));
+    O1HeapAllocator<TaskCheckMemory> alloc_TaskCheckMemory(heap);
+    registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, heap, 2000, 100));
 
-    CHECK(registration_manager.getSubscriptions().size() == 3);
-    CHECK(registration_manager.getPublications().size() == 3);
+    auto subscriptions = registration_manager.getSubscriptions();
+    REQUIRE(subscriptions.size() == 3);
+    CHECK(subscriptions.containsIf([](CyphalPortID port_id)
+                                   { return port_id == uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_; }));
+    CHECK(subscriptions.containsIf([](CyphalPortID port_id)
+                                   { return port_id == uavcan_node_port_List_1_0_FIXED_PORT_ID_; }));
+    CHECK(subscriptions.containsIf([](CyphalPortID port_id)
+                                   { return port_id == uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_; }));
+
+    auto publications = registration_manager.getPublications();
+    REQUIRE(publications.size() == 3);
+    CHECK(publications.containsIf([](CyphalPortID port_id)
+                                  { return port_id == uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_; }));
+    CHECK(publications.containsIf([](CyphalPortID port_id)
+                                  { return port_id == uavcan_node_port_List_1_0_FIXED_PORT_ID_; }));
+    CHECK(publications.containsIf([](CyphalPortID port_id)
+                                  { return port_id == uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_; }));
 }

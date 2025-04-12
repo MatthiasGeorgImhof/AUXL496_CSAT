@@ -29,6 +29,10 @@ private:
 
 private:
     const RegistrationManager *registration_manager_;
+
+    constexpr static uint8_t SATURATEDBOOLMASK = 0;
+    constexpr static uint8_t SPARSELIST = 1;
+    constexpr static uint8_t EMPTY = 2;
 };
 
 template <typename... Adapters>
@@ -47,7 +51,7 @@ void TaskSendNodePortList<Adapters...>::handleTaskImpl()
         sprintf(vstring, "% 5d", registration_manager_->getPublications()[i]);
         strcat(publishers, vstring);
     }
-    data.publishers._tag_ = uavcan_node_port_SubjectIDList_1_0_sparse_list_ARRAY_IS_VARIABLE_LENGTH_;
+    data.publishers._tag_ = SPARSELIST;
     
     size_t subscription_size = registration_manager_->getSubscriptions().size();
     data.subscribers.sparse_list.count = subscription_size;
@@ -58,7 +62,10 @@ void TaskSendNodePortList<Adapters...>::handleTaskImpl()
         sprintf(vstring, "% 5d", registration_manager_->getSubscriptions()[i]);
         strcat(subscribers, vstring);
     }
-    data.subscribers._tag_ = uavcan_node_port_SubjectIDList_1_0_sparse_list_ARRAY_IS_VARIABLE_LENGTH_;
+    data.subscribers._tag_ = SPARSELIST;
+
+    memset(data.servers.mask_bitpacked_, 0, 64);
+    memset(data.clients.mask_bitpacked_, 0, 64);
     
     log(LOG_LEVEL_DEBUG, "TaskSendNodePortList: %d (%s ) %d (%s )\r\n", publication_size, publishers, subscription_size, subscribers);
     
