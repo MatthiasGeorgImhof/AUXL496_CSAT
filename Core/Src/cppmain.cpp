@@ -143,40 +143,12 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 #ifdef __cplusplus
 extern "C" {
 #endif
-void log_string(unsigned int level, const char *message, const char *str)
-{
-	log(level, message, str);
-}
-
-int uchar_buffer_to_hex(const unsigned char* uchar_buffer, size_t uchar_len, char* hex_string_buffer, size_t hex_string_buffer_size) {
-	if (uchar_buffer == NULL || hex_string_buffer == NULL || uchar_len == 0 || hex_string_buffer_size == 0) {
-		return -1; // Error: Invalid input
-	}
-
-	// Calculate the required buffer size (2 hex chars per byte + 1 space per byte + null terminator)
-	size_t required_size = uchar_len * 3 + 1;
-
-	if (hex_string_buffer_size < required_size) {
-		return -1; // Error: Buffer too small
-	}
-
-	// Convert each uchar to its hexadecimal representation with spaces
-	for (size_t i = 0; i < uchar_len; i++) {
-		snprintf(hex_string_buffer + (i * 3), 3, "%02X", uchar_buffer[i]);  //Write 2 hex characters
-		hex_string_buffer[(i * 3) + 2] = ' ';                            //Write a space after the hex characters
-	}
-
-	hex_string_buffer[uchar_len * 3 -1] = '\0'; //Remove trailing space and Null-terminate the string
-
-	return 0; // Success
-}
-
 bool serial_send(void* user_reference, uint8_t data_size, const uint8_t* data)
 {
 	constexpr size_t BUFFER_SIZE = 256;
 	char hex_string_buffer[BUFFER_SIZE];
 	uchar_buffer_to_hex(data, data_size, hex_string_buffer, BUFFER_SIZE);
-	log_string(LOG_LEVEL_INFO, "serial send: %s \r\n", hex_string_buffer);
+	log(LOG_LEVEL_INFO, "serial send: %s \r\n", hex_string_buffer);
 
 	HAL_StatusTypeDef status = HAL_UART_Transmit(huart2_, data, data_size, 1000);
 	// 	HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(&huart2_, data, data_size);

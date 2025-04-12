@@ -89,4 +89,13 @@ void log(unsigned int level, const char *format, ...);
 inline void log(unsigned int /*level*/, const char */*format*/, ...) {}
 #endif /* LOGGER_ENABLED */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern int uchar_buffer_to_hex(const unsigned char* uchar_buffer, size_t uchar_len, char* hex_string_buffer, size_t hex_string_buffer_size);
+#ifdef __cplusplus
+}
+#endif
+
+
 #endif /* LOGGER_HPP_ */

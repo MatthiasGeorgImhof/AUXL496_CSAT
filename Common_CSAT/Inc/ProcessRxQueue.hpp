@@ -65,6 +65,12 @@ public:
         {
             CanRxFrame frame = can_rx_buffer.pop();
             size_t frame_size = frame.header.DLC;
+
+        	constexpr size_t BUFFER_SIZE = 256;
+        	char hex_string_buffer[BUFFER_SIZE];
+        	uchar_buffer_to_hex(frame.data, frame_size, hex_string_buffer, BUFFER_SIZE);
+            log(LOG_LEVEL_DEBUG, "CanProcessRxQueue: %4x %s\r\n", frame.header.ExtId, hex_string_buffer);
+
             CyphalTransfer transfer;
             int32_t result = cyphal->cyphalRxReceive(frame.header.ExtId, &frame_size, frame.data, &transfer);
             if (result == 1)
