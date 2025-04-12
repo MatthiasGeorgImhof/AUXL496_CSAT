@@ -136,8 +136,8 @@ $(BIN_DIR)/TestTaskSendNodePortList.o : TestTaskSendNodePortList.cpp
 	@echo "Compiling $< with extra sources"
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestTaskSendNodePortList : $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
-	$(CXX) $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/TestTaskSendNodePortList : $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
+	$(CXX) $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestTaskSubscribeNodePortList with extra sources
 $(BIN_DIR)/TestTaskSubscribeNodePortList.o : TestTaskSubscribeNodePortList.cpp

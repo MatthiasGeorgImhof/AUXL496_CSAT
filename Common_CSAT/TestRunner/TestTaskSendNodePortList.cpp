@@ -5,21 +5,27 @@
 #include "cyphal.hpp"
 #include <tuple>
 #include <memory>
-#include "uavcan/node/port/List_1_0.h"
 #include "loopard_adapter.hpp"
 #include "RegistrationManager.hpp"
+#include "SubscriptionManager.hpp"
 #include "ServiceManager.hpp"
 #include "Allocator.hpp"
-#include "TaskSendHeartBeat.hpp" // Assuming TaskSendHeartBeat exists for creating publications
+#include "TaskCheckMemory.hpp"
+#include "TaskBlinkLED.hpp"
+#include "TaskSendHeartBeat.hpp"
+#include "TaskSendNodePortList.hpp"
+#include "TaskSubscribeNodePortList.hpp"
+#include "cyphal_subscriptions.hpp"
 
 #ifdef __x86_64__
-#include "mock_hal.h"  // Include the mock HAL header
+#include "mock_hal.h" // Include the mock HAL header
 #endif
 
 void *loopardMemoryAllocate(size_t amount) { return static_cast<void *>(malloc(amount)); };
 void loopardMemoryFree(void *pointer) { free(pointer); };
 
-TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList") {
+TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList")
+{
     // Set up mock environment
     set_current_tick(10240); // Use the mock HAL tick function
 
@@ -35,7 +41,7 @@ TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList") {
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);
-    
+
     std::tuple<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>> adapters(loopard_cyphal1, loopard_cyphal2);
 
     // Create a RegistrationManager
@@ -61,24 +67,21 @@ TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList") {
     REQUIRE(transfer1.metadata.port_id == uavcan_node_port_List_1_0_FIXED_PORT_ID_);
     REQUIRE(transfer1.metadata.transfer_kind == CyphalTransferKindMessage);
     REQUIRE(transfer1.metadata.remote_node_id == id1);
-    REQUIRE(transfer1.payload_size <= uavcan_node_port_List_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_); // Payload size may vary depending on content
-
-    // Deserialize the payload and verify the values.  Important! This section needs adjustment 
-    // based on the specifics of the NodePortList message and the number of publications/subscriptions
+    REQUIRE(transfer1.payload_size <= uavcan_node_port_List_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
     uavcan_node_port_List_1_0 received_port_list1;
     size_t deserialized_size1 = transfer1.payload_size;
-    int8_t deserialization_result1 = uavcan_node_port_List_1_0_deserialize_(&received_port_list1, static_cast<const uint8_t*>(transfer1.payload), &deserialized_size1);
+    int8_t deserialization_result1 = uavcan_node_port_List_1_0_deserialize_(&received_port_list1, static_cast<const uint8_t *>(transfer1.payload), &deserialized_size1);
 
     REQUIRE(deserialization_result1 >= 0);
-    REQUIRE(received_port_list1.publishers.sparse_list.count == 2);  // Expecting 1 publisher now!
-    REQUIRE(received_port_list1.subscribers.sparse_list.count == 0); // Expecting one subscriber
+    REQUIRE(received_port_list1.publishers.sparse_list.count == 2);
+    REQUIRE(received_port_list1.subscribers.sparse_list.count == 0);
 
     // The first publisher should be Heartbeat
     REQUIRE(received_port_list1.publishers.sparse_list.elements[0].value == uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
     REQUIRE(received_port_list1.publishers.sparse_list.elements[1].value == uavcan_node_port_List_1_0_FIXED_PORT_ID_);
 
-    delete[] static_cast<uint8_t*>(transfer1.payload);
+    delete[] static_cast<uint8_t *>(transfer1.payload);
 
     // Verify the content of the published message on the second adapter (similar to first adapter)
     CyphalTransfer transfer2 = loopard2.buffer.pop();
@@ -89,19 +92,20 @@ TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList") {
 
     uavcan_node_port_List_1_0 received_port_list2;
     size_t deserialized_size2 = transfer2.payload_size;
-    int8_t deserialization_result2 = uavcan_node_port_List_1_0_deserialize_(&received_port_list2, static_cast<const uint8_t*>(transfer2.payload), &deserialized_size2);
+    int8_t deserialization_result2 = uavcan_node_port_List_1_0_deserialize_(&received_port_list2, static_cast<const uint8_t *>(transfer2.payload), &deserialized_size2);
 
     REQUIRE(deserialization_result2 >= 0);
-    REQUIRE(received_port_list2.publishers.sparse_list.count == 2);  // Expecting 1 publisher now!
+    REQUIRE(received_port_list2.publishers.sparse_list.count == 2);
     REQUIRE(received_port_list2.subscribers.sparse_list.count == 0); // Expecting one subscriber
 
     // The first publisher should be Heartbeat
     REQUIRE(received_port_list2.publishers.sparse_list.elements[0].value == uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
     REQUIRE(received_port_list2.publishers.sparse_list.elements[1].value == uavcan_node_port_List_1_0_FIXED_PORT_ID_);
-    delete[] static_cast<uint8_t*>(transfer2.payload);
+    delete[] static_cast<uint8_t *>(transfer2.payload);
 }
 
-TEST_CASE("TaskSendNodePortList: snippet to registration with std::alloc") {
+TEST_CASE("TaskSendNodePortList: snippet to registration with std::alloc")
+{
     constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
@@ -113,7 +117,7 @@ TEST_CASE("TaskSendNodePortList: snippet to registration with std::alloc") {
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);
-    
+
     std::tuple<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>> adapters(loopard_cyphal1, loopard_cyphal2);
 
     RegistrationManager registration_manager;
@@ -125,22 +129,23 @@ TEST_CASE("TaskSendNodePortList: snippet to registration with std::alloc") {
 
     registration_manager.add(task_sendnodeportlist);
     REQUIRE(task_sendnodeportlist.use_count() == 2);
-    
+
     REQUIRE(registration_manager.containsTask(task_sendnodeportlist));
 
     registration_manager.remove(task_sendnodeportlist);
-    REQUIRE(! registration_manager.containsTask(task_sendnodeportlist));
+    REQUIRE(!registration_manager.containsTask(task_sendnodeportlist));
     REQUIRE(task_sendnodeportlist.use_count() == 1);
 
     registration_manager.remove(task_sendheartbeat);
 }
 
-TEST_CASE("TaskSendNodePortList: snippet to registration with O1HeapAllocator") {
-   constexpr CyphalNodeID id1 = 11;
+TEST_CASE("TaskSendNodePortList: snippet to registration with O1HeapAllocator")
+{
+    constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
-    char buffer[4192] __attribute__ ((aligned (256)));
-    O1HeapInstance* heap = o1heapInit(buffer, 4192);
+    char buffer[4192] __attribute__((aligned(256)));
+    O1HeapInstance *heap = o1heapInit(buffer, 4192);
     REQUIRE(heap != nullptr);
     O1HeapDiagnostics diagnostics = o1heapGetDiagnostics(heap);
     size_t allocated = diagnostics.allocated;
@@ -175,7 +180,7 @@ TEST_CASE("TaskSendNodePortList: snippet to registration with O1HeapAllocator") 
     REQUIRE(task_sendnodeportlist.use_count() == 2);
 
     registration_manager.remove(task_sendnodeportlist);
-    REQUIRE(! registration_manager.containsTask(task_sendnodeportlist));    
+    REQUIRE(!registration_manager.containsTask(task_sendnodeportlist));
     REQUIRE(task_sendnodeportlist.use_count() == 1);
     task_sendnodeportlist.reset();
 
@@ -184,4 +189,50 @@ TEST_CASE("TaskSendNodePortList: snippet to registration with O1HeapAllocator") 
 
     diagnostics = o1heapGetDiagnostics(heap);
     CHECK(diagnostics.allocated == allocated);
+}
+
+TEST_CASE("TaskSendNodePortList: main loop snippet")
+{
+    constexpr CyphalNodeID cyphal_node_id = 11;
+    GPIO_TypeDef GPIOC;
+    uint16_t LED1_Pin = 1;
+
+
+    char buffer[4192] __attribute__((aligned(256)));
+    O1HeapInstance *heap = o1heapInit(buffer, 4192);
+    REQUIRE(heap != nullptr);
+	O1HeapAllocator<CanardRxTransfer> alloc(heap);
+
+	LoopardAdapter loopard_adapter;
+	Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
+	loopard_cyphal.setNodeID(cyphal_node_id);
+
+    std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
+
+	RegistrationManager registration_manager;
+	SubscriptionManager subscription_manager;
+	registration_manager.subscribe(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+	registration_manager.subscribe(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+	registration_manager.subscribe(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
+	registration_manager.publish(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+	registration_manager.publish(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+	registration_manager.publish(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
+
+	O1HeapAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>>> alloc_TaskSendHeartBeat(heap);
+	registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>>>(alloc_TaskSendHeartBeat, 1000, 100, 0, adapters));
+
+	O1HeapAllocator<TaskSendNodePortList<Cyphal<LoopardAdapter>>> alloc_TaskSendNodePortList(heap);
+	registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000, 100, 0, adapters));
+
+	O1HeapAllocator<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>> alloc_TaskSubscribeNodePortList(heap);
+	registration_manager.add(allocate_unique_custom<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000, 100, adapters));
+
+	O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(heap);
+	registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, &GPIOC, LED1_Pin, 1000, 100));
+
+	O1HeapAllocator<TaskCheckMemory> alloc_TaskCheckMemory(heap);
+	registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, heap, 2000, 100));
+
+    CHECK(registration_manager.getSubscriptions().size() == 3);
+    CHECK(registration_manager.getPublications().size() == 3);
 }

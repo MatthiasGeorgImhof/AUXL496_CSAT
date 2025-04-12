@@ -40,7 +40,7 @@ void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
 	log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList: %d %d ( %s)\r\n", buffer.size(), subscriptions.size(), subscribers);
 
     // Check if the buffer is empty
-    if (buffer.empty())
+    if (buffer.is_empty())
     {
         return;
     }

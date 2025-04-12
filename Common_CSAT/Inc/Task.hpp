@@ -130,5 +130,6 @@ typedef struct {
 } TaskHandler;
 
 constexpr CyphalPortID PURE_HANDLER = 0;
+inline bool is_valid(CyphalPortID port_id) { return port_id>0 && port_id<8192 && port_id!=PURE_HANDLER; }
 
 #endif /* INC_TASK_HPP_ */
