@@ -17,6 +17,8 @@
 #include "TaskSubscribeNodePortList.hpp"
 #include "cyphal_subscriptions.hpp"
 
+#include "nunavut/support/serialization.h"
+
 #ifdef __x86_64__
 #include "mock_hal.h" // Include the mock HAL header
 #endif
@@ -249,4 +251,146 @@ TEST_CASE("TaskSendNodePortList: main loop snippet")
                                   { return port_id == uavcan_node_port_List_1_0_FIXED_PORT_ID_; }));
     CHECK(publications.containsIf([](CyphalPortID port_id)
                                   { return port_id == uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_; }));
+}
+
+TEST_CASE("TaskSendNodePortList: serialize deserialize")
+{
+    constexpr CyphalNodeID cyphal_node_id = 11;
+
+    char buffer[4192] __attribute__((aligned(256)));
+    O1HeapInstance *heap = o1heapInit(buffer, 4192);
+    REQUIRE(heap != nullptr);
+    O1HeapAllocator<CanardRxTransfer> alloc(heap);
+
+    LoopardAdapter loopard_adapter;
+    loopard_adapter.memory_allocate = loopardMemoryAllocate;
+    loopard_adapter.memory_free = loopardMemoryFree;
+    Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
+    loopard_cyphal.setNodeID(cyphal_node_id);
+
+    std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
+
+    RegistrationManager registration_manager;
+    SubscriptionManager subscription_manager;
+    registration_manager.subscribe(1000);
+    registration_manager.subscribe(1001);
+    registration_manager.subscribe(1002);
+    registration_manager.publish(2000);
+    registration_manager.publish(2001);
+    registration_manager.publish(2002);
+
+    TaskSendNodePortList task = TaskSendNodePortList<Cyphal<LoopardAdapter>>(&registration_manager, 10000, 100, 0, adapters);
+    task.handleTaskImpl();
+
+    CyphalTransfer transfer = {};
+    size_t payload_size = 0;
+    CHECK(loopard_cyphal.cyphalRxReceive(nullptr, &payload_size, &transfer) == 1);
+    CHECK(transfer.payload_size <= uavcan_node_port_List_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_);
+    CHECK(transfer.payload_size == 160);
+    CHECK(transfer.metadata.port_id <= uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+
+    uavcan_node_port_List_1_0 data;
+    REQUIRE(uavcan_node_port_List_1_0_deserialize_(&data, static_cast<const uint8_t *>(transfer.payload), &transfer.payload_size) == 0);
+
+    CHECK(data.publishers.sparse_list.count == 3);
+    CHECK(data.subscribers.sparse_list.count == 3);
+    CHECK(data.subscribers.sparse_list.elements[0].value == 1000);
+    CHECK(data.subscribers.sparse_list.elements[1].value == 1001);
+    CHECK(data.subscribers.sparse_list.elements[2].value == 1002);
+    CHECK(data.publishers.sparse_list.count == 3);
+    CHECK(data.publishers.sparse_list.elements[0].value == 2000);
+    CHECK(data.publishers.sparse_list.elements[1].value == 2001);
+    CHECK(data.publishers.sparse_list.elements[2].value == 2002);
+}
+
+TEST_CASE("TaskSendNodePortList: nunavut serialize deserialize SparseList")
+{
+    uavcan_node_port_List_1_0 data1, data2;
+
+    uavcan_node_port_SubjectIDList_1_0_select_sparse_list_(&data1.subscribers);
+    data1.subscribers.sparse_list.elements[0].value = 1000;
+    data1.subscribers.sparse_list.elements[1].value = 1001;
+    data1.subscribers.sparse_list.elements[2].value = 1002;
+    data1.subscribers.sparse_list.count = 3;
+
+    uavcan_node_port_SubjectIDList_1_0_select_sparse_list_(&data1.publishers);
+    data1.publishers.sparse_list.elements[0].value = 2000;
+    data1.publishers.sparse_list.elements[1].value = 2001;
+    data1.publishers.sparse_list.elements[2].value = 2002;
+    data1.publishers.sparse_list.count = 3;
+
+    memset(data1.servers.mask_bitpacked_, 0, 64);
+    memset(data1.clients.mask_bitpacked_, 0, 64);
+
+    constexpr size_t PAYLOAD_SIZE = uavcan_node_port_List_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_;
+    size_t payload_size1 = PAYLOAD_SIZE;
+    uint8_t payload[PAYLOAD_SIZE];
+    uavcan_node_port_List_1_0_serialize_(&data1, payload, &payload_size1);
+    CHECK(payload_size1 <= PAYLOAD_SIZE);
+
+    size_t payload_size2 = PAYLOAD_SIZE;
+    int8_t result = uavcan_node_port_List_1_0_deserialize_(&data2, payload, &payload_size2);
+    CHECK(result == 0);
+    CHECK(payload_size2 <= PAYLOAD_SIZE);
+
+    CHECK(payload_size1 == payload_size2);
+
+    CHECK(data1.publishers.sparse_list.count == data2.publishers.sparse_list.count);
+    CHECK(data1.subscribers.sparse_list.count == data2.subscribers.sparse_list.count);
+    CHECK(data1.publishers.sparse_list.elements[0].value == data2.publishers.sparse_list.elements[0].value);
+    CHECK(data1.publishers.sparse_list.elements[1].value == data2.publishers.sparse_list.elements[1].value);
+    CHECK(data1.publishers.sparse_list.elements[2].value == data2.publishers.sparse_list.elements[2].value);
+    CHECK(data1.subscribers.sparse_list.elements[0].value == data2.subscribers.sparse_list.elements[0].value);
+    CHECK(data1.subscribers.sparse_list.elements[1].value == data2.subscribers.sparse_list.elements[1].value);
+    CHECK(data1.subscribers.sparse_list.elements[2].value == data2.subscribers.sparse_list.elements[2].value);
+    CHECK(data1.servers.mask_bitpacked_[0] == data2.servers.mask_bitpacked_[0]);
+    CHECK(data1.servers.mask_bitpacked_[1] == data2.servers.mask_bitpacked_[1]);
+    CHECK(data1.servers.mask_bitpacked_[2] == data2.servers.mask_bitpacked_[2]);
+    CHECK(data1.clients.mask_bitpacked_[0] == data2.clients.mask_bitpacked_[0]);
+    CHECK(data1.clients.mask_bitpacked_[1] == data2.clients.mask_bitpacked_[1]);
+    CHECK(data1.clients.mask_bitpacked_[2] == data2.clients.mask_bitpacked_[2]);
+}
+
+TEST_CASE("TaskSendNodePortList: nunavut serialize deserialize MaskedList")
+{
+    uavcan_node_port_List_1_0 data1, data2;
+
+    uavcan_node_port_SubjectIDList_1_0_select_mask_(&data1.subscribers);
+    data1.subscribers.mask_bitpacked_[0] = 100;
+    data1.subscribers.mask_bitpacked_[1] = 101;
+    data1.subscribers.mask_bitpacked_[2] = 102;
+
+    uavcan_node_port_SubjectIDList_1_0_select_mask_(&data1.publishers);
+    data1.publishers.mask_bitpacked_[0] = 200;
+    data1.publishers.mask_bitpacked_[1] = 201;
+    data1.publishers.mask_bitpacked_[2] = 202;
+
+    memset(data1.servers.mask_bitpacked_, 0x0f, 64);
+    memset(data1.clients.mask_bitpacked_, 0xf0, 64);
+
+    constexpr size_t PAYLOAD_SIZE = uavcan_node_port_List_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_;
+    size_t payload_size1 = PAYLOAD_SIZE;
+    uint8_t payload[PAYLOAD_SIZE];
+    uavcan_node_port_List_1_0_serialize_(&data1, payload, &payload_size1);
+    CHECK(payload_size1 <= PAYLOAD_SIZE);
+
+    size_t payload_size2 = PAYLOAD_SIZE;
+    int8_t result = uavcan_node_port_List_1_0_deserialize_(&data2, payload, &payload_size2);
+    CHECK(result == 0);
+    CHECK(payload_size2 <= PAYLOAD_SIZE);
+
+    CHECK(payload_size1 == payload_size2);
+
+    CHECK(data1.publishers.mask_bitpacked_[0] == data2.publishers.mask_bitpacked_[0]);
+    CHECK(data1.publishers.mask_bitpacked_[1] == data2.publishers.mask_bitpacked_[1]);
+    CHECK(data1.publishers.mask_bitpacked_[2] == data2.publishers.mask_bitpacked_[2]);
+    CHECK(data1.subscribers.mask_bitpacked_[0] == data2.subscribers.mask_bitpacked_[0]);
+    CHECK(data1.subscribers.mask_bitpacked_[1] == data2.subscribers.mask_bitpacked_[1]);
+    CHECK(data1.subscribers.mask_bitpacked_[2] == data2.subscribers.mask_bitpacked_[2]);
+    CHECK(data1.servers.mask_bitpacked_[0] == data2.servers.mask_bitpacked_[0]);
+    CHECK(data1.servers.mask_bitpacked_[1] == data2.servers.mask_bitpacked_[1]);
+    CHECK(data1.servers.mask_bitpacked_[2] == data2.servers.mask_bitpacked_[2]);
+    CHECK(data1.clients.mask_bitpacked_[0] == data2.clients.mask_bitpacked_[0]);
+    CHECK(data1.clients.mask_bitpacked_[1] == data2.clients.mask_bitpacked_[1]);
+    CHECK(data1.clients.mask_bitpacked_[2] == data2.clients.mask_bitpacked_[2]);
 }
