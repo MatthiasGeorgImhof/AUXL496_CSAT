@@ -6,6 +6,7 @@
 #include <tuple>
 #include <memory>
 #include "loopard_adapter.hpp"
+#include "canard_adapter.hpp"
 #include "RegistrationManager.hpp"
 #include "SubscriptionManager.hpp"
 #include "ServiceManager.hpp"
@@ -25,6 +26,9 @@
 
 void *loopardMemoryAllocate(size_t amount) { return static_cast<void *>(malloc(amount)); };
 void loopardMemoryFree(void *pointer) { free(pointer); };
+
+void *canardMemoryAllocate(CanardInstance */*ins*/, size_t amount) { return static_cast<void *>(malloc(amount)); };
+void canardMemoryFree(CanardInstance */*ins*/, void *pointer) { free(pointer); };
 
 TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList")
 {
@@ -203,7 +207,7 @@ TEST_CASE("TaskSendNodePortList: main loop snippet")
     O1HeapInstance *heap = o1heapInit(buffer, 4192);
     REQUIRE(heap != nullptr);
     O1HeapAllocator<CanardRxTransfer> alloc(heap);
-
+    
     LoopardAdapter loopard_adapter;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
     loopard_cyphal.setNodeID(cyphal_node_id);
@@ -253,7 +257,7 @@ TEST_CASE("TaskSendNodePortList: main loop snippet")
                                   { return port_id == uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_; }));
 }
 
-TEST_CASE("TaskSendNodePortList: serialize deserialize")
+TEST_CASE("TaskSendNodePortList: serialize deserialize Loopard")
 {
     constexpr CyphalNodeID cyphal_node_id = 11;
 
@@ -302,6 +306,57 @@ TEST_CASE("TaskSendNodePortList: serialize deserialize")
     CHECK(data.publishers.sparse_list.elements[1].value == 2001);
     CHECK(data.publishers.sparse_list.elements[2].value == 2002);
 }
+
+// TEST_CASE("TaskSendNodePortList: serialize deserialize Canard")
+// {
+//     constexpr CyphalNodeID cyphal_node_id = 11;
+
+//     char buffer[4192] __attribute__((aligned(256)));
+//     O1HeapInstance *heap = o1heapInit(buffer, 4192);
+//     REQUIRE(heap != nullptr);
+//     O1HeapAllocator<CanardRxTransfer> alloc(heap);
+
+//     CanardAdapter adapter;
+//     adapter.ins = canardInit(canardMemoryAllocate, canardMemoryFree);
+//     adapter.ins.node_id = cyphal_node_id;
+//     adapter.que = canardTxInit(64, CANARD_MTU_CAN_CLASSIC);
+//     Cyphal<CanardAdapter> canard_cyphal(&adapter);
+//     canard_cyphal.setNodeID(cyphal_node_id);
+
+//     std::tuple<Cyphal<CanardAdapter>> adapters(canard_cyphal);
+
+//     RegistrationManager registration_manager;
+//     SubscriptionManager subscription_manager;
+//     registration_manager.subscribe(1000);
+//     registration_manager.subscribe(1001);
+//     registration_manager.subscribe(1002);
+//     registration_manager.publish(2000);
+//     registration_manager.publish(2001);
+//     registration_manager.publish(2002);
+
+//     TaskSendNodePortList task = TaskSendNodePortList<Cyphal<CanardAdapter>>(&registration_manager, 10000, 100, 0, adapters);
+//     task.handleTaskImpl();
+
+//     CyphalTransfer transfer = {};
+//     size_t payload_size = 0;
+//     CHECK(canard_cyphal.cyphalRxReceive(frame.header.ExtId, &frame_size, frame.data, &transfer) == 1);
+//     CHECK(transfer.payload_size <= uavcan_node_port_List_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_);
+//     CHECK(transfer.payload_size == 160);
+//     CHECK(transfer.metadata.port_id <= uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+
+//     uavcan_node_port_List_1_0 data;
+//     REQUIRE(uavcan_node_port_List_1_0_deserialize_(&data, static_cast<const uint8_t *>(transfer.payload), &transfer.payload_size) == 0);
+
+//     CHECK(data.publishers.sparse_list.count == 3);
+//     CHECK(data.subscribers.sparse_list.count == 3);
+//     CHECK(data.subscribers.sparse_list.elements[0].value == 1000);
+//     CHECK(data.subscribers.sparse_list.elements[1].value == 1001);
+//     CHECK(data.subscribers.sparse_list.elements[2].value == 1002);
+//     CHECK(data.publishers.sparse_list.count == 3);
+//     CHECK(data.publishers.sparse_list.elements[0].value == 2000);
+//     CHECK(data.publishers.sparse_list.elements[1].value == 2001);
+//     CHECK(data.publishers.sparse_list.elements[2].value == 2002);
+// }
 
 TEST_CASE("TaskSendNodePortList: nunavut serialize deserialize SparseList")
 {

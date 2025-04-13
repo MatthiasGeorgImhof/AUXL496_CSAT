@@ -19,8 +19,8 @@ extern "C" {
 #define  HAL_TIMEOUT  0x03
 
 //--- Buffer Sizes ---
-#define CAN_TX_BUFFER_SIZE  20
-#define CAN_RX_BUFFER_SIZE  20
+#define CAN_TX_BUFFER_SIZE  50
+#define CAN_RX_BUFFER_SIZE  50
 #define UART_TX_BUFFER_SIZE 256
 #define UART_RX_BUFFER_SIZE 256
 #define I2C_MEM_BUFFER_SIZE 256
@@ -247,6 +247,8 @@ extern uint16_t mocked_i2c_mem_size;
 //--- Injector and Deleter Function Prototypes ---
 void inject_can_rx_message(CAN_RxHeaderTypeDef header, uint8_t data[]);
 void clear_can_tx_buffer();
+void clear_can_rx_buffer();
+void move_can_tx_to_rx();
 void inject_uart_rx_data(uint8_t *data, int size);
 void clear_uart_rx_buffer();
 void clear_uart_tx_buffer();

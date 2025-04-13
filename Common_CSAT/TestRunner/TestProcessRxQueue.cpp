@@ -281,7 +281,7 @@ TEST_CASE("CanProcessRxQueue with CanardAdapter and MockTask")
     ServiceManager service_manager(handlers);
     CHECK(task.use_count() == 2);
 
-    CircularBuffer<CanRxFrame, 32> can_rx_buffer;
+    CircularBuffer<CanRxFrame, 64> can_rx_buffer;
 
     // Exercise
     CHECK(cyphal.cyphalTxPush(0, &transfer.metadata, transfer.payload_size, transfer.payload) == 1);
@@ -351,7 +351,7 @@ TEST_CASE("CanProcessRxQueue multiple frames")
     CHECK(task1.use_count() == 2);
     CHECK(task2.use_count() == 2);
 
-    CircularBuffer<CanRxFrame, 32> can_rx_buffer;
+    CircularBuffer<CanRxFrame, 64> can_rx_buffer;
 
     // Exercise
     CHECK(cyphal.cyphalTxPush(0, &transfer1.metadata, transfer1.payload_size, transfer1.payload) == 1);

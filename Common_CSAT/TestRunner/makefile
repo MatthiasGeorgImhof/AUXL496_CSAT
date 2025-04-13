@@ -80,6 +80,14 @@ $(BIN_DIR)/TestMockHal : $(BIN_DIR)/TestMockHal.o $(BIN_DIR)/mock_hal.o # Link t
 $(BIN_DIR)/mock_hal.o : ../Src/mock_hal.c
 	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
+# Rule for TestCyphal with extra sources
+$(BIN_DIR)/TestCyphal.o : TestCyphal.cpp ../Src/mock_hal.c
+	@echo "Compiling $< with extra sources"
+	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestCyphal : $(BIN_DIR)/TestCyphal.o $(BIN_DIR)/mock_hal.o # Link the object file
+	$(CXX) $(BIN_DIR)/TestCyphal.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+
 # Rule for TestTask with extra sources
 $(BIN_DIR)/TestTask.o : TestTask.cpp ../Src/mock_hal.c
 	@echo "Compiling $< with extra sources"
@@ -174,8 +182,8 @@ $(BIN_DIR)/TestMainLoop.o : TestMainLoop.cpp
 	@echo "Compiling $< with extra sources"
 	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestMainLoop : $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o
-	$(CXX) $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+$(BIN_DIR)/TestMainLoop : $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/Logger.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o
+	$(CXX) $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/Logger.o $(BIN_DIR)/mock_hal.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestProcessRxQueue with extra sources
 $(BIN_DIR)/TestProcessRxQueue.o : TestProcessRxQueue.cpp

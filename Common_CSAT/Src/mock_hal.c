@@ -5,25 +5,19 @@
 #include <stdio.h> // For logging (optional)
 
 // Mocked Data Buffers
-#define CAN_TX_BUFFER_SIZE 20
 CAN_TxMessage_t can_tx_buffer[CAN_TX_BUFFER_SIZE];
 int can_tx_buffer_count = 0;
 
-#define CAN_RX_BUFFER_SIZE 20
 CAN_RxMessage_t can_rx_buffer[CAN_RX_BUFFER_SIZE];
 int can_rx_buffer_count = 0;
 
-#define UART_TX_BUFFER_SIZE 256
 uint8_t uart_tx_buffer[UART_TX_BUFFER_SIZE];
 int uart_tx_buffer_count = 0;
 
-#define UART_RX_BUFFER_SIZE 256
 uint8_t uart_rx_buffer[UART_RX_BUFFER_SIZE];
 int uart_rx_buffer_count = 0;
 int uart_rx_buffer_read_pos = 0;
 
-
-#define I2C_MEM_BUFFER_SIZE 256
 uint8_t i2c_mem_buffer[I2C_MEM_BUFFER_SIZE];
 uint16_t i2c_mem_buffer_dev_address;
 uint16_t i2c_mem_buffer_mem_address;
@@ -368,6 +362,48 @@ void inject_can_rx_message(CAN_RxHeaderTypeDef header, uint8_t data[]) {
 void clear_can_tx_buffer() {
     memset(can_tx_buffer, 0, sizeof(can_tx_buffer));  // Set all elements to 0
     can_tx_buffer_count = 0;
+}
+
+void clear_can_rx_buffer() {
+    memset(can_rx_buffer, 0, sizeof(can_rx_buffer));
+    can_rx_buffer_count = 0;
+    current_rx_fifo_fill_level = 0;  // IMPORTANT: Reset the fill level!
+}
+
+void TxHeaderToRxHeader(const CAN_TxHeaderTypeDef *txHeader, CAN_RxHeaderTypeDef *rxHeader, uint8_t fifoNumber) {
+    if (!txHeader || !rxHeader) {
+        // Handle null pointer error (e.g., return, log an error, etc.)
+        return; // Or potentially set some error flag
+    }
+
+    rxHeader->StdId = txHeader->StdId;
+    rxHeader->ExtId = txHeader->ExtId;
+    rxHeader->IDE = txHeader->IDE;
+    rxHeader->RTR = txHeader->RTR;
+    rxHeader->DLC = txHeader->DLC;
+    rxHeader->FIFONumber = fifoNumber;
+
+    memcpy(rxHeader->Data, txHeader->Data, txHeader->DLC);
+}
+
+// CAN Mover
+void move_can_tx_to_rx() {
+    for (int i = 0; i < can_tx_buffer_count; ++i) {
+        if (can_rx_buffer_count < CAN_RX_BUFFER_SIZE) {
+            TxHeaderToRxHeader(&can_tx_buffer[i].TxHeader, &can_rx_buffer[i].RxHeader, 0);
+            memcpy(can_rx_buffer[i].pData, can_tx_buffer[i].pData, sizeof(uint32_t)*2);
+
+            can_rx_buffer_count++;
+            current_rx_fifo_fill_level++;
+        } else {
+            // Handle RX buffer overflow (optional)
+            printf("Warning: CAN RX buffer overflow!\n");
+            break; // Stop moving messages
+        }
+    }
+
+    // Clear the TX buffer
+    clear_can_tx_buffer();
 }
 
 // UART Injectors

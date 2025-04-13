@@ -12,8 +12,12 @@
 #include <cstring>
 #include <algorithm>
 
-void *canardMemoryAllocate(CanardInstance */*ins*/, size_t amount) { return static_cast<void *>(malloc(amount)); };
-void canardMemoryFree(CanardInstance */*ins*/, void *pointer) { free(pointer); };
+#ifdef __x86_64__
+#include "mock_hal.h" // Include the mock HAL header
+#endif
+
+void *canardMemoryAllocate(CanardInstance * /*ins*/, size_t amount) { return static_cast<void *>(malloc(amount)); };
+void canardMemoryFree(CanardInstance * /*ins*/, void *pointer) { free(pointer); };
 
 TEST_CASE("Canard Adapter")
 {
@@ -122,7 +126,7 @@ TEST_CASE("Canard Send Receive")
     CHECK(ptr != nullptr);
 
     CyphalTransfer transfer;
-    
+
     CHECK(cyphal.cyphalRxReceive(ptr->frame.extended_can_id, &ptr->frame.payload_size, static_cast<const uint8_t *>(ptr->frame.payload), &transfer) == 1);
     CHECK(strncmp(payload1, static_cast<const char *>(transfer.payload), 5) == 0);
 
@@ -144,6 +148,73 @@ TEST_CASE("Canard Send Receive")
     CHECK(ptr != nullptr);
     CHECK(cyphal.cyphalRxReceive(ptr->frame.extended_can_id, &ptr->frame.payload_size, static_cast<const uint8_t *>(ptr->frame.payload), &transfer) == 1);
     CHECK(strncmp(payload2, static_cast<const char *>(transfer.payload), 18) == 0);
+}
+
+TEST_CASE("Canard Send Receive Large")
+{
+    CAN_HandleTypeDef hcan;
+    constexpr CyphalPortID port_id = 123;
+    constexpr CyphalNodeID node_id = 11;
+
+    CanardAdapter adapter;
+    adapter.ins = canardInit(canardMemoryAllocate, canardMemoryFree);
+    adapter.ins.node_id = node_id;
+    adapter.que = canardTxInit(64, CANARD_MTU_CAN_CLASSIC);
+    Cyphal<CanardAdapter> cyphal(&adapter);
+
+    CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, port_id, 512, 2000000) == 1);
+
+    CyphalTransferMetadata metadata;
+    metadata.priority = CyphalPriorityNominal;
+    metadata.transfer_kind = CyphalTransferKindMessage;
+    metadata.port_id = port_id;
+    metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.transfer_id = 0;
+
+    char payload[256];
+    for (size_t i = 0; i < sizeof(payload); ++i)
+    {
+        payload[i] = static_cast<char>(i);
+    }
+    size_t payload_size = sizeof(payload);
+    CHECK(cyphal.cyphalTxPush(0, &metadata, payload_size, payload) == 37);
+
+    for (const CanardTxQueueItem *ti = NULL; (ti = canardTxPeek(&adapter.que)) != NULL;)
+    {
+        CAN_TxHeaderTypeDef header;
+        header.ExtId = ti->frame.extended_can_id;
+        header.DLC = ti->frame.payload_size;
+        header.RTR = CAN_RTR_DATA;
+        header.IDE = CAN_ID_EXT;
+        uint32_t mailbox;
+        CHECK(HAL_CAN_AddTxMessage(&hcan, &header, static_cast<uint8_t *>(const_cast<void *>(ti->frame.payload)), &mailbox) == HAL_OK);
+        adapter.ins.memory_free(&adapter.ins, canardTxPop(&adapter.que, ti));
+    }
+
+    move_can_tx_to_rx();
+
+    CyphalTransfer transfer;
+    for (int i = 0; i < 37; ++i)
+    {
+        CAN_RxHeaderTypeDef header;
+        uint8_t data[8];
+        CHECK(HAL_CAN_GetRxMessage(&hcan, 0, &header, data) == HAL_OK);
+        size_t data_size = header.DLC;
+        int32_t result = cyphal.cyphalRxReceive(header.ExtId, &data_size, data, &transfer);
+        if (i < 36)
+            CHECK(result == 0);
+        else
+            CHECK(result == 1);
+    }
+    CHECK(transfer.payload_size == 256);
+    CHECK(transfer.metadata.port_id == port_id);
+    CHECK(transfer.metadata.remote_node_id == node_id);
+    CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
+    CHECK(transfer.metadata.transfer_id == 0);
+    CHECK(transfer.metadata.priority == CyphalPriorityNominal);
+    CHECK(transfer.payload != nullptr);
+    CHECK(memcmp(transfer.payload, payload, sizeof(payload)) == 0);
+    adapter.ins.memory_free(&adapter.ins, transfer.payload);
 }
 
 TEST_CASE("Canard Send Forward Receive")
@@ -299,7 +370,7 @@ TEST_CASE("Serard Adapter")
 }
 
 static std::vector<uint8_t> rxtx_buffer;
-bool emit(void */*user_reference*/, uint8_t size, const uint8_t *data)
+bool emit(void * /*user_reference*/, uint8_t size, const uint8_t *data)
 {
     for (size_t i = 0; i < size; ++i)
         rxtx_buffer.push_back(data[i]);
@@ -563,7 +634,7 @@ TEST_CASE("Udpard Adapter Forward Send and Receive")
 {
     constexpr CyphalNodeID my_id = 11;
     constexpr CyphalNodeID forward_id = 22;
-    
+
     UdpardAdapter adapter;
     struct UdpardMemoryDeleter udpard_memory_deleter = {&adapter.ins, udpardMemoryDeallocate};
     struct UdpardMemoryResource udpard_memory_resource = {&adapter.ins, udpardMemoryDeallocate, udpardMemoryAllocate};
@@ -751,7 +822,7 @@ TEST_CASE("Loopard Forward Send Receive")
     CHECK(transfer.payload_size == payload_size1);
     CHECK(strncmp(payload1, static_cast<const char *>(transfer.payload), 5) == 0);
     CHECK(transfer.metadata.remote_node_id == forward_id);
-    
+
     CHECK(cyphal.cyphalRxReceive(nullptr, &inout_payload_size, &transfer) == 1);
     CHECK(transfer.payload_size == payload_size2);
     CHECK(strncmp(payload2, static_cast<const char *>(transfer.payload), 5) == 0);
@@ -759,14 +830,13 @@ TEST_CASE("Loopard Forward Send Receive")
     CHECK(transfer.metadata.remote_node_id == my_id);
 }
 
-
 template <class A1, class A2, class A3, class A4>
 class TestClass
 {
-    private:
+private:
     std::tuple<A1, A2, A3, A4> adapters_;
 
-    public:
+public:
     TestClass(std::tuple<A1, A2, A3, A4> adapters) : adapters_(adapters) {}
 
     int8_t txpush_unroll(const size_t frame_size, void const *frame)
@@ -795,22 +865,19 @@ class TestClass
         metadata.transfer_id = 0;
 
         bool all_successful = true;
-        std::apply([&](auto&... adapter)
-        {
-            ( [&]() {
+        std::apply([&](auto &...adapter)
+                   { ([&]()
+                      {
                 int8_t res = adapter.cyphalTxPush(0, &metadata, frame_size, frame);
-                all_successful = all_successful && (res > 0);
-              }(), ...);
-        },adapters_);
+                all_successful = all_successful && (res > 0); }(), ...); }, adapters_);
         return all_successful;
     }
-
 };
 
 TEST_CASE("All Combined Unroll")
 {
     rxtx_buffer.clear();
-    
+
     LoopardAdapter loopard_adapter;
     loopard_adapter.memory_allocate = loopardMemoryAllocate;
     loopard_adapter.memory_free = loopardMemoryFree;
@@ -841,7 +908,7 @@ TEST_CASE("All Combined Unroll")
     Cyphal<CanardAdapter> canard_cyphal(&canard_adapter);
 
     auto adapters = TestClass(std::tuple<Cyphal<LoopardAdapter>, Cyphal<UdpardAdapter>, Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>{loopard_cyphal, udpard_cyphal, serard_cyphal, canard_cyphal});
-    
+
     const char frame[] = "common message";
     size_t frame_size = sizeof(frame);
     CHECK(adapters.txpush_unroll(frame_size, frame) == 1);
@@ -855,7 +922,7 @@ TEST_CASE("All Combined Unroll")
 TEST_CASE("All Combined Loop")
 {
     rxtx_buffer.clear();
-    
+
     LoopardAdapter loopard_adapter;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
 
@@ -884,7 +951,7 @@ TEST_CASE("All Combined Loop")
     Cyphal<CanardAdapter> canard_cyphal(&canard_adapter);
 
     auto adapters = TestClass(std::tuple<Cyphal<LoopardAdapter>, Cyphal<UdpardAdapter>, Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>{loopard_cyphal, udpard_cyphal, serard_cyphal, canard_cyphal});
-    
+
     const char frame[] = "common message";
     size_t frame_size = sizeof(frame);
     CHECK(adapters.txpush_loop(frame_size, frame) == 1);
