@@ -47,7 +47,7 @@ DMA_HandleTypeDef *hdma_usart3_tx_;
 CAN_HandleTypeDef *hcan1_;
 CAN_HandleTypeDef *hcan2_;
 
-constexpr size_t O1HEAP_SIZE = 16384;
+constexpr size_t O1HEAP_SIZE = 65536;
 uint8_t o1heap_buffer[O1HEAP_SIZE] __attribute__ ((aligned (O1HEAP_ALIGNMENT)));
 O1HeapInstance *o1heap;
 
@@ -145,10 +145,10 @@ extern "C" {
 #endif
 bool serial_send(void* user_reference, uint8_t data_size, const uint8_t* data)
 {
-	constexpr size_t BUFFER_SIZE = 256;
+	constexpr size_t BUFFER_SIZE = 1024;
 	char hex_string_buffer[BUFFER_SIZE];
 	uchar_buffer_to_hex(data, data_size, hex_string_buffer, BUFFER_SIZE);
-	log(LOG_LEVEL_INFO, "serial send: %s \r\n", hex_string_buffer);
+	log(LOG_LEVEL_INFO, "serial send %d: %s \r\n", data_size, hex_string_buffer);
 
 	HAL_StatusTypeDef status = HAL_UART_Transmit(huart2_, data, data_size, 1000);
 	// 	HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(&huart2_, data, data_size);
@@ -237,8 +237,9 @@ void cppmain(HAL_Handles handles)
 	O1HeapAllocator<TaskCheckMemory> alloc_TaskCheckMemory(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, o1heap, 2000, 100));
 
-	ServiceManager service_manager(registration_manager.getHandlers());
     subscription_manager.subscribe(registration_manager.getSubscriptions(), canard_adapters);
+	ServiceManager service_manager(registration_manager.getHandlers());
+	service_manager.initializeServices(HAL_GetTick());
 
 	O1HeapAllocator<CyphalTransfer> allocator(o1heap);
 	LoopManager loop_manager(allocator);
