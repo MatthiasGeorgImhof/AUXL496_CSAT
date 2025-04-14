@@ -34,6 +34,7 @@
 #include "TaskSendHeartBeat.hpp"
 #include "TaskSendNodePortList.hpp"
 #include "TaskSubscribeNodePortList.hpp"
+#include "TaskRespondGetInfo.hpp"
 
 #include <cppmain.h>
 #include "Logger.hpp"
@@ -230,6 +231,11 @@ void cppmain(HAL_Handles handles)
 
 	O1HeapAllocator<TaskSubscribeNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSubscribeNodePortList(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskSubscribeNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000, 100, sercan_adapters));
+
+	constexpr uint8_t uuid[] = {0xc8, 0x03, 0x52, 0xa6, 0x1d, 0x94, 0x40, 0xc9, 0x9b, 0x1d, 0xea, 0xac, 0xfd, 0xdd, 0xb2, 0x85};
+	constexpr char node_name[50] = "AUXL496_CSAT";
+	O1HeapAllocator<TaskRespondGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskRespondGetInfo(o1heap);
+	registration_manager.add(allocate_unique_custom<TaskRespondGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskRespondGetInfo, uuid, node_name, 10000, 100, sercan_adapters));
 
 	O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, GPIOC, LED1_Pin, 1000, 100));

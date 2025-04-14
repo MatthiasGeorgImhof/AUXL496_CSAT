@@ -14,7 +14,7 @@ class TaskRespondGetInfo : public TaskForServer<Adapters...>
 {
 public:
     TaskRespondGetInfo() = delete;
-    TaskRespondGetInfo(uint8_t unique_id[16], char name[50], uint32_t interval, uint32_t tick, std::tuple<Adapters...> &adapters) : TaskForServer<Adapters...>(interval, tick, adapters),  unique_id_{}, name_{} {
+    TaskRespondGetInfo(const uint8_t unique_id[16], const char name[50], uint32_t interval, uint32_t tick, std::tuple<Adapters...> &adapters) : TaskForServer<Adapters...>(interval, tick, adapters),  unique_id_{}, name_{} {
         std::memcpy(unique_id_, unique_id, 16);
         std::memcpy(name_, name, 50);
     }
