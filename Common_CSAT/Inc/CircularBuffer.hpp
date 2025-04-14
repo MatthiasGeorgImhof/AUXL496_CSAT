@@ -3,7 +3,7 @@
 
 #include <array>
 #include <cstddef>
-#include <utility> 
+#include <utility>
 
 template <typename T, size_t capacity_>
 class CircularBuffer
@@ -11,37 +11,39 @@ class CircularBuffer
 public:
     CircularBuffer() : head_(0), tail_(0), count_(0) {}
 
-    T& next()
-    { 
-        T& result = data[head_];
+    T &next()
+    {
+        if (is_full()) drop_tail();
+        T &result = data[head_];
         head_ = (head_ + 1) % capacity_;
         ++count_;
         return result;
     }
-   
+
     void push(T value)
-    { 
+    {
+        if (is_full()) drop_tail();
         data[head_] = value;
         head_ = (head_ + 1) % capacity_;
         ++count_;
     }
 
     T pop()
-    { 
+    {
         size_t current = tail_;
         tail_ = (tail_ + 1) % capacity_;
         --count_;
         return std::move(data[current]);
     }
 
-    const T& peek() const
+    const T &peek() const
     {
         size_t current = tail_;
         return data[current];
     }
 
-    T& peek()
-    { 
+    T &peek()
+    {
         size_t current = tail_;
         return data[current];
     }
@@ -64,6 +66,17 @@ public:
     size_t capacity() const
     {
         return capacity_;
+    }
+
+private:
+    void drop_tail()
+    {
+      
+        if constexpr (std::is_default_constructible_v<T>) {
+            data[tail_] = T();
+        }
+        tail_ = (tail_ + 1) % capacity_;
+        --count_;
     }
 
 private:

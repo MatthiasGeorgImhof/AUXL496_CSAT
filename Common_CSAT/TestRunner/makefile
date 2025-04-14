@@ -31,6 +31,7 @@ TEST_FILES = TestArrayList.cpp \
 			 TestTaskSendHeartBeat.cpp \
 			 TestTaskSendNodePortList.cpp \
 			 TestTaskSubscribeNodePortList.cpp \
+			 TestTaskRespondGetInfo.cpp \
              TestBoxSet.cpp \
              TestBoxSetIterator.cpp \
              TestCircularBuffer.cpp \
@@ -154,6 +155,14 @@ $(BIN_DIR)/TestTaskSubscribeNodePortList.o : TestTaskSubscribeNodePortList.cpp
 
 $(BIN_DIR)/TestTaskSubscribeNodePortList : $(BIN_DIR)/TestTaskSubscribeNodePortList.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
 	$(CXX) $(BIN_DIR)/TestTaskSubscribeNodePortList.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
+
+# Rule for TestTaskRespondGetInfo with extra sources
+$(BIN_DIR)/TestTaskRespondGetInfo.o : TestTaskRespondGetInfo.cpp
+	@echo "Compiling $< with extra sources"
+	$(CXX)  -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskRespondGetInfo : $(BIN_DIR)/TestTaskRespondGetInfo.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o
+	$(CXX) $(BIN_DIR)/TestTaskRespondGetInfo.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/mock_hal.o $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) $(LIBS) -o $@
 
 # Rule for TestTaskBlinkLED with extra sources
 $(BIN_DIR)/TestTaskBlinkLED.o : TestTaskBlinkLED.cpp
