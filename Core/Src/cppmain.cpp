@@ -35,6 +35,7 @@
 #include "TaskSendNodePortList.hpp"
 #include "TaskSubscribeNodePortList.hpp"
 #include "TaskRespondGetInfo.hpp"
+#include "TaskRequestGetInfo.hpp"
 
 #include <cppmain.h>
 #include "Logger.hpp"
@@ -146,10 +147,10 @@ extern "C" {
 #endif
 bool serial_send(void* user_reference, uint8_t data_size, const uint8_t* data)
 {
-	constexpr size_t BUFFER_SIZE = 1024;
-	char hex_string_buffer[BUFFER_SIZE];
-	uchar_buffer_to_hex(data, data_size, hex_string_buffer, BUFFER_SIZE);
-	log(LOG_LEVEL_INFO, "serial send %d: %s \r\n", data_size, hex_string_buffer);
+//	constexpr size_t BUFFER_SIZE = 1024;
+//	char hex_string_buffer[BUFFER_SIZE];
+//	uchar_buffer_to_hex(data, data_size, hex_string_buffer, BUFFER_SIZE);
+//	log(LOG_LEVEL_INFO, "serial send %d: %s \r\n", data_size, hex_string_buffer);
 
 	HAL_StatusTypeDef status = HAL_UART_Transmit(huart2_, data, data_size, 1000);
 	// 	HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(&huart2_, data, data_size);
@@ -237,14 +238,20 @@ void cppmain(HAL_Handles handles)
 	O1HeapAllocator<TaskRespondGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskRespondGetInfo(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskRespondGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskRespondGetInfo, uuid, node_name, 10000, 100, sercan_adapters));
 
+	O1HeapAllocator<TaskRequestGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskRequestGetInfo(o1heap);
+	registration_manager.add(allocate_unique_custom<TaskRequestGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskRequestGetInfo, 10000, 100, 21, 0, sercan_adapters));
+
 	O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, GPIOC, LED1_Pin, 1000, 100));
 
 	O1HeapAllocator<TaskCheckMemory> alloc_TaskCheckMemory(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, o1heap, 2000, 100));
 
-    subscription_manager.subscribe(registration_manager.getSubscriptions(), canard_adapters);
-	ServiceManager service_manager(registration_manager.getHandlers());
+    subscription_manager.subscribe<SubscriptionManager::MessageTag>(registration_manager.getSubscriptions(), sercan_adapters);
+    subscription_manager.subscribe<SubscriptionManager::ResponseTag>(registration_manager.getServers(), sercan_adapters);
+    subscription_manager.subscribe<SubscriptionManager::RequestTag>(registration_manager.getClients(), sercan_adapters);
+
+    ServiceManager service_manager(registration_manager.getHandlers());
 	service_manager.initializeServices(HAL_GetTick());
 
 	O1HeapAllocator<CyphalTransfer> allocator(o1heap);
@@ -252,14 +259,14 @@ void cppmain(HAL_Handles handles)
 	while(1)
 	{
 		log(LOG_LEVEL_TRACE, "while loop: %d\r\n", HAL_GetTick());
-		log(LOG_LEVEL_DEBUG, "RegistrationManager: (%d %d) (%d %d) \r\n",
+		log(LOG_LEVEL_TRACE, "RegistrationManager: (%d %d) (%d %d) \r\n",
 				registration_manager.getHandlers().capacity(), registration_manager.getHandlers().size(),
 				registration_manager.getSubscriptions().capacity(), registration_manager.getSubscriptions().size());
-		log(LOG_LEVEL_DEBUG, "ServiceManager: (%d %d) \r\n",
+		log(LOG_LEVEL_TRACE, "ServiceManager: (%d %d) \r\n",
 				service_manager.getHandlers().capacity(), service_manager.getHandlers().size());
-		log(LOG_LEVEL_DEBUG, "CanProcessRxQueue: (%d %d) \r\n",
+		log(LOG_LEVEL_TRACE, "CanProcessRxQueue: (%d %d) \r\n",
 				can_rx_buffer.capacity(), can_rx_buffer.size());
-		log(LOG_LEVEL_DEBUG, "SerialProcessRxQueue: (%d %d) \r\n",
+		log(LOG_LEVEL_TRACE, "SerialProcessRxQueue: (%d %d) \r\n",
 				serial_buffer.capacity(), serial_buffer.size());
 		loop_manager.CanProcessTxQueue(&canard_adapter, hcan1_);
 		loop_manager.SerialProcessRxQueue(&serard_cyphal, &service_manager, canard_adapters, serial_buffer);
