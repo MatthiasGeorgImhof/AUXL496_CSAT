@@ -282,6 +282,12 @@ TEST_CASE("TaskSendNodePortList: serialize deserialize Loopard")
     registration_manager.publish(2000);
     registration_manager.publish(2001);
     registration_manager.publish(2002);
+    registration_manager.client(100);
+    registration_manager.client(101);
+    registration_manager.client(102);
+    registration_manager.server(200);
+    registration_manager.server(201);
+    registration_manager.server(202);
 
     TaskSendNodePortList task = TaskSendNodePortList<Cyphal<LoopardAdapter>>(&registration_manager, 10000, 100, 0, adapters);
     task.handleTaskImpl();
@@ -305,6 +311,12 @@ TEST_CASE("TaskSendNodePortList: serialize deserialize Loopard")
     CHECK(data.publishers.sparse_list.elements[0].value == 2000);
     CHECK(data.publishers.sparse_list.elements[1].value == 2001);
     CHECK(data.publishers.sparse_list.elements[2].value == 2002);
+
+    for(size_t i = 0; i < 512; ++i)
+    {
+        CHECK(nunavutGetBit(data.clients.mask_bitpacked_, sizeof(data.clients.mask_bitpacked_), i) == (i>=100 && i<=102));
+        CHECK(nunavutGetBit(data.servers.mask_bitpacked_, sizeof(data.servers.mask_bitpacked_), i) == (i>=200 && i<=202));
+    }
 }
 
 TEST_CASE("TaskSendNodePortList: nunavut serialize deserialize SparseList")

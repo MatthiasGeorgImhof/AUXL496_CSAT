@@ -46,7 +46,7 @@ public:
     	constexpr size_t BUFFER_SIZE = 512;
     	char hex_string_buffer[BUFFER_SIZE];
     	uchar_buffer_to_hex(static_cast<const unsigned char*>(transfer.payload), transfer.payload_size, hex_string_buffer, BUFFER_SIZE);
-        log(LOG_LEVEL_DEBUG, "LoopManager::processTransfer: %4d %s\r\n", transfer.metadata.port_id, hex_string_buffer);
+        log(LOG_LEVEL_INFO, "LoopManager::processTransfer: %4d %s\r\n", transfer.metadata.port_id, hex_string_buffer);
 
     	std::shared_ptr<CyphalTransfer> transfer_ptr = std::allocate_shared<CyphalTransfer>(allocator_, transfer);
         service_manager->handleMessage(transfer_ptr);
@@ -74,7 +74,7 @@ public:
         	constexpr size_t BUFFER_SIZE = 256;
         	char hex_string_buffer[BUFFER_SIZE];
         	uchar_buffer_to_hex(frame.data, frame_size, hex_string_buffer, BUFFER_SIZE);
-            log(LOG_LEVEL_DEBUG, "LoopManager::CanProcessRxQueue: %4x %s\r\n", frame.header.ExtId, hex_string_buffer);
+            log(LOG_LEVEL_INFO, "LoopManager::CanProcessRxQueue: %4x %s\r\n", frame.header.ExtId, hex_string_buffer);
 
             CyphalTransfer transfer;
             int32_t result = cyphal->cyphalRxReceive(frame.header.ExtId, &frame_size, frame.data, &transfer);
@@ -133,7 +133,7 @@ public:
             constexpr size_t BUFFER_SIZE = 256;
             char hex_string_buffer[BUFFER_SIZE];
             uchar_buffer_to_hex(static_cast<const unsigned char*>(ti->frame.payload), ti->frame.payload_size, hex_string_buffer, BUFFER_SIZE);
-            log(LOG_LEVEL_DEBUG, "LoopManager::CanProcessTxQueue %2d %2d: %4x %s\r\n", que_size, que_capacity, ti->frame.extended_can_id, hex_string_buffer);
+            log(LOG_LEVEL_INFO, "LoopManager::CanProcessTxQueue %2d %2d: %4x %s\r\n", que_size, que_capacity, ti->frame.extended_can_id, hex_string_buffer);
 
             CAN_TxHeaderTypeDef header;
             header.ExtId = ti->frame.extended_can_id;

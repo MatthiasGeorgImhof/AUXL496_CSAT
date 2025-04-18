@@ -49,19 +49,27 @@ void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
         	return;
         }
 
+        char substring[64];
+        char pubstring[64];
+        char clistring[64];
+        char servstring[64];
+
         for (size_t j = 0; j < data.publishers.sparse_list.count; ++j)
         {
             subscription_manager_->subscribe<SubscriptionManager::MessageTag>(data.publishers.sparse_list.elements[j].value, adapters_);
+            snprintf(substring, sizeof(substring), "%d ", data.publishers.sparse_list.elements[j].value);
         }
         for (size_t j = 0; j < data.subscribers.sparse_list.count; ++j)
         {
             subscription_manager_->subscribe<SubscriptionManager::MessageTag>(data.subscribers.sparse_list.elements[j].value, adapters_);
+            snprintf(pubstring, sizeof(pubstring), "%d ", data.subscribers.sparse_list.elements[j].value);
         }
         for(const CyphalSubscription &subscription : CYPHAL_REQUESTS)
         {
             if (nunavutGetBit(data.clients.mask_bitpacked_, sizeof(data.clients.mask_bitpacked_), subscription.port_id))
             {
                 subscription_manager_->subscribe(&subscription, adapters_);
+                snprintf(clistring, sizeof(clistring), "%d ", subscription.port_id);
             }
         }
         for(const CyphalSubscription &subscription : CYPHAL_RESPONSES)
@@ -69,10 +77,11 @@ void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
             if (nunavutGetBit(data.servers.mask_bitpacked_, sizeof(data.servers.mask_bitpacked_), subscription.port_id))
             {
                 subscription_manager_->subscribe(&subscription, adapters_);
+                snprintf(servstring, sizeof(servstring), "%d ", subscription.port_id);
             }
         }
 
-        log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList: success\r\n");
+        log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList %d ( %s) ( %s) ( %s) ( %s)\r\n", transfer->metadata.remote_node_id, substring, pubstring, clistring, servstring);
     }
 }
 

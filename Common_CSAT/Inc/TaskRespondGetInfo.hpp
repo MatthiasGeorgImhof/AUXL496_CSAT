@@ -37,6 +37,7 @@ void TaskRespondGetInfo<Adapters...>::handleTaskImpl()
         return;
     }
 
+    log(LOG_LEVEL_INFO, "TaskRespondGetInfo: received request\r\n");
     size_t count = TaskForServer<Adapters...>::buffer_.size();
     for (size_t i = 0; i < count; ++i)
     {
@@ -65,7 +66,7 @@ void TaskRespondGetInfo<Adapters...>::handleTaskImpl()
         TaskForServer<Adapters...>::publish(PAYLOAD_SIZE, payload, &data,
                                             reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_node_GetInfo_Response_1_0_serialize_),
                                             uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, transfer->metadata.remote_node_id, transfer->metadata.transfer_id);
-        log(LOG_LEVEL_TRACE, "TaskRespondGetInfo: respond\r\n");
+        log(LOG_LEVEL_INFO, "TaskRespondGetInfo: sent response\r\n");
     }
 }
 
