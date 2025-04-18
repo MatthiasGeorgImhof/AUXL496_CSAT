@@ -31,16 +31,16 @@ protected:
 template <typename... Adapters>
 void TaskRespondGetInfo<Adapters...>::handleTaskImpl()
 {
-    if (TaskForServer<Adapters...>::buffer.is_empty())
+    if (TaskForServer<Adapters...>::buffer_.is_empty())
     {
         log(LOG_LEVEL_TRACE, "TaskRespondGetInfo: empty buffer\r\n");
         return;
     }
 
-    size_t count = TaskForServer<Adapters...>::buffer.size();
+    size_t count = TaskForServer<Adapters...>::buffer_.size();
     for (size_t i = 0; i < count; ++i)
     {
-        std::shared_ptr<CyphalTransfer> transfer = TaskForServer<Adapters...>::buffer.pop();
+        std::shared_ptr<CyphalTransfer> transfer = TaskForServer<Adapters...>::buffer_.pop();
         if (transfer->metadata.transfer_kind != CyphalTransferKindRequest)
             return;
 
@@ -72,13 +72,13 @@ void TaskRespondGetInfo<Adapters...>::handleTaskImpl()
 template <typename... Adapters>
 void TaskRespondGetInfo<Adapters...>::registerTask(RegistrationManager *manager, std::shared_ptr<Task> task)
 {
-    manager->subscribe(uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, task);
+    manager->server(uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, task);
 }
 
 template <typename... Adapters>
 void TaskRespondGetInfo<Adapters...>::unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task)
 {
-    manager->unsubscribe(uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, task);
+    manager->unserver(uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, task);
 }
 
 #endif /* INC_TASKRESPONDGETINFO_HPP_ */

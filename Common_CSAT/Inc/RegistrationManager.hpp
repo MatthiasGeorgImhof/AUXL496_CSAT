@@ -19,6 +19,7 @@ class RegistrationManager
 public:
     static constexpr size_t NUM_SUBSCRIPTIONS = 16;
     static constexpr size_t NUM_PUBLICATIONS = 16;
+    static constexpr size_t NUM_CLIENT_SERVERS = 8;
     static constexpr size_t NUM_TASK_HANDLERS = 32;
 
     RegistrationManager() = default;
@@ -72,6 +73,40 @@ public:
     void unpublish(const CyphalPortID port_id, std::shared_ptr<Task> task);
 
     /**
+     * @brief clientes a task to a Cyphal port using the provided adapters.
+     * @tparam Adapters Variadic template parameter representing the Cyphal adapter types.
+     * @param publication The Cyphal subscription details.
+     * @param task A shared pointer to the task to be cliented.
+     */
+    void client(const CyphalPortID port_id, std::shared_ptr<Task> task);
+    void client(const CyphalPortID port_id);
+
+    /**
+     * @brief Unclients a task from a Cyphal port using the provided adapters.
+     * @tparam Adapters Variadic template parameter representing the Cyphal adapter types.
+     * @param publication The Cyphal subscription details.
+     * @param task A shared pointer to the task to be uncliented.
+     */
+    void unclient(const CyphalPortID port_id, std::shared_ptr<Task> task);
+
+    /**
+     * @brief serves a task to a Cyphal port using the provided adapters.
+     * @tparam Adapters Variadic template parameter representing the Cyphal adapter types.
+     * @param publication The Cyphal subscription details.
+     * @param task A shared pointer to the task to be servered.
+     */
+    void server(const CyphalPortID port_id, std::shared_ptr<Task> task);
+    void server(const CyphalPortID port_id);
+
+    /**
+     * @brief Unserves a task from a Cyphal port using the provided adapters.
+     * @tparam Adapters Variadic template parameter representing the Cyphal adapter types.
+     * @param publication The Cyphal subscription details.
+     * @param task A shared pointer to the task to be unservered.
+     */
+    void unserver(const CyphalPortID port_id, std::shared_ptr<Task> task);
+
+    /**
      * @brief Gets the list of task handlers.
      * @return A const reference to the ArrayList of task handlers.
      */
@@ -82,7 +117,9 @@ public:
      * @return A const reference to the ArrayList of Cyphal subscriptions.
      */
     inline const ArrayList<CyphalPortID, NUM_SUBSCRIPTIONS> &getSubscriptions() const;
-    inline const ArrayList<CyphalPortID, NUM_SUBSCRIPTIONS> &getPublications() const;
+    inline const ArrayList<CyphalPortID, NUM_PUBLICATIONS> &getPublications() const;
+    inline const ArrayList<CyphalPortID, NUM_CLIENT_SERVERS> &getClients() const;
+    inline const ArrayList<CyphalPortID, NUM_CLIENT_SERVERS> &getServers() const;
 
     inline bool containsTask(const std::shared_ptr<Task> &task) const;
 
@@ -97,6 +134,8 @@ private:
      */
     ArrayList<CyphalPortID, NUM_SUBSCRIPTIONS> subscriptions_;
     ArrayList<CyphalPortID, NUM_PUBLICATIONS> publications_;
+    ArrayList<CyphalPortID, NUM_CLIENT_SERVERS> clients_;
+    ArrayList<CyphalPortID, NUM_CLIENT_SERVERS> servers_;
 };
 
 
@@ -139,5 +178,7 @@ inline const ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> &Reg
  */
 inline const ArrayList<CyphalPortID, RegistrationManager::NUM_SUBSCRIPTIONS> &RegistrationManager::getSubscriptions() const { return subscriptions_; }
 inline const ArrayList<CyphalPortID, RegistrationManager::NUM_PUBLICATIONS> &RegistrationManager::getPublications() const { return publications_; }
+inline const ArrayList<CyphalPortID, RegistrationManager::NUM_CLIENT_SERVERS> &RegistrationManager::getClients() const { return clients_; }
+inline const ArrayList<CyphalPortID, RegistrationManager::NUM_CLIENT_SERVERS> &RegistrationManager::getServers() const { return servers_; }
 
 #endif

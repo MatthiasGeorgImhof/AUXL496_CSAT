@@ -139,7 +139,7 @@ public:
 	TaskForServer(uint32_t interval, uint32_t tick, std::tuple<Adapters...> &adapters) : Task(interval, tick), adapters_(adapters) {}
 	virtual ~TaskForServer() {};
 
-	virtual void handleMessage(std::shared_ptr<CyphalTransfer> transfer) { buffer.push(transfer); }
+	virtual void handleMessage(std::shared_ptr<CyphalTransfer> transfer) { buffer_.push(transfer); }
 
 protected:
 	void publish(size_t payload_size, uint8_t *payload, void *data,
@@ -148,7 +148,7 @@ protected:
 	{
 		int8_t result = serialize(data, payload, &payload_size);
 		if (result < 0)
-			log(LOG_LEVEL_ERROR, "ERROR Task.publish serialization %d\r\n", result);
+			log(LOG_LEVEL_ERROR, "ERROR TaskForServer.publish serialization %d\r\n", result);
 
 		CyphalTransferMetadata metadata =
 			{
@@ -166,12 +166,63 @@ protected:
 				int8_t res = adapter.cyphalTxPush(static_cast<CyphalMicrosecond>(0), &metadata, payload_size, payload);
 				all_successful = all_successful && (res > 0); }(), ...); }, adapters_);
 		if (!all_successful)
-			log(LOG_LEVEL_ERROR, "ERROR Task.publish push\r\n");
+			log(LOG_LEVEL_ERROR, "ERROR TaskForServer.publish push\r\n");
 	}
 
 protected:
 	std::tuple<Adapters...> &adapters_;
-	CyphalBuffer buffer;
+	CyphalBuffer buffer_;
+};
+
+template <typename... Adapters>
+class TaskForClient : public Task
+{
+public:
+	TaskForClient() = delete;
+	TaskForClient(uint32_t interval, uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters) : Task(interval, tick), node_id_(node_id), transfer_id_(transfer_id), adapters_(adapters) {}
+	virtual ~TaskForClient() {};
+
+	virtual void handleMessage(std::shared_ptr<CyphalTransfer> transfer) { buffer_.push(transfer); }
+
+protected:
+	virtual void update(uint32_t now) override
+	{
+		Task::update(now);
+		++transfer_id_;
+	}
+
+	void publish(size_t payload_size, uint8_t *payload, void *data,
+				 int8_t (*serialize)(const void *const, uint8_t *const, size_t *const),
+				 CyphalPortID port_id, CyphalNodeID node_id, CyphalTransferID transfer_id)
+	{
+		int8_t result = serialize(data, payload, &payload_size);
+		if (result < 0)
+			log(LOG_LEVEL_ERROR, "ERROR TaskForClient.publish serialization %d\r\n", result);
+
+		CyphalTransferMetadata metadata =
+			{
+				CyphalPriorityNominal,
+				CyphalTransferKindRequest,
+				port_id,
+				node_id,
+				transfer_id,
+			};
+
+		bool all_successful = true;
+		std::apply([&](auto &...adapter)
+				   { ([&]()
+					  {
+				int8_t res = adapter.cyphalTxPush(static_cast<CyphalMicrosecond>(0), &metadata, payload_size, payload);
+				all_successful = all_successful && (res > 0); }(), ...); }, adapters_);
+		if (!all_successful)
+			log(LOG_LEVEL_ERROR, "ERROR TaskForClient.publish push\r\n");
+	}
+
+protected:
+	CyphalNodeID node_id_;
+	CyphalTransferID transfer_id_;
+	std::tuple<Adapters...> &adapters_;
+	CyphalBuffer buffer_;
 };
 
 typedef struct

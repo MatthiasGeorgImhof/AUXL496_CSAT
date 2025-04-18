@@ -42,36 +42,6 @@ std::shared_ptr<CyphalTransfer> createGetInfoRequest()
     return transfer;
 }
 
-// class MockRegistrationManager : public RegistrationManager
-// {
-// public:
-//     // Simulate subscription success or failure
-//     bool should_succeed = true;
-
-//     void subscribe(CyphalPortID port_id, std::shared_ptr<Task> task)
-//     {
-//         if (should_succeed) {
-//             subscriptions[port_id] = task;
-//         } else {
-//             // Simulate a failure (e.g., throw an exception, log an error)
-//             std::cerr << "Subscription failed!" << std::endl;
-//             // You could also throw an exception here:
-//             // throw std::runtime_error("Subscription failed");
-//         }
-//     }
-
-//     void unsubscribe(CyphalPortID port_id, std::shared_ptr<Task> /*task*/)
-//     {
-//         auto it = subscriptions.find(port_id);
-//         if (it != subscriptions.end())
-//         {
-//             subscriptions.erase(it);
-//         }
-//     }
-
-//     std::map<CyphalPortID, std::shared_ptr<Task>> subscriptions;
-// };
-
 template <typename... Adapters>
 class MockTaskRespondGetInfo : public TaskRespondGetInfo<Adapters...>
 {
@@ -79,8 +49,8 @@ public:
     MockTaskRespondGetInfo(uint8_t unique_id_[16], char name_[50], uint32_t interval, uint32_t tick, std::tuple<Adapters...> &adapters) : TaskRespondGetInfo<Adapters...>(unique_id_, name_, interval, tick, adapters) {}
 
     using TaskRespondGetInfo<Adapters...>::handleMessage;
-    size_t getBufferSize() const { return TaskRespondGetInfo<Adapters...>::buffer.size(); }
-    using TaskRespondGetInfo<Adapters...>::buffer;
+    size_t getBufferSize() const { return TaskRespondGetInfo<Adapters...>::buffer_.size(); }
+    using TaskRespondGetInfo<Adapters...>::buffer_;
 };
 
 TEST_CASE("TaskRespondGetInfo: Handles GetInfo request and publishes response")
@@ -184,8 +154,8 @@ TEST_CASE("TaskRespondGetInfo: registers and unregisters correctly")
 
     // Register the task
     task_sendheartbeat->registerTask(&registration_manager, task_sendheartbeat);
-    CHECK(registration_manager.getSubscriptions().size() == 1);
-    CHECK(registration_manager.getSubscriptions().containsIf([&](const CyphalPortID& port_id) {
+    CHECK(registration_manager.getServers().size() == 1);
+    CHECK(registration_manager.getServers().containsIf([&](const CyphalPortID& port_id) {
         return port_id == uavcan_node_GetInfo_1_0_FIXED_PORT_ID_;
     }));
     // Unregister the task

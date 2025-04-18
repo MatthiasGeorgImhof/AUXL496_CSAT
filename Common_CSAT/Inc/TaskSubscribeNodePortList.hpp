@@ -8,6 +8,7 @@
 
 #include "nunavut_assert.h"
 #include "uavcan/node/port/List_1_0.h"
+#include "nunavut/support/serialization.h"
 
 template <typename... Adapters>
 class TaskSubscribeNodePortList : public TaskFromBuffer
@@ -28,7 +29,6 @@ private:
 template <typename... Adapters>
 void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
 {
-    // Check if the buffer is empty
     if (buffer.is_empty())
     {
         log(LOG_LEVEL_TRACE, "TaskSubscribeNodePortList: empty buffer\r\n");
@@ -36,7 +36,6 @@ void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
     }
 
     // Process all transfers in the buffer
-    // Use a loop to process all items in the buffer
 	size_t count = buffer.size();
     for (size_t i = 0; i < count; ++i)
     {
@@ -50,26 +49,30 @@ void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
         	return;
         }
 
-        char publishers[256] = {};
-        char subscribers[256] = {};
-
-        // Iterate over publishers and subscribers and call subscribe.
         for (size_t j = 0; j < data.publishers.sparse_list.count; ++j)
         {
-            subscription_manager_->subscribe(data.publishers.sparse_list.elements[j].value, adapters_);
-            char vstring[16] = {};
-            sprintf(vstring, "% 5d", data.publishers.sparse_list.elements[j].value);
-            strcat(publishers, vstring);
+            subscription_manager_->subscribe<SubscriptionManager::MessageTag>(data.publishers.sparse_list.elements[j].value, adapters_);
         }
         for (size_t j = 0; j < data.subscribers.sparse_list.count; ++j)
         {
-            subscription_manager_->subscribe(data.subscribers.sparse_list.elements[j].value, adapters_);
-            char vstring[16] = {};
-            sprintf(vstring, "% 5d", data.subscribers.sparse_list.elements[j].value);
-            strcat(subscribers, vstring);
+            subscription_manager_->subscribe<SubscriptionManager::MessageTag>(data.subscribers.sparse_list.elements[j].value, adapters_);
         }
-        log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList: success (%s ) (%s )\r\n", publishers, subscribers);
+        for(const CyphalSubscription &subscription : CYPHAL_REQUESTS)
+        {
+            if (nunavutGetBit(data.clients.mask_bitpacked_, sizeof(data.clients.mask_bitpacked_), subscription.port_id))
+            {
+                subscription_manager_->subscribe(&subscription, adapters_);
+            }
+        }
+        for(const CyphalSubscription &subscription : CYPHAL_RESPONSES)
+        {
+            if (nunavutGetBit(data.servers.mask_bitpacked_, sizeof(data.servers.mask_bitpacked_), subscription.port_id))
+            {
+                subscription_manager_->subscribe(&subscription, adapters_);
+            }
+        }
 
+        log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList: success\r\n");
     }
 }
 

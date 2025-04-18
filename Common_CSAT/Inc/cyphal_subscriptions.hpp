@@ -22,41 +22,85 @@
 #include "_4111spyglass/sat/sensor/Magnetometer_0_1.h"
 #include "_4111spyglass/sat/sensor/GNSS_0_1.h"
 
-
 constexpr static std::array CYPHAL_MESSAGES =
 {
-    CyphalSubscription{uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_, uavcan_node_Heartbeat_1_0_EXTENT_BYTES_, CyphalTransferKindMessage},
-    CyphalSubscription{uavcan_node_port_List_1_0_FIXED_PORT_ID_, uavcan_node_port_List_1_0_EXTENT_BYTES_, CyphalTransferKindMessage},
-    CyphalSubscription{uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_, uavcan_diagnostic_Record_1_1_EXTENT_BYTES_, CyphalTransferKindMessage},
-    CyphalSubscription{uavcan_time_Synchronization_1_0_FIXED_PORT_ID_, uavcan_time_Synchronization_1_0_EXTENT_BYTES_, CyphalTransferKindMessage},
-    CyphalSubscription{uavcan_time_GetSynchronizationMasterInfo_0_1_FIXED_PORT_ID_, uavcan_time_GetSynchronizationMasterInfo_Request_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
-    CyphalSubscription{_4111spyglass_sat_sensor_Magnetometer_0_1_PORT_ID_, _4111spyglass_sat_sensor_Magnetometer_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
-    CyphalSubscription{_4111spyglass_sat_sensor_GNSS_0_1_PORT_ID_, _4111spyglass_sat_sensor_GNSS_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
-    CyphalSubscription{uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, uavcan_node_GetInfo_Request_1_0_EXTENT_BYTES_, CyphalTransferKindRequest}
+CyphalSubscription{uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_, uavcan_node_Heartbeat_1_0_EXTENT_BYTES_, CyphalTransferKindMessage},
+CyphalSubscription{uavcan_node_port_List_1_0_FIXED_PORT_ID_, uavcan_node_port_List_1_0_EXTENT_BYTES_, CyphalTransferKindMessage},
+CyphalSubscription{uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_, uavcan_diagnostic_Record_1_1_EXTENT_BYTES_, CyphalTransferKindMessage},
+CyphalSubscription{uavcan_time_Synchronization_1_0_FIXED_PORT_ID_, uavcan_time_Synchronization_1_0_EXTENT_BYTES_, CyphalTransferKindMessage},
+CyphalSubscription{uavcan_time_GetSynchronizationMasterInfo_0_1_FIXED_PORT_ID_, uavcan_time_GetSynchronizationMasterInfo_Request_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
+CyphalSubscription{_4111spyglass_sat_sensor_Magnetometer_0_1_PORT_ID_, _4111spyglass_sat_sensor_Magnetometer_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
+CyphalSubscription{_4111spyglass_sat_sensor_GNSS_0_1_PORT_ID_, _4111spyglass_sat_sensor_GNSS_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
 };
 
-constexpr CyphalSubscription const *findByPortIdCompileTime(CyphalPortID port_id)
+constexpr static std::array CYPHAL_REQUESTS =
 {
-    for (auto const &item : CYPHAL_MESSAGES)
-    {
-        if (item.port_id == port_id)
-        {
+CyphalSubscription{uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, uavcan_node_GetInfo_Request_1_0_EXTENT_BYTES_, CyphalTransferKindRequest}
+};
+
+constexpr static std::array CYPHAL_RESPONSES =
+{
+CyphalSubscription{uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, uavcan_node_GetInfo_Response_1_0_EXTENT_BYTES_, CyphalTransferKindResponse}
+};
+
+// Template function for compile-time lookup
+template <size_t Size, CyphalPortID port_id>
+consteval CyphalSubscription const *findByPortIdCompileTime(const std::array<CyphalSubscription, Size>& arr) {
+    for (auto const &item : arr) {
+        if (item.port_id == port_id) {
             return &item;
         }
     }
     return nullptr;
 }
 
-CyphalSubscription const *findByPortIdRuntime(CyphalPortID port_id)
-{
-    for (auto const &item : CYPHAL_MESSAGES)
-    {
-        if (item.port_id == port_id)
-        {
+// Template function for runtime lookup
+template <size_t Size>
+CyphalSubscription const *findByPortIdRuntime(const std::array<CyphalSubscription, Size>& arr, CyphalPortID port_id) {
+    for (auto const &item : arr) {
+        if (item.port_id == port_id) {
             return &item;
         }
     }
     return nullptr;
 }
+
+
+// Convenience functions for specific arrays.  These remove the need to explicitly state the array size.
+
+// Compile-time lookup for CYPHAL_MESSAGES
+template <CyphalPortID port_id>
+consteval CyphalSubscription const *findMessageByPortIdCompileTime() {
+    return findByPortIdCompileTime<CYPHAL_MESSAGES.size(), port_id>(CYPHAL_MESSAGES);
+}
+
+// Runtime lookup for CYPHAL_MESSAGES
+CyphalSubscription const *findMessageByPortIdRuntime(CyphalPortID port_id) {
+    return findByPortIdRuntime<CYPHAL_MESSAGES.size()>(CYPHAL_MESSAGES, port_id);
+}
+
+// Compile-time lookup for CYPHAL_REQUESTS
+template <CyphalPortID port_id>
+consteval CyphalSubscription const *findRequestByPortIdCompileTime() {
+    return findByPortIdCompileTime<CYPHAL_REQUESTS.size(), port_id>(CYPHAL_REQUESTS);
+}
+
+// Runtime lookup for CYPHAL_REQUESTS
+CyphalSubscription const *findRequestByPortIdRuntime(CyphalPortID port_id) {
+    return findByPortIdRuntime<CYPHAL_REQUESTS.size()>(CYPHAL_REQUESTS, port_id);
+}
+
+// Compile-time lookup for CYPHAL_RESPONSES
+template <CyphalPortID port_id>
+consteval CyphalSubscription const *findResponseByPortIdCompileTime() {
+    return findByPortIdCompileTime<CYPHAL_RESPONSES.size(), port_id>(CYPHAL_RESPONSES);
+}
+
+// Runtime lookup for CYPHAL_RESPONSES
+CyphalSubscription const *findResponseByPortIdRuntime(CyphalPortID port_id) {
+    return findByPortIdRuntime<CYPHAL_RESPONSES.size()>(CYPHAL_RESPONSES, port_id);
+}
+
+
 
 #endif // CYPHAL_SUBSCRIPTIONS_HPP_
