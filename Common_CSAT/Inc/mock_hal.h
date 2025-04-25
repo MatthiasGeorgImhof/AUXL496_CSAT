@@ -25,6 +25,8 @@ extern "C" {
 #define UART_RX_BUFFER_SIZE 256
 #define I2C_MEM_BUFFER_SIZE 256
 #define USB_TX_BUFFER_SIZE  256
+#define SPI_TX_BUFFER_SIZE 256
+#define SPI_RX_BUFFER_SIZE 256
 
 //--- GPIO Defines ---
 #define GPIO_PIN_0  ((uint16_t)0x0001)  /* Pin 0 selected    */
@@ -184,6 +186,71 @@ typedef struct {
    I2C_InitTypeDef Instance;
 } I2C_HandleTypeDef;
 
+//--- SPI Structures ---
+
+typedef struct {
+  uint32_t Mode;         /*!< Specifies the operation mode for the SPI.
+                                  This parameter can be a value of @ref SPI_Mode */
+
+  uint32_t Direction;    /*!< Specifies the data transfer direction for the SPI.
+                                  This parameter can be a value of @ref SPI_Direction_Mode */
+
+  uint32_t DataSize;     /*!< Specifies the data size for the SPI.
+                                  This parameter can be a value of @ref SPI_Data_Size */
+
+  uint32_t ClockPolarity; /*!< Specifies the serial clock steady state.
+                                  This parameter can be a value of @ref SPI_Clock_Polarity */
+
+  uint32_t ClockPhase;    /*!< Specifies the clock active edge for the SPI serial clock.
+                                  This parameter can be a value of @ref SPI_Clock_Phase */
+
+  uint32_t NSS;           /*!< Specifies the NSS signal management mode.
+                                  This parameter can be a value of @ref SPI_NSS_management */
+
+  uint32_t BaudRatePrescaler; /*!< Specifies the Baud Rate prescaler value which will be
+                                     used to configure the transmit and receive SCK clock speed.
+                                     This parameter can be a value of @ref SPI_BaudRate_Prescaler */
+
+  uint32_t FirstBit;      /*!< Specifies whether data transfers start from MSB or LSB bit.
+                                  This parameter can be a value of @ref SPI_MSB_LSB_transmission */
+
+  uint32_t TIMode;        /*!< Specifies if the TI mode is enabled or disabled.
+                                  This parameter can be a value of @ref SPI_TI_Mode */
+
+  uint32_t CRCCalculation; /*!< Specifies if the CRC calculation is enabled or disabled.
+                                  This parameter can be a value of @ref SPI_CRC_calculation */
+
+  uint32_t CRCPolynomial; /*!< Specifies the polynomial for the CRC calculation
+                                  @note The CRC polynomial must be in the range [0x7, 0x409F] */
+
+  uint32_t DataAlign;     /*!< Specifies the data alignment MSB/LSB.
+                                  This parameter can be a value of @ref SPI_Data_Align */
+
+  uint32_t FifoThreshold; /*!< Specifies the FIFO threshold.
+                                  This parameter can be a value of @ref SPI_FIFO_Threshold */
+
+  uint32_t TxCRCInitializationPattern; /*!< SPI transmit CRC initial value */
+
+  uint32_t RxCRCInitializationPattern; /*!< SPI receive CRC initial value */
+
+  uint32_t MasterSSIdleness;   /*!< Specifies the Idle Time between two data frame transmission using the NSS management by software.
+                                  This parameter can be a value of @ref SPI_Master_SS_Idleness */
+
+  uint32_t MasterKeepIOState; /*!< Specifies if the SPI Master Keep IO State is enabled or disabled.
+                                  This parameter can be a value of @ref SPI_Master_Keep_IO_State */
+
+  uint32_t SuspendState;       /*!< Specifies the SPI suspend mode.
+                                  This parameter can be a value of @ref SPI_Suspend_State */
+} SPI_InitTypeDef;
+
+typedef struct
+{
+  void *Instance;  /*!< SPI registers base address. */
+
+  SPI_InitTypeDef Init;        /*!< SPI communication parameters. */
+} SPI_HandleTypeDef;
+
+
 //------------------------------------------------------------------------------
 //  MOCK FUNCTION PROTOTYPES
 //------------------------------------------------------------------------------
@@ -227,6 +294,12 @@ void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 HAL_StatusTypeDef HAL_UARTEx_GetRxEventType(UART_HandleTypeDef *huart);
 HAL_StatusTypeDef HAL_UARTEx_ReceiveToIdle_DMA(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size);
 
+//--- SPI Mock Function Prototypes ---
+HAL_StatusTypeDef HAL_SPI_Transmit(SPI_HandleTypeDef *hspi, uint8_t *pData, uint16_t Size, uint32_t Timeout);
+HAL_StatusTypeDef HAL_SPI_Receive(SPI_HandleTypeDef *hspi, uint8_t *pData, uint16_t Size, uint32_t Timeout);
+HAL_StatusTypeDef HAL_SPI_TransmitReceive(SPI_HandleTypeDef *hspi, uint8_t *pTxData, uint8_t *pRxData, uint16_t Size, uint32_t Timeout);
+HAL_StatusTypeDef HAL_SPI_Init(SPI_HandleTypeDef *hspi); // Add SPI init function
+
 //------------------------------------------------------------------------------
 //  EXTERNAL VARIABLES
 //------------------------------------------------------------------------------
@@ -235,10 +308,6 @@ HAL_StatusTypeDef HAL_UARTEx_ReceiveToIdle_DMA(UART_HandleTypeDef *huart, uint8_
 extern uint32_t mocked_uart_rx_event_type;
 void set_mocked_uart_rx_event_type(uint32_t event_type);
 
-//--- I2C External Variables ---
-extern uint16_t mocked_i2c_dev_address;
-extern uint16_t mocked_i2c_mem_address;
-extern uint16_t mocked_i2c_mem_size;
 
 //------------------------------------------------------------------------------
 //  HELPER FUNCTION PROTOTYPES
@@ -254,6 +323,9 @@ void clear_uart_rx_buffer();
 void clear_uart_tx_buffer();
 void inject_i2c_mem_data(uint16_t DevAddress, uint16_t MemAddress,uint8_t *data, uint16_t size);
 void clear_i2c_mem_data();
+void clear_spi_tx_buffer();
+void clear_spi_rx_buffer();
+void inject_spi_rx_data(uint8_t *data, int size);
 
 //--- Getter Function Prototypes ---
 int get_can_tx_buffer_count();
@@ -264,6 +336,12 @@ void set_current_free_mailboxes(int free_mailboxes);
 void set_current_rx_fifo_fill_level(int rx_fifo_level);
 void set_current_tick(uint32_t tick);
 void init_uart_handle(UART_HandleTypeDef *huart);
+int get_spi_tx_buffer_count();
+uint8_t* get_spi_tx_buffer();
+int get_spi_rx_buffer_count();
+uint8_t* get_spi_rx_buffer();
+void init_spi_handle(SPI_HandleTypeDef *hspi);
+void copy_spi_tx_to_rx();
 
 //--- GPIO Access Function Prototypes ---
 GPIO_PinState get_gpio_pin_state(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);

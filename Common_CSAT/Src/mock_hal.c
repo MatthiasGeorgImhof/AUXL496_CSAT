@@ -23,10 +23,12 @@ uint16_t i2c_mem_buffer_dev_address;
 uint16_t i2c_mem_buffer_mem_address;
 uint16_t i2c_mem_buffer_size = 0;
 
-// Store I2C transfer parameters for verification
-uint16_t mocked_i2c_dev_address;
-uint16_t mocked_i2c_mem_address;
-uint16_t mocked_i2c_mem_size;
+uint8_t spi_tx_buffer[SPI_TX_BUFFER_SIZE];
+int spi_tx_buffer_count = 0;
+
+uint8_t spi_rx_buffer[SPI_RX_BUFFER_SIZE];
+int spi_rx_buffer_count = 0;
+int spi_rx_buffer_read_pos = 0;
 
 // Mock Variables
 uint32_t current_tick = 0;
@@ -202,13 +204,11 @@ uint32_t HAL_I2C_Master_Transmit(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, u
     }
 
     // Store the parameters for later verification
-    mocked_i2c_dev_address = DevAddress;
-    mocked_i2c_mem_address = 0; // Not a memory transfer
-    mocked_i2c_mem_size = Size;
+    i2c_mem_buffer_dev_address = DevAddress;
+    i2c_mem_buffer_mem_address = 0; // Not a memory transfer
+    i2c_mem_buffer_size = Size;
 
-    // You might want to copy the data to a buffer here to inspect it later
-
-    // Basic mock, just return HAL_OK
+    memcpy(i2c_mem_buffer, pData, Size);
     return 0;
 }
 
@@ -217,17 +217,14 @@ uint32_t HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t
         return 1; //HAL_ERROR;
     }
 
-    if(i2c_mem_buffer_dev_address != DevAddress || i2c_mem_buffer_mem_address != MemAddress || i2c_mem_buffer_size == 0) {
-       return 1; //HAL_ERROR, invalid address
-    }
-    if(Size > i2c_mem_buffer_size) {
-     return 1; //HAL_ERROR, invalid size
+    if(i2c_mem_buffer_dev_address != DevAddress || i2c_mem_buffer_size == 0) {
+            return 1; //HAL_ERROR, invalid address
     }
 
     // Store the parameters for later verification
-    mocked_i2c_dev_address = DevAddress;
-    mocked_i2c_mem_address = MemAddress;
-    mocked_i2c_mem_size = Size;
+    i2c_mem_buffer_dev_address = DevAddress;
+    i2c_mem_buffer_mem_address = MemAddress;
+    i2c_mem_buffer_size = Size;
 
     memcpy(pData, i2c_mem_buffer, Size);
     return 0;
@@ -240,11 +237,11 @@ uint32_t HAL_I2C_Mem_Write(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_
     }
 
     // Store the parameters for later verification
-    mocked_i2c_dev_address = DevAddress;
-    mocked_i2c_mem_address = MemAddress;
-    mocked_i2c_mem_size = Size;
+    i2c_mem_buffer_dev_address = DevAddress;
+    i2c_mem_buffer_mem_address = MemAddress;
+    i2c_mem_buffer_size = Size;
 
-    // Basic Mock, just returns HAL_OK
+    memcpy(i2c_mem_buffer, pData, Size);
     return 0;
 }
 
@@ -314,37 +311,76 @@ void HAL_GPIO_TogglePin(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin) {
     }
 }
 
-// GPIO Access Functions
-GPIO_PinState get_gpio_pin_state(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin)
-{
-    uint32_t pin_number = 0;
-    while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
-        pin_number++;
-    }
+// ---- SPI Mock Functions -----
 
-    if (pin_number < 32) {
-        return gpio_port_state.pin_state[pin_number];
-    } else {
-        // Handle invalid pin number (e.g., return GPIO_PIN_RESET or an error code).
-        return GPIO_PIN_RESET; // Or potentially an error value
+uint32_t HAL_SPI_Transmit(SPI_HandleTypeDef */*hspi*/, uint8_t *pData, uint16_t Size, uint32_t /*Timeout*/) {
+    if (!pData) return 1; // HAL_ERROR
+    if (spi_tx_buffer_count + Size <= SPI_TX_BUFFER_SIZE) {
+        memcpy(spi_tx_buffer + spi_tx_buffer_count, pData, Size);
+        spi_tx_buffer_count += Size;
+        return 0; // HAL_OK
     }
+    return 1; // HAL_ERROR, buffer overflow
 }
 
-void set_gpio_pin_state(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin, GPIO_PinState PinState)
-{
-    uint32_t pin_number = 0;
-    while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
-        pin_number++;
-    }
+uint32_t HAL_SPI_Receive(SPI_HandleTypeDef */*hspi*/, uint8_t *pData, uint16_t Size, uint32_t /*Timeout*/) {
+   if (!pData) return 1; // HAL_ERROR
 
-    if (pin_number < 32) {
-        gpio_port_state.pin_state[pin_number] = PinState;
-    } else {
-        // Handle invalid pin number (e.g., print an error message).
-        printf("ERROR: Invalid GPIO_Pin in HAL_GPIO_WritePin\n");
+    //Copy injected rx data into provided buffer
+    if (spi_rx_buffer_count > 0) {
+        if (Size > spi_rx_buffer_count) {
+            return 1; //HAL_ERROR. Trying to receive more than available
+        }
+        memcpy(pData, spi_rx_buffer + spi_rx_buffer_read_pos, Size);
+        spi_rx_buffer_read_pos += Size;
+
+        if (spi_rx_buffer_read_pos >= spi_rx_buffer_count) {
+            spi_rx_buffer_read_pos = 0; // reset to beginning
+        }
+         return 0; // HAL_OK
     }
+    return 1; // HAL_ERROR. no data available
 }
 
+
+uint32_t HAL_SPI_TransmitReceive(SPI_HandleTypeDef */*hspi*/, uint8_t *pTxData, uint8_t *pRxData, uint16_t Size, uint32_t /*Timeout*/) {
+   if (!pTxData || !pRxData) return 1; // HAL_ERROR
+
+    //Transmit part
+    if (spi_tx_buffer_count + Size <= SPI_TX_BUFFER_SIZE) {
+        memcpy(spi_tx_buffer + spi_tx_buffer_count, pTxData, Size);
+        spi_tx_buffer_count += Size;
+    } else {
+       return 1; // HAL_ERROR, buffer overflow
+    }
+
+     //Receive part
+    if (spi_rx_buffer_count > 0) {
+        if (Size > spi_rx_buffer_count) {
+             return 1; //HAL_ERROR. Trying to receive more than available
+        }
+
+        memcpy(pRxData, spi_rx_buffer + spi_rx_buffer_read_pos, Size);
+        spi_rx_buffer_read_pos += Size;
+
+        if (spi_rx_buffer_read_pos >= spi_rx_buffer_count) {
+            spi_rx_buffer_read_pos = 0; // reset to beginning
+        }
+    } else {
+        return 1; // HAL_ERROR, no data available
+    }
+
+    return 0; // HAL_OK
+}
+
+// Add a mock implementation for SPI initialization
+uint32_t HAL_SPI_Init(SPI_HandleTypeDef *hspi) {
+    if (!hspi) return 1; // HAL_ERROR
+
+    // In a simple mock, we don't *really* initialize anything.
+    // But you *could* store the SPI_InitTypeDef values if you wanted to make assertions about them later.
+    return 0; // HAL_OK
+}
 
 // ----- Injector and Deleter Functions ------
 
@@ -440,6 +476,25 @@ void clear_i2c_mem_data(){
     i2c_mem_buffer_size = 0;
 }
 
+// SPI Injectors
+void inject_spi_rx_data(uint8_t *data, int size) {
+    if (spi_rx_buffer_count + size <= SPI_RX_BUFFER_SIZE) {
+        memcpy(spi_rx_buffer + spi_rx_buffer_count, data, size);
+        spi_rx_buffer_count += size;
+    }
+}
+
+// SPI Deleters
+void clear_spi_tx_buffer() {
+    memset(spi_tx_buffer, 0, sizeof(spi_tx_buffer));  // Set all elements to 0
+    spi_tx_buffer_count = 0;
+}
+
+void clear_spi_rx_buffer() {
+    memset(spi_rx_buffer, 0, sizeof(spi_rx_buffer));
+    spi_rx_buffer_count = 0;
+    spi_rx_buffer_read_pos = 0;
+}
 
 void clear_usb_tx_buffer(){
     memset(usb_tx_buffer, 0, sizeof(usb_tx_buffer)); //Set all elements to 0
@@ -503,6 +558,28 @@ void init_uart_handle(UART_HandleTypeDef *huart)
     huart->Init.ADVFEATURE = 0;
 }
 
+void init_spi_handle(SPI_HandleTypeDef *hspi) {
+   // Set some default values for the SPI handle
+    hspi->Init.Mode = 0;
+    hspi->Init.Direction = 0;
+    hspi->Init.DataSize = 0;
+    hspi->Init.ClockPolarity = 0;
+    hspi->Init.ClockPhase = 0;
+    hspi->Init.NSS = 0;
+    hspi->Init.BaudRatePrescaler = 0;
+    hspi->Init.FirstBit = 0;
+    hspi->Init.TIMode = 0;
+    hspi->Init.CRCCalculation = 0;
+    hspi->Init.CRCPolynomial = 0;
+    hspi->Init.DataAlign = 0;
+    hspi->Init.FifoThreshold = 0;
+    hspi->Init.TxCRCInitializationPattern = 0;
+    hspi->Init.RxCRCInitializationPattern = 0;
+    hspi->Init.MasterSSIdleness = 0;
+    hspi->Init.MasterKeepIOState = 0;
+    hspi->Init.SuspendState = 0;
+}
+
 // --- Mock UARTEx Functions ---
 
 void set_mocked_uart_rx_event_type(HAL_UART_RxEventTypeTypeDef event_type) {
@@ -528,5 +605,71 @@ uint32_t HAL_UARTEx_ReceiveToIdle_DMA(UART_HandleTypeDef *huart, uint8_t *pData,
 
     return bytes_received == Size ? 0 : 1; //HAL_OK if all bytes are received
 }
+
+// SPI Getters
+int get_spi_tx_buffer_count() {
+    return spi_tx_buffer_count;
+}
+
+uint8_t* get_spi_tx_buffer() {
+    return spi_tx_buffer;
+}
+
+int get_spi_rx_buffer_count() {
+    return spi_rx_buffer_count;
+}
+
+uint8_t* get_spi_rx_buffer() {
+    return spi_rx_buffer;
+}
+
+
+// GPIO Access Functions
+GPIO_PinState get_gpio_pin_state(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin)
+{
+    uint32_t pin_number = 0;
+    while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
+        pin_number++;
+    }
+
+    if (pin_number < 32) {
+        return gpio_port_state.pin_state[pin_number];
+    } else {
+        // Handle invalid pin number (e.g., return GPIO_PIN_RESET or an error code).
+        return GPIO_PIN_RESET; // Or potentially an error value
+    }
+}
+
+void set_gpio_pin_state(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin, GPIO_PinState PinState)
+{
+    uint32_t pin_number = 0;
+    while(GPIO_Pin != (1 << pin_number) && pin_number < 32) {
+        pin_number++;
+    }
+
+    if (pin_number < 32) {
+        gpio_port_state.pin_state[pin_number] = PinState;
+    } else {
+        // Handle invalid pin number (e.g., print an error message).
+        printf("ERROR: Invalid GPIO_Pin in HAL_GPIO_WritePin\n");
+    }
+}
+
+//SPI helper functions
+
+void copy_spi_tx_to_rx() {
+    if (spi_tx_buffer_count > 0) {
+        if (spi_rx_buffer_count + spi_tx_buffer_count <= SPI_RX_BUFFER_SIZE) {
+            memcpy(spi_rx_buffer + spi_rx_buffer_count, spi_tx_buffer, spi_tx_buffer_count);
+            spi_rx_buffer_count += spi_tx_buffer_count;
+            clear_spi_tx_buffer();  // Optionally clear the TX buffer after copying
+        } else {
+            // Handle the case where the RX buffer is not large enough
+            printf("Warning: SPI RX buffer overflow in copy_spi_tx_to_rx!\n");
+            // You might choose to copy only what fits, or return an error, etc.
+        }
+    }
+}
+
 
 #endif /* __x86_64__ */
