@@ -91,7 +91,7 @@ public:
     ImageBufferError push_image();
 
     ImageBufferError get_image(ImageMetadata &metadata);
-    ImageBufferError get_data_chunk(uint8_t *data, size_t size);
+    ImageBufferError get_data_chunk(uint8_t *data, size_t &size);
     ImageBufferError pop_image();
 
 
@@ -108,12 +108,13 @@ private:
     bool has_enough_space(size_t data_size) const { return (buffer_state_.available() >= data_size); };
     void wrap_around(size_t &address);
     ImageBufferError write(size_t address, const uint8_t *data, size_t size);
-    ImageBufferError read(size_t address, uint8_t *data, size_t size);
+    ImageBufferError read(size_t address, uint8_t *data, size_t &size);
 
 private:
     BufferState buffer_state_;
-    size_t current_offset_;
     Accessor &access_;
+    size_t current_offset_;
+    size_t current_size_;
     ChecksumCalculator checksum_calculator_;
 };
 
@@ -145,8 +146,9 @@ ImageBufferError ImageBuffer<Accessor>::write(size_t address, const uint8_t *dat
 }
 
 template <typename Accessor>
-ImageBufferError ImageBuffer<Accessor>::read(size_t address, uint8_t *data, size_t size)
+ImageBufferError ImageBuffer<Accessor>::read(size_t address, uint8_t *data, size_t &size)
 {
+    size = std::min(size, current_size_ - current_offset_);
     if (address + size <= buffer_state_.TOTAL_BUFFER_CAPACITY_)
     {
         ImageBufferError status = static_cast<ImageBufferError>(access_.read(address + buffer_state_.FLASH_START_ADDRESS_, data, size));
@@ -256,9 +258,16 @@ ImageBufferError ImageBuffer<Accessor>::get_image(ImageMetadata &metadata)
     }
 
     current_offset_ = buffer_state_.head_;
-    if (read(current_offset_, reinterpret_cast<uint8_t *>(&metadata), METADATA_SIZE) != ImageBufferError::NO_ERROR)
+    current_size_ = METADATA_SIZE;
+    size_t size = METADATA_SIZE;
+    if (read(current_offset_, reinterpret_cast<uint8_t *>(&metadata), size) != ImageBufferError::NO_ERROR)
     {
         // std::cerr << "Read get_image failure" << std::endl;
+        return ImageBufferError::READ_ERROR;
+    }
+    if (size != METADATA_SIZE)
+    {
+        // std::cerr << "Read get_image size error" << std::endl;
         return ImageBufferError::READ_ERROR;
     }
 
@@ -273,12 +282,13 @@ ImageBufferError ImageBuffer<Accessor>::get_image(ImageMetadata &metadata)
 
     checksum_calculator_.reset();
     current_offset_ += METADATA_SIZE;
+    current_size_ += metadata.image_size;
     wrap_around(current_offset_);
     return ImageBufferError::NO_ERROR;
 }
 
 template <typename Accessor>
-ImageBufferError ImageBuffer<Accessor>::get_data_chunk(uint8_t *data, size_t size)
+ImageBufferError ImageBuffer<Accessor>::get_data_chunk(uint8_t *data, size_t &size)
 {
     if (read(current_offset_, data, size) != ImageBufferError::NO_ERROR)
     {
@@ -295,9 +305,16 @@ template <typename Accessor>
 ImageBufferError ImageBuffer<Accessor>::pop_image()
 {
     crc_t checksum = 0;
-    if (read(current_offset_, reinterpret_cast<uint8_t *>(&checksum), sizeof(crc_t)) != ImageBufferError::NO_ERROR)
+    current_size_ += sizeof(crc_t);
+    size_t size = sizeof(crc_t);
+    if (read(current_offset_, reinterpret_cast<uint8_t *>(&checksum), size) != ImageBufferError::NO_ERROR)
     {
         // std::cerr << "Read pop_image failure" << std::endl;
+        return ImageBufferError::READ_ERROR;
+    }
+    if (size != sizeof(crc_t))
+    {
+        // std::cerr << "Read pop_image size error" << std::endl;
         return ImageBufferError::READ_ERROR;
     }
 
