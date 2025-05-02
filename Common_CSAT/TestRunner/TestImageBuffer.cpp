@@ -2,8 +2,9 @@
 #include "doctest.h"
 #include "ImageBuffer.hpp"
 
-#include "imagebuffer/DirectMemoryAccess.hpp"
-#include "imagebuffer/LinuxMockI2CFlashAccess.hpp"
+#include "imagebuffer/accessor.hpp"
+#include "imagebuffer/DirectMemoryAccessor.hpp"
+#include "imagebuffer/LinuxMockI2CFlashAccessor.hpp"
 #include "mock_hal.h"
 #include "Checksum.hpp"
 
@@ -22,27 +23,33 @@ struct MockAccessor
     std::vector<uint8_t> &getFlashMemory() { return data; }
     size_t getFlashMemorySize() const { return size; };
     size_t getFlashStartAddress() const { return start; };
+    size_t getAlignment() const { return 1; }
 
-    int32_t write(size_t address, const uint8_t *buffer, size_t num_bytes)
+    AccessorError write(size_t address, const uint8_t *buffer, size_t num_bytes)
     {
         if (address + num_bytes - start > size)
         {
             std::cerr << "MockAccessor::write: out of bounds write. address=" << address << ", num_bytes=" << num_bytes << ", size=" << size << std::endl;
-            return -1; // Simulate write error
+            return AccessorError::WRITE_ERROR; // Simulate write error
         }
         std::memcpy(data.data() + address - start, buffer, num_bytes);
-        return 0; // Simulate successful write
+        return AccessorError::NO_ERROR; // Simulate successful write
     }
 
-    int32_t read(size_t address, uint8_t *buffer, size_t num_bytes)
+    AccessorError read(size_t address, uint8_t *buffer, size_t num_bytes)
     {
         if (address + num_bytes - start > size)
         {
             std::cerr << "MockAccessor::read: out of bounds read. address=" << address << ", num_bytes=" << num_bytes << ", size=" << size << std::endl;
-            return -1; // Simulate read error
+            return AccessorError::READ_ERROR; // Simulate read error
         }
         std::memcpy(buffer, data.data() + address - start, num_bytes);
-        return 0; // Simulate successful read
+        return AccessorError::NO_ERROR; // Simulate successful read
+    }
+
+    AccessorError erase(uint32_t /*address*/) {
+        // Mock implementation - just return success
+        return AccessorError::NO_ERROR;
     }
 
     void reset()
@@ -50,6 +57,8 @@ struct MockAccessor
         std::fill(data.begin(), data.end(), 0);
     }
 };
+
+static_assert(Accessor<MockAccessor>, "MockAccessor does not satisfy the Accessor concept!");
 
 TEST_CASE("ImageBuffer Initialization")
 {
@@ -311,10 +320,10 @@ TEST_CASE("ImageBuffer chunk read")
 }
 
 
-TEST_CASE("ImageBuffer with DirectMemoryAccess")
+TEST_CASE("ImageBuffer with DirectMemoryAccessor")
 {
-    DirectMemoryAccess accessor(0x8000000, 4096); // Flash starts at 0x8000000, size 4096
-    ImageBuffer<DirectMemoryAccess> buffer(accessor);
+    DirectMemoryAccessor accessor(0x8000000, 4096); // Flash starts at 0x8000000, size 4096
+    ImageBuffer<DirectMemoryAccessor> buffer(accessor);
 
     ImageMetadata metadata;
     metadata.timestamp = 98765;
@@ -359,12 +368,12 @@ TEST_CASE("ImageBuffer with DirectMemoryAccess")
     }
 }
 
-TEST_CASE("ImageBuffer with LinuxMockI2CFlashAccess")
+TEST_CASE("ImageBuffer with LinuxMockI2CFlashAccessor")
 {
     // Initialize the mocked HAL
     I2C_HandleTypeDef hi2c;
-    LinuxMockI2CFlashAccess accessor(&hi2c, 0x08000000, 4096);
-    ImageBuffer<LinuxMockI2CFlashAccess> buffer(accessor);
+    LinuxMockI2CFlashAccessor accessor(&hi2c, 0x08000000, 4096);
+    ImageBuffer<LinuxMockI2CFlashAccessor> buffer(accessor);
 
     ImageMetadata metadata;
     metadata.timestamp = 98765;

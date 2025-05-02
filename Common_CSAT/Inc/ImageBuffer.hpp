@@ -83,8 +83,8 @@ template <typename Accessor>
 class ImageBuffer
 {
 public:
-    ImageBuffer(Accessor &access)
-        : buffer_state_(0, 0, 0, access.getFlashStartAddress(), access.getFlashMemorySize()), access_(access) {}
+    ImageBuffer(Accessor &accessor)
+        : buffer_state_(0, 0, 0, accessor.getFlashStartAddress(), accessor.getFlashMemorySize()), accessor_(accessor) {}
 
     ImageBufferError add_image(const ImageMetadata &metadata);
     ImageBufferError add_data_chunk(const uint8_t *data, size_t size);
@@ -107,12 +107,13 @@ public:
 private:
     bool has_enough_space(size_t data_size) const { return (buffer_state_.available() >= data_size); };
     void wrap_around(size_t &address);
+    size_t offset_to_alignment(size_t size) const { return (size % accessor_.getAlignment() == 0) ? 0 : accessor_.getAlignment() - (size % accessor_.getAlignment()); }
     ImageBufferError write(size_t address, const uint8_t *data, size_t size);
     ImageBufferError read(size_t address, uint8_t *data, size_t &size);
 
 private:
     BufferState buffer_state_;
-    Accessor &access_;
+    Accessor &accessor_;
     size_t current_offset_;
     size_t current_size_;
     ChecksumCalculator checksum_calculator_;
@@ -121,22 +122,28 @@ private:
 template <typename Accessor>
 ImageBufferError ImageBuffer<Accessor>::write(size_t address, const uint8_t *data, size_t size)
 {
+    if (address + size > buffer_state_.TOTAL_BUFFER_CAPACITY_)
+    {
+        // std::cerr << "Write Error: Out of bounds." << std::endl;
+        return ImageBufferError::OUT_OF_BOUNDS;
+    }
+    
     if (address + size <= buffer_state_.TOTAL_BUFFER_CAPACITY_)
     {
-        ImageBufferError status = static_cast<ImageBufferError>(access_.write(address + buffer_state_.FLASH_START_ADDRESS_, data, size));
+        ImageBufferError status = static_cast<ImageBufferError>(accessor_.write(address + buffer_state_.FLASH_START_ADDRESS_, data, size));
         // std::cerr << "Write failure" << std::endl;
         return status;
     }
 
     size_t first_part = buffer_state_.TOTAL_BUFFER_CAPACITY_ - address;
     size_t second_part = size - first_part;
-    ImageBufferError status = static_cast<ImageBufferError>(access_.write(address + buffer_state_.FLASH_START_ADDRESS_, data, first_part));
+    ImageBufferError status = static_cast<ImageBufferError>(accessor_.write(address + buffer_state_.FLASH_START_ADDRESS_, data, first_part));
     if (status != ImageBufferError::NO_ERROR)
     {
         // std::cerr << "Write failure" << std::endl;
         return status;
     }
-    status = static_cast<ImageBufferError>(access_.write(buffer_state_.FLASH_START_ADDRESS_, data + first_part, second_part));
+    status = static_cast<ImageBufferError>(accessor_.write(buffer_state_.FLASH_START_ADDRESS_, data + first_part, second_part));
     if (status != ImageBufferError::NO_ERROR)
     {
         // std::cerr << "Write failure" << std::endl;
@@ -151,20 +158,20 @@ ImageBufferError ImageBuffer<Accessor>::read(size_t address, uint8_t *data, size
     size = std::min(size, current_size_ - current_offset_);
     if (address + size <= buffer_state_.TOTAL_BUFFER_CAPACITY_)
     {
-        ImageBufferError status = static_cast<ImageBufferError>(access_.read(address + buffer_state_.FLASH_START_ADDRESS_, data, size));
+        ImageBufferError status = static_cast<ImageBufferError>(accessor_.read(address + buffer_state_.FLASH_START_ADDRESS_, data, size));
         // std::cerr << "Read failure" << std::endl;
         return status;
     }
 
     size_t first_part = buffer_state_.TOTAL_BUFFER_CAPACITY_ - address;
     size_t second_part = size - first_part;
-    ImageBufferError status = static_cast<ImageBufferError>(access_.read(address + buffer_state_.FLASH_START_ADDRESS_, data, first_part));
+    ImageBufferError status = static_cast<ImageBufferError>(accessor_.read(address + buffer_state_.FLASH_START_ADDRESS_, data, first_part));
     if (status != ImageBufferError::NO_ERROR)
     {
         // std::cerr << "Read failure" << std::endl;
         return status;
     }
-    status = static_cast<ImageBufferError>(access_.read(buffer_state_.FLASH_START_ADDRESS_, data + first_part, second_part));
+    status = static_cast<ImageBufferError>(accessor_.read(buffer_state_.FLASH_START_ADDRESS_, data + first_part, second_part));
     if (status != ImageBufferError::NO_ERROR)
     {
         // std::cerr << "Read failure" << std::endl;
@@ -241,8 +248,9 @@ ImageBufferError ImageBuffer<Accessor>::push_image()
     }
 
     current_offset_ += sizeof(crc_t);
-    buffer_state_.size_ += current_offset_;
-    buffer_state_.tail_ += current_offset_;
+    current_offset_ += offset_to_alignment(current_offset_);
+    buffer_state_.size_ += current_offset_ - buffer_state_.tail_;
+    buffer_state_.tail_ = current_offset_;
     wrap_around(buffer_state_.tail_);
     buffer_state_.count_++;
 
@@ -326,8 +334,9 @@ ImageBufferError ImageBuffer<Accessor>::pop_image()
     }
 
     current_offset_ += sizeof(crc_t);
-    buffer_state_.size_ -= current_offset_;
-    buffer_state_.head_ += current_offset_;
+    current_offset_ += offset_to_alignment(current_offset_);
+    buffer_state_.size_ -= current_offset_ - buffer_state_.head_;
+    buffer_state_.head_ = current_offset_;
     wrap_around(buffer_state_.head_);
     buffer_state_.count_--;
 

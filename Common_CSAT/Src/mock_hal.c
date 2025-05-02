@@ -21,7 +21,7 @@ int uart_rx_buffer_read_pos = 0;
 uint8_t i2c_mem_buffer[I2C_MEM_BUFFER_SIZE];
 uint16_t i2c_mem_buffer_dev_address;
 uint16_t i2c_mem_buffer_mem_address;
-uint16_t i2c_mem_buffer_size = 0;
+uint16_t i2c_mem_buffer_count = 0;
 
 uint8_t spi_tx_buffer[SPI_TX_BUFFER_SIZE];
 int spi_tx_buffer_count = 0;
@@ -206,7 +206,7 @@ uint32_t HAL_I2C_Master_Transmit(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, u
     // Store the parameters for later verification
     i2c_mem_buffer_dev_address = DevAddress;
     i2c_mem_buffer_mem_address = 0; // Not a memory transfer
-    i2c_mem_buffer_size = Size;
+    i2c_mem_buffer_count = Size;
 
     memcpy(i2c_mem_buffer, pData, Size);
     return 0;
@@ -217,14 +217,14 @@ uint32_t HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t
         return 1; //HAL_ERROR;
     }
 
-    if(i2c_mem_buffer_dev_address != DevAddress || i2c_mem_buffer_size == 0) {
+    if(i2c_mem_buffer_dev_address != DevAddress || i2c_mem_buffer_count == 0) {
             return 1; //HAL_ERROR, invalid address
     }
 
     // Store the parameters for later verification
     i2c_mem_buffer_dev_address = DevAddress;
     i2c_mem_buffer_mem_address = MemAddress;
-    i2c_mem_buffer_size = Size;
+    i2c_mem_buffer_count = Size;
 
     memcpy(pData, i2c_mem_buffer, Size);
     return 0;
@@ -239,7 +239,7 @@ uint32_t HAL_I2C_Mem_Write(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_
     // Store the parameters for later verification
     i2c_mem_buffer_dev_address = DevAddress;
     i2c_mem_buffer_mem_address = MemAddress;
-    i2c_mem_buffer_size = Size;
+    i2c_mem_buffer_count = Size;
 
     memcpy(i2c_mem_buffer, pData, Size);
     return 0;
@@ -467,13 +467,26 @@ void inject_i2c_mem_data(uint16_t DevAddress, uint16_t MemAddress,uint8_t *data,
     i2c_mem_buffer_dev_address = DevAddress;
     i2c_mem_buffer_mem_address = MemAddress;
     memcpy(i2c_mem_buffer, data, size);
-    i2c_mem_buffer_size = size;
+    i2c_mem_buffer_count = size;
 }
 
 // I2C Deleters
 void clear_i2c_mem_data(){
     memset(i2c_mem_buffer, 0, sizeof(i2c_mem_buffer)); //Set all elements to 0
-    i2c_mem_buffer_size = 0;
+    i2c_mem_buffer_count = 0;
+}
+
+// Getter functions for I2C internal variables
+uint16_t get_i2c_mem_buffer_dev_address() {
+    return i2c_mem_buffer_dev_address;
+}
+
+uint16_t get_i2c_mem_buffer_mem_address() {
+    return i2c_mem_buffer_mem_address;
+}
+
+uint16_t get_i2c_mem_buffer_count() {
+    return i2c_mem_buffer_count;
 }
 
 // SPI Injectors
@@ -621,6 +634,14 @@ int get_spi_rx_buffer_count() {
 
 uint8_t* get_spi_rx_buffer() {
     return spi_rx_buffer;
+}
+
+// I2C Getters
+int get_i2c_buffer_count() {
+    return i2c_mem_buffer_count;
+}
+uint8_t* get_i2c_buffer() {
+    return i2c_mem_buffer;
 }
 
 
