@@ -32,7 +32,7 @@ CyphalTransferID Logger::cyphal_transfer_id_ = 0;
 #endif
 
 constexpr size_t BUFFER_SIZE = 256;
-void Logger::log(unsigned int level, const char *format, va_list args) // Added va_list arg
+void Logger::log(uint8_t level, const char *format, va_list args) // Added va_list arg
 {
     if (level >= LOG_LEVEL)
     {
@@ -42,11 +42,11 @@ void Logger::log(unsigned int level, const char *format, va_list args) // Added 
         if (len > 0)
         {
 #ifdef LOGGER_OUTPUT_UART
-            uart_transmit_log_message(buffer, strlen(buffer));
+            uart_transmit_log_message(buffer, static_cast<uint16_t>(strlen(buffer)));
 #endif
 
 #ifdef LOGGER_OUTPUT_USB
-            usb_cdc_transmit_log_message(buffer, strlen(buffer));
+            usb_cdc_transmit_log_message(buffer, static_cast<uint16_t>(strlen(buffer)));
 #endif
 
 #ifdef LOGGER_OUTPUT_STDERR
@@ -61,7 +61,7 @@ void Logger::log(unsigned int level, const char *format, va_list args) // Added 
 }
 
 #ifdef LOGGER_OUTPUT_CYPHAL
-void Logger::can_transmit_log_message(const char *str, size_t size, unsigned int level)
+void Logger::can_transmit_log_message(const char *str, size_t size, uint8_t level)
 {
     uavcan_diagnostic_Record_1_1 record{};
     record.severity.value = level;
@@ -90,14 +90,14 @@ void Logger::can_transmit_log_message(const char *str, size_t size, unsigned int
 #endif /* LOGGER_OUTPUT_CYPHAL */
 
 #ifdef LOGGER_OUTPUT_UART
-void Logger::uart_transmit_log_message(const char *str, size_t size)
+void Logger::uart_transmit_log_message(const char *str, uint16_t size)
 {
     HAL_UART_Transmit(huart_, (uint8_t *)str, size, 1000);
 }
 #endif
 
 #ifdef LOGGER_OUTPUT_USB
-void Logger::usb_cdc_transmit_log_message(const char *str, size_t size)
+void Logger::usb_cdc_transmit_log_message(const char *str, uint16_t size)
 {
     CDC_Transmit_FS((uint8_t *)str, size);
 }
@@ -110,7 +110,7 @@ void Logger::stream_transmit_log_message(const char *str)
 }
 #endif
 
-void log(unsigned int level, const char *format, ...)
+void log(uint8_t level, const char *format, ...)
 {
     va_list args;
     va_start(args, format);

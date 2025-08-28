@@ -41,11 +41,11 @@ class Logger
 private:
 #ifdef LOGGER_OUTPUT_UART
     static UART_HandleTypeDef *huart_;
-    static void uart_transmit_log_message(const char *str, size_t size);
+    static void uart_transmit_log_message(const char *str, uint16_t size);
 #endif
 
 #ifdef LOGGER_OUTPUT_USB
-    static void usb_cdc_transmit_log_message(const char *str, size_t size);
+    static void usb_cdc_transmit_log_message(const char *str, uint16_t size);
 #endif
 
 #ifdef LOGGER_OUTPUT_CYPHAL
@@ -55,7 +55,7 @@ static Cyphal<SerardAdapter> *adapter_serard_;
 static Cyphal<UdpardAdapter> *adapter_udpard_;
 static CyphalTransferID cyphal_transfer_id_;
 
-    static void can_transmit_log_message(const char *str, size_t size, unsigned int level);
+static void can_transmit_log_message(const char *str, size_t size, uint8_t level);
 #endif
 
 #ifdef LOGGER_OUTPUT_STDERR
@@ -64,7 +64,7 @@ static CyphalTransferID cyphal_transfer_id_;
 #endif
 
 public:
-    static void log(unsigned int level, const char *format, va_list args);
+    static void log(uint8_t level, const char *format, va_list args);
 
 #ifdef LOGGER_OUTPUT_UART
     static void setUartHandle(UART_HandleTypeDef *huart) { huart_ = huart; };
@@ -83,10 +83,10 @@ static void setCyphalUdpardAdapter(Cyphal<UdpardAdapter> *adapter) { adapter_udp
 
 #ifdef LOGGER_ENABLED
 // inline log function for enabled case, using va_list
-void log(unsigned int level, const char *format, ...);
+void log(uint8_t level, const char *format, ...);
 #else
 // Dummy inline log function for disabled case.
-inline void log(unsigned int /*level*/, const char */*format*/, ...) {}
+inline void log(uint8_t /*level*/, const char */*format*/, ...) {}
 #endif /* LOGGER_ENABLED */
 
 #ifdef __cplusplus

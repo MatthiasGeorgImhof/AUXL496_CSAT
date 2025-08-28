@@ -5,7 +5,7 @@
 #include <type_traits>
 #include "mock_hal.h"
 
-enum class AccessorError : uint32_t
+enum class AccessorError : uint16_t
 {
     NO_ERROR = 0,
     WRITE_ERROR = 1,
@@ -22,16 +22,16 @@ AccessorError toAccessorError(HAL_StatusTypeDef status)
 // Structure to hold required member function signatures
 template <typename T>
 struct AccessorTraits {
-    using WriteFunc = AccessorError(T::*)(uint32_t, const uint8_t*, size_t);
-    using ReadFunc = AccessorError(T::*)(uint32_t, uint8_t*, size_t);
-    using EraseFunc = AccessorError(T::*)(uint32_t);
+    using WriteFunc = AccessorError(T::*)(size_t, const uint8_t*, size_t);
+    using ReadFunc = AccessorError(T::*)(size_t, uint8_t*, size_t);
+    using EraseFunc = AccessorError(T::*)(size_t);
     using GetAlignmentFunc = size_t (T::*)() const;
     using GetFlashMemorySizeFunc = size_t (T::*)() const;
     using GetFlashStartAddressFunc = size_t (T::*)() const;
 };
 
 template <typename T>
-concept Accessor = requires(T a, uint32_t address, const uint8_t* data, uint8_t* read_data, size_t size) {
+concept Accessor = requires(T a, size_t address, const uint8_t* data, uint8_t* read_data, size_t size) {
     // Check for required member functions with correct signatures
     requires std::is_same_v<decltype(a.write(address, data, size)), AccessorError>;
     requires std::is_same_v<decltype(a.read(address, read_data, size)), AccessorError>;

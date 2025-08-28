@@ -34,7 +34,7 @@ public:
             return false;
         }
 
-        uint8_t mask = ~(1 << (2 * slot));
+        uint8_t mask = static_cast<uint8_t>(~(1 << (2 * slot)));
         register_value_ &= mask;
         return writeRegister(GPIO, &register_value_, 1);
     }

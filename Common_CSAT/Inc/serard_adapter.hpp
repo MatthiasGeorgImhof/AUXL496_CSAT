@@ -66,8 +66,8 @@ inline void serardMetadataToCyphal(const SerardTransferMetadata *serard, CyphalT
     cyphal->priority = static_cast<CyphalPriority>(serard->priority);
     cyphal->transfer_kind = static_cast<CyphalTransferKind>(serard->transfer_kind);
     cyphal->port_id = serard->port_id;
-    cyphal->remote_node_id = serard->remote_node_id;
-    cyphal->transfer_id = serard->transfer_id;
+    cyphal->remote_node_id = serardNodeIdToCyphal(serard->remote_node_id);
+    cyphal->transfer_id = serardTransferIdToCyphal(serard->transfer_id);
 }
 
 inline void serardTransferToCyphal(const SerardRxTransfer *serard, CyphalTransfer *cyphal)
@@ -96,7 +96,7 @@ public:
         return serardTxPush(&adapter_->ins, &serard_metadata, payload_size, payload, adapter_->user_reference, adapter_->emitter);
     }
 
-    inline CanardNodeID getNodeID() const { return adapter_->ins.node_id; }
+    inline CanardNodeID getNodeID() const { return serardNodeIdToCyphal(adapter_->ins.node_id); }
     inline void setNodeID(const CanardNodeID node_id) { adapter_->ins.node_id = node_id; }
 
     int32_t cyphalTxForward(const CyphalMicrosecond tx_deadline_usec,
@@ -105,7 +105,7 @@ public:
                             const void *const payload,
                             const CyphalNodeID node_id)
     {
-        SerardNodeID node_id_ = getNodeID();
+        CanardNodeID node_id_ = getNodeID();
         setNodeID(node_id);
         int32_t res = cyphalTxPush(tx_deadline_usec, metadata, payload_size, payload);
         setNodeID(node_id_);
@@ -145,8 +145,8 @@ public:
         out_transfer->metadata.priority = static_cast<CyphalPriority>(serard_transfer.metadata.priority);
         out_transfer->metadata.transfer_kind = static_cast<CyphalTransferKind>(serard_transfer.metadata.transfer_kind);
         out_transfer->metadata.port_id = serard_transfer.metadata.port_id;
-        out_transfer->metadata.remote_node_id = serard_transfer.metadata.remote_node_id;
-        out_transfer->metadata.transfer_id = serard_transfer.metadata.transfer_id;
+        out_transfer->metadata.remote_node_id = serardNodeIdToCyphal(serard_transfer.metadata.remote_node_id);
+        out_transfer->metadata.transfer_id = serardTransferIdToCyphal(serard_transfer.metadata.transfer_id);
         out_transfer->payload = serard_transfer.payload;
         out_transfer->payload_size = serard_transfer.payload_size;
         out_transfer->timestamp_usec = serard_transfer.timestamp_usec;

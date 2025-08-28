@@ -15,9 +15,9 @@ public:
       : hspi_(hspi), nss_port_(nss_port), nss_pin_(nss_pin), FLASH_START_ADDRESS(flash_start), TOTAL_BUFFER_SIZE(total_size) {} // Constructor takes SPI handle
 
   // Override the base class methods to use your STM32 HAL and SPI
-  HAL_StatusTypeDef write(uint32_t address, const uint8_t *data, size_t size);
-  HAL_StatusTypeDef read(uint32_t address, uint8_t *data, size_t size);
-  HAL_StatusTypeDef erase(uint32_t address);
+  HAL_StatusTypeDef write(size_t address, const uint8_t *data, size_t size);
+  HAL_StatusTypeDef read(size_t address, uint8_t *data, size_t size);
+  HAL_StatusTypeDef erase(size_t address);
 
   size_t getAlignment() const { return 1; };
   size_t getFlashMemorySize() const { return TOTAL_BUFFER_SIZE; };
@@ -32,11 +32,11 @@ private:
 
   // Helper Functions (Implement these using your SPI flash chip's datasheet and commands)
   HAL_StatusTypeDef flash_sendCommand(uint8_t command);
-  HAL_StatusTypeDef flash_sendAddress(uint32_t address);
+  HAL_StatusTypeDef flash_sendAddress(size_t address);
   HAL_StatusTypeDef flash_writeEnable();
-  HAL_StatusTypeDef flash_pageWrite(uint32_t address, const uint8_t *data, size_t size);
-  HAL_StatusTypeDef flash_readData(uint32_t address, uint8_t *data, size_t size);
-  HAL_StatusTypeDef flash_sectorErase(uint32_t address);
+  HAL_StatusTypeDef flash_pageWrite(size_t address, const uint8_t *data, size_t size);
+  HAL_StatusTypeDef flash_readData(size_t address, uint8_t *data, size_t size);
+  HAL_StatusTypeDef flash_sectorErase(size_t address);
 
   void select();
   void deselect();
@@ -73,7 +73,7 @@ HAL_StatusTypeDef STM32SPIFlashAccessor::flash_sendCommand(uint8_t command)
 }
 
 // Function to send an address to the flash chip (24-bit address)
-HAL_StatusTypeDef STM32SPIFlashAccessor::flash_sendAddress(uint32_t address)
+HAL_StatusTypeDef STM32SPIFlashAccessor::flash_sendAddress(size_t address)
 {
   std::array<uint8_t, 3> addressBytes;      // Array to hold three address bytes
   addressBytes[0] = (address >> 16) & 0xFF; // Most significant byte
@@ -94,7 +94,7 @@ HAL_StatusTypeDef STM32SPIFlashAccessor::flash_writeEnable()
 }
 
 // Function to write a page to the flash memory
-HAL_StatusTypeDef STM32SPIFlashAccessor::flash_pageWrite(uint32_t address, const uint8_t *data, size_t size)
+HAL_StatusTypeDef STM32SPIFlashAccessor::flash_pageWrite(size_t address, const uint8_t *data, size_t size)
 {
   if (size > PAGE_SIZE)
   {
@@ -140,7 +140,7 @@ HAL_StatusTypeDef STM32SPIFlashAccessor::flash_pageWrite(uint32_t address, const
 }
 
 // Function to read data from the flash memory
-HAL_StatusTypeDef STM32SPIFlashAccessor::flash_readData(uint32_t address, uint8_t *data, size_t size)
+HAL_StatusTypeDef STM32SPIFlashAccessor::flash_readData(size_t address, uint8_t *data, size_t size)
 {
   HAL_StatusTypeDef status;
   std::vector<uint8_t> tx_buffer;
@@ -171,7 +171,7 @@ HAL_StatusTypeDef STM32SPIFlashAccessor::flash_readData(uint32_t address, uint8_
 }
 
 // Function to erase a sector
-HAL_StatusTypeDef STM32SPIFlashAccessor::flash_sectorErase(uint32_t address)
+HAL_StatusTypeDef STM32SPIFlashAccessor::flash_sectorErase(size_t address)
 {
   HAL_StatusTypeDef status;
   std::vector<uint8_t> tx_buffer;
@@ -205,18 +205,18 @@ HAL_StatusTypeDef STM32SPIFlashAccessor::flash_sectorErase(uint32_t address)
   return status;
 }
 
-HAL_StatusTypeDef STM32SPIFlashAccessor::write(uint32_t address, const uint8_t *data, size_t size)
+HAL_StatusTypeDef STM32SPIFlashAccessor::write(size_t address, const uint8_t *data, size_t size)
 {
   // This function needs to handle the page boundaries for the Flash Chip!
   HAL_StatusTypeDef status = HAL_OK;
-  uint32_t currentAddress = address;
+  size_t currentAddress = address;
   const uint8_t *currentData = data;
   size_t bytesRemaining = size;
 
   while (bytesRemaining > 0)
   {
     // Calculate the number of bytes that can be written on the current page.
-    uint32_t offset = currentAddress % PAGE_SIZE;
+    size_t offset = currentAddress % PAGE_SIZE;
     size_t bytesToWrite = std::min((size_t)(PAGE_SIZE - offset), bytesRemaining);
 
     // Write the page
@@ -237,13 +237,13 @@ HAL_StatusTypeDef STM32SPIFlashAccessor::write(uint32_t address, const uint8_t *
 }
 
 // flash_read implementation
-HAL_StatusTypeDef STM32SPIFlashAccessor::read(uint32_t address, uint8_t *data, size_t size)
+HAL_StatusTypeDef STM32SPIFlashAccessor::read(size_t address, uint8_t *data, size_t size)
 {
   HAL_StatusTypeDef status = flash_readData(address, data, size);
   return status;
 }
 
-HAL_StatusTypeDef STM32SPIFlashAccessor::erase(uint32_t address)
+HAL_StatusTypeDef STM32SPIFlashAccessor::erase(size_t address)
 {
   HAL_StatusTypeDef status = flash_sectorErase(address);
   return status;

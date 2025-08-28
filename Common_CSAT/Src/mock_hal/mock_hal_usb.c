@@ -5,7 +5,7 @@
 
 //--- USB Buffers ---
 uint8_t usb_tx_buffer[USB_TX_BUFFER_SIZE];   // USB transmit buffer
-int usb_tx_buffer_count = 0;                  // Number of bytes in USB TX buffer
+size_t usb_tx_buffer_count = 0;                  // Number of bytes in USB TX buffer
 
 uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len) {
   if (usb_tx_buffer_count + Len <= USB_TX_BUFFER_SIZE) {
@@ -23,7 +23,7 @@ void clear_usb_tx_buffer(){
 }
 
 // USB Getters
-int get_usb_tx_buffer_count() {
+size_t get_usb_tx_buffer_count() {
     return usb_tx_buffer_count;
 }
 

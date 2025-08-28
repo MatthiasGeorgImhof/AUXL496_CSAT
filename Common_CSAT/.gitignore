@@ -11,3 +11,4 @@ TestRunner/bin
 *.o
 *.d
 *.txt
+*.code-workspace

@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <cstddef>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -48,13 +49,13 @@ HAL_StatusTypeDef HAL_SPI_Init(SPI_HandleTypeDef *hspi); // Add SPI init functio
 //--- SPI Helper Function Prototypes ---
 void clear_spi_tx_buffer();
 void clear_spi_rx_buffer();
-void inject_spi_rx_data(uint8_t *data, int size);
+void inject_spi_rx_data(uint8_t *data, size_t size);
 void copy_spi_tx_to_rx();
 
 //--- Getter Function Prototypes ---
-int get_spi_tx_buffer_count();
+size_t get_spi_tx_buffer_count();
 uint8_t* get_spi_tx_buffer();
-int get_spi_rx_buffer_count();
+size_t get_spi_rx_buffer_count();
 uint8_t* get_spi_rx_buffer();
 void init_spi_handle(SPI_HandleTypeDef *hspi);
 

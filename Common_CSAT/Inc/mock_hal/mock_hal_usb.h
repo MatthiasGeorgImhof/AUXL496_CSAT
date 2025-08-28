@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <cstddef>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -16,7 +17,7 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 //--- USB Helper Function Prototypes ---
 void clear_usb_tx_buffer();
-int get_usb_tx_buffer_count();
+size_t get_usb_tx_buffer_count();
 uint8_t* get_usb_tx_buffer();
 
 #ifdef __cplusplus

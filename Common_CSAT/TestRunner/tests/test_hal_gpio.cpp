@@ -80,3 +80,23 @@ TEST_CASE("get_gpio_pin_state and set_gpio_pin_state")
     set_gpio_pin_state(&GPIOx, GPIO_Pin, GPIO_PIN_RESET);
     CHECK(get_gpio_pin_state(&GPIOx, GPIO_Pin) == GPIO_PIN_RESET);
 }
+
+TEST_CASE("get_gpio_pin_state and set_gpio_pin_reset")
+{
+    GPIO_TypeDef GPIOx;
+    uint16_t GPIO_Pin = 1 << 2; // Pin 2
+
+    // Initially Reset
+    CHECK(get_gpio_pin_state(&GPIOx, GPIO_Pin) == GPIO_PIN_RESET);
+
+    // Set it to high using set_gpio_pin_state
+    set_gpio_pin_state(&GPIOx, GPIO_Pin, GPIO_PIN_SET);
+    CHECK(get_gpio_pin_state(&GPIOx, GPIO_Pin) == GPIO_PIN_SET);
+
+    // Set it to low using set_gpio_pin_state
+    reset_gpio_port_state(&GPIOx);
+    for(uint16_t i=0; i < MAX_GPIO_PINS; i++) {
+        CHECK(get_gpio_pin_state(&GPIOx, i) == GPIO_PIN_RESET);
+    }
+}
+

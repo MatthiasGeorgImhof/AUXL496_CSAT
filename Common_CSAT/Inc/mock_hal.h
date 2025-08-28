@@ -9,10 +9,12 @@ extern "C" {
 
 #include "mock_hal/mock_hal_core.h"
 #include "mock_hal/mock_hal_can.h"
+#include "mock_hal/mock_hal_clock.h"
 #include "mock_hal/mock_hal_dcmi.h"
 #include "mock_hal/mock_hal_gpio.h"
 #include "mock_hal/mock_hal_i2c.h"
 #include "mock_hal/mock_hal_mem.h"
+#include "mock_hal/mock_hal_rtc.h"
 #include "mock_hal/mock_hal_spi.h"
 #include "mock_hal/mock_hal_time.h"
 #include "mock_hal/mock_hal_uart.h"

@@ -82,8 +82,8 @@ TEST_CASE("ImageBuffer Add and Get Image")
     ImageMetadata metadata;
     metadata.timestamp = 12345;
     metadata.image_size = 256;
-    metadata.latitude = 37.7749;
-    metadata.longitude = -122.4194;
+    metadata.latitude = 37.7749f;
+    metadata.longitude = -122.4194f;
     metadata.camera_index = 1;
 
     std::vector<uint8_t> image_data(metadata.image_size);
@@ -148,8 +148,8 @@ TEST_CASE("ImageBuffer Add and Get Image")
         ImageMetadata large_metadata;
         large_metadata.timestamp = 12345;
         large_metadata.image_size = 256;
-        large_metadata.latitude = 37.7749;
-        large_metadata.longitude = -122.4194;
+        large_metadata.latitude = 37.7749f;
+        large_metadata.longitude = -122.4194f;
         large_metadata.camera_index = 1;
 
         REQUIRE(buffer.add_image(large_metadata) == ImageBufferError::FULL_BUFFER);
@@ -196,8 +196,8 @@ TEST_CASE("ImageBuffer Wrap-Around")
     ImageMetadata metadata;
     metadata.timestamp = 12345;
     metadata.image_size = 256;
-    metadata.latitude = 37.7749;
-    metadata.longitude = -122.4194;
+    metadata.latitude = 37.7749f;
+    metadata.longitude = -122.4194f;
     metadata.camera_index = 1;
 
     std::vector<uint8_t> image_data(metadata.image_size);
@@ -218,8 +218,8 @@ TEST_CASE("ImageBuffer Wrap-Around")
     ImageMetadata metadata2;
     metadata2.timestamp = 67890;
     metadata2.image_size = 128;
-    metadata2.latitude = 34.0522;
-    metadata2.longitude = -118.2437;
+    metadata2.latitude = 34.0522f;
+    metadata2.longitude = -118.2437f;
     metadata2.camera_index = 2;
 
     std::vector<uint8_t> image_data2(metadata2.image_size);
@@ -281,8 +281,8 @@ TEST_CASE("ImageBuffer chunk read")
     ImageMetadata metadata;
     metadata.timestamp = 12345;
     metadata.image_size = 255;
-    metadata.latitude = 37.7749;
-    metadata.longitude = -122.4194;
+    metadata.latitude = 37.7749f;
+    metadata.longitude = -122.4194f;
     metadata.camera_index = 1;
 
     std::vector<uint8_t> image_data(metadata.image_size);
@@ -328,8 +328,8 @@ TEST_CASE("ImageBuffer with DirectMemoryAccessor")
     ImageMetadata metadata;
     metadata.timestamp = 98765;
     metadata.image_size = 1024;
-    metadata.latitude = 33.0;
-    metadata.longitude = -97.0;
+    metadata.latitude = 33.0f;
+    metadata.longitude = -97.0f;
     metadata.camera_index = 3;
 
     std::vector<uint8_t> image_data(metadata.image_size);
@@ -378,8 +378,8 @@ TEST_CASE("ImageBuffer with LinuxMockI2CFlashAccessor")
     ImageMetadata metadata;
     metadata.timestamp = 98765;
     metadata.image_size = 1024;
-    metadata.latitude = 33.0;
-    metadata.longitude = -97.0;
+    metadata.latitude = 33.0f;
+    metadata.longitude = -97.0f;
     metadata.camera_index = 3;
 
     std::vector<uint8_t> image_data(metadata.image_size);

@@ -94,8 +94,8 @@ void move_can_tx_to_rx();
 //--- Getter Function Prototypes ---
 int get_can_tx_buffer_count();
 CAN_TxMessage_t get_can_tx_message(int pos);
-void set_current_free_mailboxes(int free_mailboxes);
-void set_current_rx_fifo_fill_level(int rx_fifo_level);
+void set_current_free_mailboxes(uint32_t free_mailboxes);
+void set_current_rx_fifo_fill_level(uint32_t rx_fifo_level);
 
 #ifdef __cplusplus
 }

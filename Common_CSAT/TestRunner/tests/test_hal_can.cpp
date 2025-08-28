@@ -89,9 +89,9 @@ TEST_CASE("HAL_CAN_GetRxMessage Extended ID")
 
 TEST_CASE("HAL_CAN_GetTxMailboxesFreeLevel")
 {
-    set_current_free_mailboxes(1);
+    set_current_free_mailboxes(1U);
     CHECK(HAL_CAN_GetTxMailboxesFreeLevel(NULL) == 1);
-    set_current_free_mailboxes(3);
+    set_current_free_mailboxes(3U);
     CHECK(HAL_CAN_GetTxMailboxesFreeLevel(NULL) == 3);
 }
 

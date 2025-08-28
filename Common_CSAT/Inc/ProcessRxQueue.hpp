@@ -57,7 +57,7 @@ public:
                       {
             CyphalNodeID remote_node_id = transfer.metadata.remote_node_id;
             transfer.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;       
-            int8_t res = adapter.cyphalTxForward(static_cast<CyphalMicrosecond>(0), &transfer.metadata, transfer.payload_size, transfer.payload, remote_node_id);
+            int32_t res = adapter.cyphalTxForward(static_cast<CyphalMicrosecond>(0), &transfer.metadata, transfer.payload_size, transfer.payload, remote_node_id);
             all_successful = all_successful && (res > 0); }(), ...); }, adapters);
         return all_successful; // Return success status
     }
@@ -137,7 +137,7 @@ public:
 
             CAN_TxHeaderTypeDef header;
             header.ExtId = ti->frame.extended_can_id;
-            header.DLC = ti->frame.payload_size;
+            header.DLC = static_cast<uint8_t>(ti->frame.payload_size);
             header.RTR = CAN_RTR_DATA;
             header.IDE = CAN_ID_EXT;
             uint32_t mailbox;

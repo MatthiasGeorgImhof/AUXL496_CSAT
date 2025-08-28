@@ -20,9 +20,9 @@ public:
         flash_memory.resize(TOTAL_BUFFER_SIZE, 0xFF); // Initialize with 0xFF (erased state)
     }
 
-    AccessorError write(uint32_t address, const uint8_t *data, size_t size);
-    AccessorError read(uint32_t address, uint8_t *data, size_t size);
-    AccessorError erase(uint32_t address); // Erase a sector
+    AccessorError write(size_t address, const uint8_t *data, size_t size);
+    AccessorError read(size_t address, uint8_t *data, size_t size);
+    AccessorError erase(size_t address); // Erase a sector
     AccessorError full_erase();            // Erase entire flash memory
 
     size_t getAlignment() const { return 1; };
@@ -32,7 +32,7 @@ public:
     std::vector<uint8_t> &getFlashMemory() { return flash_memory; }
 
 private:
-    AccessorError checkBounds(uint32_t address, size_t size);
+    AccessorError checkBounds(size_t address, size_t size);
 
 private:
     SPI_HandleTypeDef *hspi_;
@@ -41,7 +41,7 @@ private:
     std::vector<uint8_t> flash_memory;
 };
 
-AccessorError LinuxMockSPIFlashAccessor::write(uint32_t address, const uint8_t *data, size_t size)
+AccessorError LinuxMockSPIFlashAccessor::write(size_t address, const uint8_t *data, size_t size)
 {
     // Check bounds
     if (checkBounds(address, size) != AccessorError::NO_ERROR)
@@ -65,7 +65,7 @@ AccessorError LinuxMockSPIFlashAccessor::write(uint32_t address, const uint8_t *
     return AccessorError::NO_ERROR; // Return success
 }
 
-AccessorError LinuxMockSPIFlashAccessor::read(uint32_t address, uint8_t *data, size_t size)
+AccessorError LinuxMockSPIFlashAccessor::read(size_t address, uint8_t *data, size_t size)
 {
     // Check bounds
     if (checkBounds(address, size) != AccessorError::NO_ERROR)
@@ -89,7 +89,7 @@ AccessorError LinuxMockSPIFlashAccessor::read(uint32_t address, uint8_t *data, s
     return AccessorError::NO_ERROR; // Return success
 }
 
-AccessorError LinuxMockSPIFlashAccessor::erase(uint32_t address)
+AccessorError LinuxMockSPIFlashAccessor::erase(size_t address)
 {
     if (checkBounds(address, 1) != AccessorError::NO_ERROR)
     {
@@ -112,7 +112,7 @@ AccessorError LinuxMockSPIFlashAccessor::full_erase()
     return AccessorError::NO_ERROR;
 }
 
-AccessorError LinuxMockSPIFlashAccessor::checkBounds(uint32_t address, size_t size)
+AccessorError LinuxMockSPIFlashAccessor::checkBounds(size_t address, size_t size)
 {
     if (address < FLASH_START_ADDRESS || address + size > FLASH_START_ADDRESS + TOTAL_BUFFER_SIZE)
     {

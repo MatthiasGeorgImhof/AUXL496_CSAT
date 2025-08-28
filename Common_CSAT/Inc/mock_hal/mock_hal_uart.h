@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <cstddef>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -41,12 +42,12 @@ HAL_StatusTypeDef HAL_UART_Receive(UART_HandleTypeDef *huart, uint8_t *pData, ui
 HAL_StatusTypeDef HAL_UART_Receive_DMA(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size);
 
 //--- UART Helper Function Prototypes ---
-void inject_uart_rx_data(uint8_t *data, int size);
+void inject_uart_rx_data(uint8_t *data, size_t size);
 void clear_uart_rx_buffer();
 void clear_uart_tx_buffer();
 
 //--- Getter Function Prototypes ---
-int get_uart_tx_buffer_count();
+size_t get_uart_tx_buffer_count();
 uint8_t* get_uart_tx_buffer();
 void init_uart_handle(UART_HandleTypeDef *huart);
 

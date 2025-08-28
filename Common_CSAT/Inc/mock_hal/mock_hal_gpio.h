@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // Include core definitions
 #include "mock_hal/mock_hal_core.h"
@@ -31,6 +32,8 @@ extern "C" {
 #define GPIO_PIN_All ((uint16_t)0xFFFF)  // All pins selected
 #define GPIO_PIN_MASK ((uint32_t)0x0000FFFF) // PIN mask for assert test
 
+static const size_t MAX_GPIO_PINS = 16;
+
 //--- GPIO Structures ---
 typedef struct {
     uint32_t Pin;         // Specifies the GPIO pins to be configured
@@ -54,6 +57,7 @@ void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 //--- GPIO Access Function Prototypes ---
 GPIO_PinState get_gpio_pin_state(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 void set_gpio_pin_state(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
+void reset_gpio_port_state(GPIO_TypeDef *GPIOx);
 
 #ifdef __cplusplus
 }

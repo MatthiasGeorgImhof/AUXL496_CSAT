@@ -41,7 +41,7 @@ TEST_CASE("Cyphal Logger Loopard")
 
     CHECK(record.severity.value == uavcan_diagnostic_Severity_1_0_INFO);
     CHECK(strncmp(reinterpret_cast<const char *>(record.text.elements), "This is a test info message: 42", record.text.count) == 0);
-    std::cout.write(reinterpret_cast<const char *>(record.text.elements), record.text.count) << std::endl;
+    std::cout.write(reinterpret_cast<const char *>(record.text.elements), static_cast<std::streamsize>(record.text.count)) << std::endl;
   }
 
   SUBCASE("Log message at ERROR level")
@@ -60,7 +60,7 @@ TEST_CASE("Cyphal Logger Loopard")
 
     CHECK(record.severity.value == uavcan_diagnostic_Severity_1_0_ERROR);
     CHECK(strncmp(reinterpret_cast<const char *>(record.text.elements), "This is an error message: 666", record.text.count) == 0);
-    std::cout.write(reinterpret_cast<const char *>(record.text.elements), record.text.count) << std::endl;
+    std::cout.write(reinterpret_cast<const char *>(record.text.elements), static_cast<std::streamsize>(record.text.count)) << std::endl;
   }
 }
 #endif

@@ -198,7 +198,7 @@ public:
 		}
 
 		iterator& operator+=(difference_type n) {
-			index += n;
+			index += static_cast<size_t>(n);
 			return *this;
 		}
 
@@ -209,7 +209,7 @@ public:
 		}
 
 		iterator& operator-=(difference_type n) {
-			index -= n;
+			index -= static_cast<size_t>(n);
 			return *this;
 		}
 
@@ -221,11 +221,11 @@ public:
 		}
 
 		difference_type operator-(const iterator& other) const {
-			return index - other.index;
+			return static_cast<difference_type>(index) - static_cast<difference_type>(other.index);
 		}
 
 		reference operator[](difference_type n) const {
-			return list->data_[index + n];
+			return list->data_[index + static_cast<size_t>(n)];
 		}
 
 		bool operator==(const iterator& other) const { return index == other.index && list == other.list; }
@@ -281,7 +281,7 @@ public:
 		}
 
 		const_iterator& operator+=(difference_type n) {
-			index += n;
+			index += static_cast<size_t>(n);
 			return *this;
 		}
 		const_iterator operator+(difference_type n) const {
@@ -290,7 +290,7 @@ public:
 			return temp;
 		}
 		const_iterator& operator-=(difference_type n) {
-			index -= n;
+			index -= static_cast<size_t>(n);
 			return *this;
 		}
 
@@ -302,11 +302,11 @@ public:
 		}
 
 		difference_type operator-(const const_iterator& other) const {
-			return index - other.index;
+			return static_cast<difference_type>(index) - static_cast<difference_type>(other.index);
 		}
 
 		reference operator[](difference_type n) const {
-			return list->data_[index+n];
+			return list->data_[index + static_cast<size_t>(n)];
 		}
 
 		bool operator==(const const_iterator& other) const { return index == other.index && list == other.list; }

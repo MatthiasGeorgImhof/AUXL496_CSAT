@@ -50,17 +50,30 @@ typedef struct CyphalTransfer
     CyphalTransferMetadata metadata;
     CyphalMicrosecond timestamp_usec;
     size_t payload_size;
-    void*  payload;
+    void *payload;
 } CyphalTransfer;
 
 typedef struct CyphalSubscription
 {
-	CyphalPortID port_id;
-	size_t extent;
-	CyphalTransferKind transfer_kind;
+    CyphalPortID port_id;
+    size_t extent;
+    CyphalTransferKind transfer_kind;
 } CyphalSubscription;
 
 typedef CyphalSubscription CyphalPublication;
+
+CyphalTransfer createTransfer(size_t payload_size, uint8_t *payload, void *data,
+                              int8_t (*serialize)(const void *const, uint8_t *const, size_t *const),
+                              CyphalTransferMetadata metadata);
+
+CyphalTransfer createTransfer(size_t payload_size, uint8_t *payload, void *data,
+                              int8_t (*serialize)(const void *const, uint8_t *const, size_t *const),
+                              CyphalPortID port_id,
+                              CyphalTransferKind transfer_kind = CyphalTransferKindMessage,
+                              CyphalNodeID node_id = CYPHAL_NODE_ID_UNSET,
+                              CyphalTransferID transfer_id = 0);
+
+void unpackTransfer(const CyphalTransfer *transfer, int8_t (*deserialize)(uint8_t *data, const uint8_t *payload, size_t *payload_size), uint8_t *data);
 
 template <typename Adapter>
 class Cyphal;

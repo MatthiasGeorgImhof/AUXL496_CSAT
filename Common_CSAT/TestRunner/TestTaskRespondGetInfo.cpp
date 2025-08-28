@@ -105,7 +105,7 @@ TEST_CASE("TaskRespondGetInfo: Handles GetInfo request and publishes response")
     CHECK(std::memcmp(received_response1.unique_id, unique_id, 16) == 0);
     CHECK(std::strncmp(reinterpret_cast<const char*>(received_response1.name.elements), name, received_response1.name.count) == 0);
 
-    delete[] static_cast<uint8_t *>(response1.payload); // Clean up the payload
+    loopardMemoryFree(response1.payload); // Clean up the payload
 
     // Check the contents of the published response (adapter 2)
     CyphalTransfer response2 = loopard2.buffer.pop();
@@ -123,7 +123,7 @@ TEST_CASE("TaskRespondGetInfo: Handles GetInfo request and publishes response")
     CHECK(std::memcmp(received_response2.unique_id, unique_id, 16) == 0);
     CHECK(std::strncmp(reinterpret_cast<const char*>(received_response2.name.elements), name, received_response2.name.count) == 0);  //Use strncmp
 
-    delete[] static_cast<uint8_t *>(response2.payload); // Clean up the payload
+    loopardMemoryFree(response2.payload); // Clean up the payload
 }
 
 TEST_CASE("TaskRespondGetInfo: registers and unregisters correctly")

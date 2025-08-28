@@ -19,9 +19,9 @@ public:
         flash_memory.resize(TOTAL_BUFFER_SIZE, 0xff);
     }
 
-    AccessorError write(uint32_t address, const uint8_t *data, size_t size);
-    AccessorError read(uint32_t address, uint8_t *data, size_t size);
-    AccessorError erase(uint32_t address);
+    AccessorError write(size_t address, const uint8_t *data, size_t size);
+    AccessorError read(size_t address, uint8_t *data, size_t size);
+    AccessorError erase(size_t address);
 
     size_t getAlignment() const { return 1; };
     size_t getFlashMemorySize() const { return TOTAL_BUFFER_SIZE; };
@@ -30,7 +30,7 @@ public:
     std::vector<uint8_t> &getFlashMemory() { return flash_memory; }
 
 private:
-    AccessorError checkBounds(uint32_t address, size_t size);
+    AccessorError checkBounds(size_t address, size_t size);
 
 private:
     I2C_HandleTypeDef *hi2c_;
@@ -39,7 +39,7 @@ private:
     std::vector<uint8_t> flash_memory;
 };
 
-AccessorError LinuxMockI2CFlashAccessor::write(uint32_t address, const uint8_t *data, size_t size)
+AccessorError LinuxMockI2CFlashAccessor::write(size_t address, const uint8_t *data, size_t size)
 {
     // Check bounds
     if (checkBounds(address, size) != AccessorError::NO_ERROR)
@@ -47,7 +47,7 @@ AccessorError LinuxMockI2CFlashAccessor::write(uint32_t address, const uint8_t *
         return AccessorError::OUT_OF_BOUNDS; // Return error if out of bounds
     }
 
-    size_t offset = address - FLASH_START_ADDRESS;
+    uint16_t offset = static_cast<uint16_t>(address - FLASH_START_ADDRESS);
     // Now, call the mocked HAL_I2C_Mem_Write function to simulate the I2C write
     HAL_StatusTypeDef status = HAL_I2C_Mem_Write(hi2c_, 0xA0, offset, 2, (uint8_t *)data, static_cast<uint16_t>(size), 100);
     if (status != HAL_OK)
@@ -62,7 +62,7 @@ AccessorError LinuxMockI2CFlashAccessor::write(uint32_t address, const uint8_t *
     return AccessorError::NO_ERROR; // Return success
 }
 
-AccessorError LinuxMockI2CFlashAccessor::read(uint32_t address, uint8_t *data, size_t size)
+AccessorError LinuxMockI2CFlashAccessor::read(size_t address, uint8_t *data, size_t size)
 {
     // Check bounds
     if (checkBounds(address, size) != AccessorError::NO_ERROR)
@@ -70,7 +70,7 @@ AccessorError LinuxMockI2CFlashAccessor::read(uint32_t address, uint8_t *data, s
         return AccessorError::OUT_OF_BOUNDS; // Return error if out of bounds
     }
 
-    size_t offset = address - FLASH_START_ADDRESS;
+    uint16_t offset = static_cast<uint16_t>(address - FLASH_START_ADDRESS);
     // Now, call the mocked HAL_I2C_Mem_Read function to simulate the I2C read
     HAL_StatusTypeDef status = HAL_I2C_Mem_Read(hi2c_, 0xA0, offset, 2, (uint8_t *)data, static_cast<uint16_t>(size), 100);
     if (status != HAL_OK)
@@ -85,7 +85,7 @@ AccessorError LinuxMockI2CFlashAccessor::read(uint32_t address, uint8_t *data, s
     return AccessorError::NO_ERROR; // Return success
 }
 
-AccessorError LinuxMockI2CFlashAccessor::erase(uint32_t /*address*/)
+AccessorError LinuxMockI2CFlashAccessor::erase(size_t /*address*/)
 {
     // Implement the flash erase sequence using the HAL mocks
     // For now, just return success.  In a real implementation, you would need
@@ -95,7 +95,7 @@ AccessorError LinuxMockI2CFlashAccessor::erase(uint32_t /*address*/)
     return AccessorError::NO_ERROR;                              // Success
 }
 
-AccessorError LinuxMockI2CFlashAccessor::checkBounds(uint32_t address, size_t size)
+AccessorError LinuxMockI2CFlashAccessor::checkBounds(size_t address, size_t size)
 {
     if (address < FLASH_START_ADDRESS || address + size > FLASH_START_ADDRESS + TOTAL_BUFFER_SIZE)
     {

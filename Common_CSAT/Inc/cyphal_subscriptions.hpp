@@ -35,13 +35,28 @@ CyphalSubscription{_4111spyglass_sat_sensor_GNSS_0_1_PORT_ID_, _4111spyglass_sat
 
 constexpr static std::array CYPHAL_REQUESTS =
 {
-CyphalSubscription{uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, uavcan_node_GetInfo_Request_1_0_EXTENT_BYTES_, CyphalTransferKindRequest}
+CyphalSubscription{uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, uavcan_node_GetInfo_Request_1_0_EXTENT_BYTES_, CyphalTransferKindRequest},
+CyphalSubscription{uavcan_file_Write_1_1_FIXED_PORT_ID_, uavcan_file_Write_Request_1_1_EXTENT_BYTES_, CyphalTransferKindRequest},
+CyphalSubscription{uavcan_file_Read_1_1_FIXED_PORT_ID_, uavcan_file_Read_Request_1_1_EXTENT_BYTES_, CyphalTransferKindRequest}
 };
 
 constexpr static std::array CYPHAL_RESPONSES =
 {
-CyphalSubscription{uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, uavcan_node_GetInfo_Response_1_0_EXTENT_BYTES_, CyphalTransferKindResponse}
+CyphalSubscription{uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, uavcan_node_GetInfo_Response_1_0_EXTENT_BYTES_, CyphalTransferKindResponse},
+CyphalSubscription{uavcan_file_Write_1_1_FIXED_PORT_ID_, uavcan_file_Write_Response_1_1_EXTENT_BYTES_, CyphalTransferKindResponse},
+CyphalSubscription{uavcan_file_Read_1_1_FIXED_PORT_ID_, uavcan_file_Read_Request_1_1_EXTENT_BYTES_, CyphalTransferKindRequest}
 };
+
+// Template function for compile-time lookup of boolean values
+template <size_t Size, CyphalPortID port_id>
+consteval bool containsPortIdCompileTime(const std::array<CyphalSubscription, Size>& arr) {
+    for (auto const &item : arr) {
+        if (item.port_id == port_id) {
+            return true;
+        }
+    }
+    return false;
+}
 
 // Template function for compile-time lookup
 template <size_t Size, CyphalPortID port_id>
@@ -69,6 +84,11 @@ CyphalSubscription const *findByPortIdRuntime(const std::array<CyphalSubscriptio
 // Convenience functions for specific arrays.  These remove the need to explicitly state the array size.
 
 // Compile-time lookup for CYPHAL_MESSAGES
+template <CyphalPortID port_id>
+consteval bool containsMessageByPortIdCompileTime() {
+    return containsPortIdCompileTime<CYPHAL_MESSAGES.size(), port_id>(CYPHAL_MESSAGES);
+}
+
 template <CyphalPortID port_id>
 consteval CyphalSubscription const *findMessageByPortIdCompileTime() {
     return findByPortIdCompileTime<CYPHAL_MESSAGES.size(), port_id>(CYPHAL_MESSAGES);
@@ -100,7 +120,5 @@ consteval CyphalSubscription const *findResponseByPortIdCompileTime() {
 CyphalSubscription const *findResponseByPortIdRuntime(CyphalPortID port_id) {
     return findByPortIdRuntime<CYPHAL_RESPONSES.size()>(CYPHAL_RESPONSES, port_id);
 }
-
-
 
 #endif // CYPHAL_SUBSCRIPTIONS_HPP_

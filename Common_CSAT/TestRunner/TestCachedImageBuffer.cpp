@@ -27,8 +27,8 @@ TEST_CASE("ImageBuffer with BufferedAccessor")
     ImageMetadata metadata;
     metadata.timestamp = 12345;
     metadata.image_size = 256;
-    metadata.latitude = 37.7749;
-    metadata.longitude = -122.4194;
+    metadata.latitude = 37.7749f;
+    metadata.longitude = -122.4194f;
     metadata.camera_index = 1;
 
     std::vector<uint8_t> image_data(metadata.image_size);
@@ -159,9 +159,9 @@ TEST_CASE("ImageBuffer with BufferedAccessor: Multiple Images")
         ImageMetadata metadata;
         metadata.timestamp = 12345 + i;
         metadata.image_size = image_size;
-        metadata.latitude = 37.7749 + i * 0.1;
-        metadata.longitude = -122.4194 + i * 0.1;
-        metadata.camera_index = i;
+        metadata.latitude = 37.7749f + static_cast<float>(i) * 0.1f;
+        metadata.longitude = -122.4194f + static_cast<float>(i) * 0.1f;
+        metadata.camera_index = static_cast<uint8_t>(i);
 
         std::vector<uint8_t> image_data(metadata.image_size);
         for (size_t j = 0; j < metadata.image_size; ++j)
@@ -197,8 +197,8 @@ TEST_CASE("ImageBuffer with BufferedAccessor: Multiple Images")
         REQUIRE(metadata.magic == IMAGE_MAGIC);
         REQUIRE(metadata.timestamp == 12345 + i);
         REQUIRE(metadata.image_size == image_size);
-        REQUIRE(metadata.latitude == doctest::Approx(37.7749 + i * 0.1));
-        REQUIRE(metadata.longitude == doctest::Approx(-122.4194 + i * 0.1));
+        REQUIRE(metadata.latitude == doctest::Approx(37.7749f + static_cast<float>(i) * 0.1f));
+        REQUIRE(metadata.longitude == doctest::Approx(-122.4194f + static_cast<float>(i) * 0.1f));
         REQUIRE(metadata.camera_index == i);
 
         std::vector<uint8_t> data(image_size);

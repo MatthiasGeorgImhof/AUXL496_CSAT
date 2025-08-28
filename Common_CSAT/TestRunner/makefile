@@ -1,6 +1,7 @@
 CXX = g++
-EXTRA_CXXFLAGS = -Wall -Wextra -pedantic -Werror
-CXXFLAGS = -g -MMD -std=c++20 $(EXTRA_CXXFLAGS)
+CXXFLAGS = -g -MMD -std=c++20
+EXTRA_FLAGS = -Wall -Wextra -pedantic -Werror -Wconversion -fconcepts-diagnostics-depth=2
+EXTRA_EXTRA_FLAGS = -Wzero-as-null-pointer-constant -Wsign-conversion
 
 INCLUDE_PATHS = -I ../Inc \
 				-I $(HOME)/Data/github/can/libcanard/libcanard \
@@ -11,46 +12,79 @@ INCLUDE_PATHS = -I ../Inc \
 				-I /usr/include/eigen3 \
 				-I /usr/include/doctest \
 				-I tests \
-				-I ../Src  # Include path for mock_hal headers + all source headers
+				-I ../Src \
+				-I ../3rdParty/SGP4
 
 LIBS_PATH =			-L $(HOME)/Data/github/can/lib_x86_64
 LIBS =				-lcanardd -lserardd -ludpardd -lo1heapd
 
 # Source and object files
 TEST_FILES = TestArrayList.cpp \
+			 TestBlobStore.cpp \
 			 TestBoxSet.cpp \
 			 TestBoxSetIterator.cpp \
 			 TestCachedImageBuffer.cpp \
 			 TestCameraSwitch.cpp \
 			 TestCircularBuffer.cpp \
+			 TestCoordinateTransformations.cpp \
 			 TestCyphal.cpp \
 			 TestCyphalSubscriptions.cpp \
+			 TestFileAccess.cpp \
+			 TestFileSource.cpp \
+			 TestGNSS.cpp \
 			 TestHalUtil.cpp \
+			 TestHSClockSwitch.cpp \
+			 TestIGRFModel.cpp \
 			 TestImageBuffer.cpp \
 			 TestImageBufferAccessor.cpp \
+			 TestIMU.cpp \
+			 TestInputOutputStream.cpp \
+			 TestKalmanFunctionGPS.cpp \
+			 TestKalmanOrientationMagnetic.cpp \
+			 TestKalmanPositionGPS.cpp \
 			 TestLogger.cpp \
 			 TestLoggerCyphal.cpp \
 			 TestMainLoop.cpp \
 			 TestMockHal.cpp \
 			 TestO1HeapAllocator.cpp \
+			 TestOrientationTracker.cpp \
+			 TestPositionTracker9D.cpp \
 			 TestPowerMonitor.cpp \
 			 TestPowerSwitch.cpp \
 			 TestProcessRxQueue.cpp \
+			 TestQuaternion.cpp \
 			 TestRegistrationManager.cpp \
 			 TestServiceManager.cpp \
+			 TestSGP4.cpp \
+			 TestSGP4PositionTracker.cpp \
+			 TestSGP4TLE.cpp \
 			 TestSubscriptionManager.cpp \
 			 TestTask.cpp \
 			 TestTaskBlinkLED.cpp \
 			 TestTaskCheckMemory.cpp \
+			 TestTaskOrientationService.cpp \
+			 TestTaskPositionService.cpp \
+			 TestTaskProcessTimeSynchronization.cpp \
+			 TestTaskRegisterServer.cpp \
 			 TestTaskRegistrationSubscription.cpp \
 			 TestTaskRequestGetInfo.cpp \
+			 TestTaskRequestRead.cpp \
+			 TestTaskRequestWrite.cpp \
 			 TestTaskRespondGetInfo.cpp \
+			 TestTaskRespondWrite.cpp \
 			 TestTaskSendHeartBeat.cpp \
 			 TestTaskSendNodePortList.cpp \
-			 TestTaskSubscribeNodePortList.cpp
+			 TestTaskSendTimeSynchronization.cpp \
+			 TestTaskSetRTC.cpp \
+			 TestTaskSGP4.cpp \
+			 TestTaskSubscribeNodePortList.cpp \
+			 TestTimeUtils.cpp \
+			 TestWMMLegendre.cpp \
+			 TestWMMModel.cpp
 
 # HAL Test Files
 HAL_TEST_FILES =   tests/test_hal_can.cpp \
+				   tests/test_hal_clock.cpp \
 				   tests/test_hal_gpio.cpp \
 				   tests/test_hal_spi.cpp \
 				   tests/test_hal_usb.cpp \
@@ -59,21 +93,33 @@ HAL_TEST_FILES =   tests/test_hal_can.cpp \
 				   tests/test_hal_uart.cpp \
 				   tests/test_hal_misc.cpp 
 
-SRC_FILES = ../Src/Logger.cpp \
+SRC_FILES = ../Src/coordiate_transformations.cpp \
+			../Src/cyphal.cpp \
+			../Src/GNSS.cpp \
+			../Src/HSClockSwitch.cpp \
+			../Src/ImageBuffer.cpp \
+			../Src/irgf_model.cpp \
+			../Src/Logger.cpp \
 			../Src/RegistrationManager.cpp \
+			../Src/Quaternion.cpp \
 			../Src/ServiceManager.cpp \
+			../Src/sgp4_tle.cpp \
 			../Src/TaskBlinkLED.cpp \
 			../Src/TaskCheckMemory.cpp \
-			../Src/ImageBuffer.cpp
+			../Src/TaskSetRTC.cpp \
+			../Src/TimeUtils.cpp \
+			../3rdParty/SGP4/SGP4.cpp
 
 # Mock HAL source files
 MOCK_HAL_SRC_FILES =   ../Src/mock_hal.c \
 					   ../Src/mock_hal/mock_hal_can.c \
+					   ../Src/mock_hal/mock_hal_clock.c \
 					   ../Src/mock_hal/mock_hal_core.c \
 					   ../Src/mock_hal/mock_hal_dcmi.c \
 					   ../Src/mock_hal/mock_hal_gpio.c \
 					   ../Src/mock_hal/mock_hal_i2c.c \
 					   ../Src/mock_hal/mock_hal_mem.c \
+					   ../Src/mock_hal/mock_hal_rtc.c \
 					   ../Src/mock_hal/mock_hal_spi.c \
 					   ../Src/mock_hal/mock_hal_time.c \
 					   ../Src/mock_hal/mock_hal_uart.c \
@@ -116,274 +162,538 @@ create_bin_dir:
 # The corrected rule is below
 $(BIN_DIR)/mock_hal.o : ../Src/mock_hal.c
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/mock_hal/%.o : ../Src/mock_hal/%.c
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $(BIN_DIR)/mock_hal/$(notdir $@)
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $(BIN_DIR)/mock_hal/$(notdir $@)
 
 # Compile the HAL test sources
 $(BIN_DIR)/%.o: tests/%.cpp
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 # Rule for TestMockHal with extra sources
 $(BIN_DIR)/TestMockHal.o : TestMockHal.cpp
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestMockHal : $(BIN_DIR)/TestMockHal.o $(TEST_HAL_OBJECTS) $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestMockHal.o $(TEST_HAL_OBJECTS) $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestMockHal.o $(TEST_HAL_OBJECTS) $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestCyphal with extra sources
 $(BIN_DIR)/TestCyphal.o : TestCyphal.cpp
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestCyphal : $(BIN_DIR)/TestCyphal.o $(MOCK_HAL_OBJECTS) # Link the object file
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestCyphal.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestCyphal.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestCameraSwitch with extra sources
 $(BIN_DIR)/TestCameraSwitch.o : TestCameraSwitch.cpp
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestCameraSwitch : $(BIN_DIR)/TestCameraSwitch.o $(MOCK_HAL_OBJECTS) # Link the object file
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestCameraSwitch.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestCameraSwitch.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestHSClockSwitch with extra sources
+$(BIN_DIR)/TestHSClockSwitch.o : TestHSClockSwitch.cpp
+	@echo "Compiling $<"
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/HSClockSwitch.o : ../Src/HSClockSwitch.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestHSClockSwitch : $(BIN_DIR)/TestHSClockSwitch.o $(BIN_DIR)/HSClockSwitch.o $(MOCK_HAL_OBJECTS) # Link the object file
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestHSClockSwitch.o $(BIN_DIR)/HSClockSwitch.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestImageBufferAccessor.cpp with extra sources
 $(BIN_DIR)/TestImageBufferAccessor.o : TestImageBufferAccessor.cpp
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestImageBufferAccessor : $(BIN_DIR)/TestImageBufferAccessor.o $(MOCK_HAL_OBJECTS) # Link the object file
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestImageBufferAccessor.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestImageBufferAccessor.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTask with extra sources
 $(BIN_DIR)/TestTask.o : TestTask.cpp
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTask : $(BIN_DIR)/TestTask.o $(MOCK_HAL_OBJECTS) # Link the object file
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTask.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTask.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestLogger with extra sources
 $(BIN_DIR)/TestLogger.o : TestLogger.cpp
 	@echo "Compiling $<"
-	$(CXX) $(LOGGER_EXTRA_DEFINES) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) $(LOGGER_EXTRA_DEFINES) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestLogger : $(BIN_DIR)/TestLogger.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestLogger.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestLogger.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 $(BIN_DIR)/Logger.o : ../Src/Logger.cpp
 	@echo "Compiling $<"
-	$(CXX) $(LOGGER_EXTRA_DEFINES) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) $(LOGGER_EXTRA_DEFINES) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 # Rule for TestLoggerCyphal with extra sources
 $(BIN_DIR)/TestLoggerCyphal.o : TestLoggerCyphal.cpp
 	@echo "Compiling $<"
-	$(CXX) $(LOGGER_CYPHAL_EXTRA_DEFINES) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) $(LOGGER_CYPHAL_EXTRA_DEFINES) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestLoggerCyphal : $(BIN_DIR)/TestLoggerCyphal.o $(BIN_DIR)/LoggerCyphal.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestLoggerCyphal.o $(BIN_DIR)/LoggerCyphal.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestLoggerCyphal.o $(BIN_DIR)/LoggerCyphal.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 $(BIN_DIR)/LoggerCyphal.o : ../Src/Logger.cpp
 	@echo "Compiling $<"
-	$(CXX) $(LOGGER_CYPHAL_EXTRA_DEFINES) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) $(LOGGER_CYPHAL_EXTRA_DEFINES) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 # Rule for TestServiceManager with extra sources
 $(BIN_DIR)/TestServiceManager.o : TestServiceManager.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestServiceManager : $(BIN_DIR)/TestServiceManager.o $(BIN_DIR)/ServiceManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestServiceManager.o $(BIN_DIR)/ServiceManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestServiceManager.o $(BIN_DIR)/ServiceManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 $(BIN_DIR)/ServiceManager.o : ../Src/ServiceManager.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 # Rule for TestTaskRegistrationSubscription with extra sources
 $(BIN_DIR)/TestTaskRegistrationSubscription.o : TestTaskRegistrationSubscription.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTaskRegistrationSubscription : $(BIN_DIR)/TestTaskRegistrationSubscription.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/ServiceManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRegistrationSubscription.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/ServiceManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRegistrationSubscription.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/ServiceManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTaskRegisterServer with extra sources
+$(BIN_DIR)/TestTaskRegisterServer.o : TestTaskRegisterServer.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/cyphal.o : ../Src/cyphal.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskRegisterServer : $(BIN_DIR)/TestTaskRegisterServer.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/cyphal.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRegisterServer.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/cyphal.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTaskSendHeartBeat with extra sources
 $(BIN_DIR)/TestTaskSendHeartBeat.o : TestTaskSendHeartBeat.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTaskSendHeartBeat : $(BIN_DIR)/TestTaskSendHeartBeat.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSendHeartBeat.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSendHeartBeat.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTaskSendNodePortList with extra sources
 $(BIN_DIR)/TestTaskSendNodePortList.o : TestTaskSendNodePortList.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTaskSendNodePortList : $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSendNodePortList.o $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTaskSubscribeNodePortList with extra sources
 $(BIN_DIR)/TestTaskSubscribeNodePortList.o : TestTaskSubscribeNodePortList.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTaskSubscribeNodePortList : $(BIN_DIR)/TestTaskSubscribeNodePortList.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSubscribeNodePortList.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSubscribeNodePortList.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTaskRespondGetInfo with extra sources
 $(BIN_DIR)/TestTaskRespondGetInfo.o : TestTaskRespondGetInfo.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTaskRespondGetInfo : $(BIN_DIR)/TestTaskRespondGetInfo.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRespondGetInfo.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRespondGetInfo.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTaskRequestGetInfo with extra sources
 $(BIN_DIR)/TestTaskRequestGetInfo.o : TestTaskRequestGetInfo.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTaskRequestGetInfo : $(BIN_DIR)/TestTaskRequestGetInfo.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRequestGetInfo.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRequestGetInfo.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTaskRequestWrite with extra sources
+$(BIN_DIR)/TestTaskRequestWrite.o : TestTaskRequestWrite.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskRequestWrite : $(BIN_DIR)/TestTaskRequestWrite.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRequestWrite.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTaskRespondWrite with extra sources
+$(BIN_DIR)/TestTaskRespondWrite.o : TestTaskRespondWrite.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskRespondWrite : $(BIN_DIR)/TestTaskRespondWrite.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRespondWrite.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTaskRequestRead with extra sources
+$(BIN_DIR)/TestTaskRequestRead.o : TestTaskRequestRead.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskRequestRead : $(BIN_DIR)/TestTaskRequestRead.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskRequestRead.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTaskSendTimeSynchronization with extra sources
+$(BIN_DIR)/TestTaskSendTimeSynchronization.o : TestTaskSendTimeSynchronization.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskSendTimeSynchronization : $(BIN_DIR)/TestTaskSendTimeSynchronization.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TimeUtils.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSendTimeSynchronization.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TimeUtils.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTaskProcessTimeSynchronization with extra sources
+$(BIN_DIR)/TestTaskProcessTimeSynchronization.o : TestTaskProcessTimeSynchronization.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskProcessTimeSynchronization : $(BIN_DIR)/TestTaskProcessTimeSynchronization.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TimeUtils.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskProcessTimeSynchronization.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TimeUtils.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTaskBlinkLED with extra sources
 $(BIN_DIR)/TestTaskBlinkLED.o : TestTaskBlinkLED.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TaskBlinkLED.o : ../Src/TaskBlinkLED.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTaskBlinkLED : $(BIN_DIR)/TestTaskBlinkLED.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskBlinkLED.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskBlinkLED.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTaskCheckMemory with extra sources
 $(BIN_DIR)/TestTaskCheckMemory.o : TestTaskCheckMemory.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TaskCheckMemory.o : ../Src/TaskCheckMemory.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestTaskCheckMemory : $(BIN_DIR)/TestTaskCheckMemory.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TaskCheckMemory.o
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskCheckMemory.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TaskCheckMemory.o $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskCheckMemory.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TaskCheckMemory.o $(LIBS)
+
+# Rule for TestTaskSetRTC with extra sources
+$(BIN_DIR)/TestTaskSetRTC.o : TestTaskSetRTC.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TaskSetRTC.o : ../Src/TaskSetRTC.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskSetRTC : $(BIN_DIR)/TestTaskSetRTC.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TaskSetRTC.o $(BIN_DIR)/GNSS.o $(BIN_DIR)/TimeUtils.o
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSetRTC.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/TaskSetRTC.o $(BIN_DIR)/GNSS.o $(BIN_DIR)/TimeUtils.o $(LIBS) 
+	@echo "Linking $@"
+
+# Rule for TestTaskSGP4 with extra sources
+$(BIN_DIR)/TestTaskSGP4.o : TestTaskSGP4.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/SGP4.o : ../3rdParty/SGP4/SGP4.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskSGP4 : $(BIN_DIR)/TestTaskSGP4.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/sgp4_tle.o $(BIN_DIR)/coordinate_transformations.o
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSGP4.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/sgp4_tle.o $(BIN_DIR)/coordinate_transformations.o $(LIBS) 
+	@echo "Linking $@"
+
+# Rule for TestSGP4 with extra sources
+$(BIN_DIR)/TestSGP4.o : TestSGP4.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestSGP4 : $(BIN_DIR)/TestSGP4.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/sgp4_tle.o
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestSGP4.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/sgp4_tle.o $(LIBS) 
+	@echo "Linking $@"
 
 # Rule for TestMainLoop with extra sources
 $(BIN_DIR)/TestMainLoop.o : TestMainLoop.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestMainLoop : $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestMainLoop.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/TaskCheckMemory.o $(BIN_DIR)/TaskBlinkLED.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/RegistrationManager.o $(LIBS)
 
 # Rule for TestProcessRxQueue with extra sources
 $(BIN_DIR)/TestProcessRxQueue.o : TestProcessRxQueue.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestProcessRxQueue : $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/ServiceManager.o
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestProcessRxQueue.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/ServiceManager.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestRegistrationManager with extra sources
 $(BIN_DIR)/TestRegistrationManager.o : TestRegistrationManager.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/RegistrationManager.o : ../Src/RegistrationManager.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestRegistrationManager : $(BIN_DIR)/TestRegistrationManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestRegistrationManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestRegistrationManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestSubscriptionManager with extra sources
 $(BIN_DIR)/TestSubscriptionManager.o : TestSubscriptionManager.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestSubscriptionManager : $(BIN_DIR)/TestSubscriptionManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestSubscriptionManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestSubscriptionManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestImageBuffer with extra sources
 $(BIN_DIR)/TestImageBuffer.o : TestImageBuffer.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestImageBuffer : $(BIN_DIR)/TestImageBuffer.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestImageBuffer.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestImageBuffer.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestCachedImageBuffer with extra sources
 $(BIN_DIR)/TestCachedImageBuffer.o : TestCachedImageBuffer.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestCachedImageBuffer : $(BIN_DIR)/TestCachedImageBuffer.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestCachedImageBuffer.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestCachedImageBuffer.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestPowerSwitch with extra sources
 $(BIN_DIR)/TestPowerSwitch.o : TestPowerSwitch.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestPowerSwitch : $(BIN_DIR)/TestPowerSwitch.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestPowerSwitch.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestPowerSwitch.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestPowerMonitor with extra sources
 $(BIN_DIR)/TestPowerMonitor.o : TestPowerMonitor.cpp
 	@echo "Compiling $<"
-	$(CXX)	-c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestPowerMonitor : $(BIN_DIR)/TestPowerMonitor.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestPowerMonitor.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestPowerMonitor.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestHalUtil with extra sources
 $(BIN_DIR)/TestHalUtil.o : TestHalUtil.cpp
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/TestHalUtil : $(BIN_DIR)/TestHalUtil.o $(MOCK_HAL_OBJECTS) # Link the object file
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestHalUtil.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestHalUtil.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestCoordinateTransformations with extra sources
+$(BIN_DIR)/TestCoordinateTransformations.o : TestCoordinateTransformations.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/coordinate_transformations.o : ../Src/coordinate_transformations.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestCoordinateTransformations : $(BIN_DIR)/TestCoordinateTransformations.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/TimeUtils.o
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestCoordinateTransformations.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/TimeUtils.o $(LIBS)
+
+# Rule for TestGNSS with extra sources
+$(BIN_DIR)/TestGNSS.o : TestGNSS.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/GNSS.o : ../Src/GNSS.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestGNSS : $(BIN_DIR)/TestGNSS.o $(BIN_DIR)/GNSS.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestGNSS.o $(BIN_DIR)/GNSS.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestSGO4TLE with extra sources
+$(BIN_DIR)/TestSGP4TLE.o : TestSGP4TLE.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/sgp4_tle.o : ../Src/sgp4_tle.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestSGP4TLE : $(BIN_DIR)/TestSGP4TLE.o $(BIN_DIR)/sgp4_tle.o 
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestSGP4TLE.o $(BIN_DIR)/sgp4_tle.o $(LIBS)
+
+# Rule for TestInputOutputStream with extra sources
+$(BIN_DIR)/TestInputOutputStream.o : TestInputOutputStream.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestInputOutputStream : $(BIN_DIR)/TestInputOutputStream.o $ $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestInputOutputStream.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTimeUtils with extra sources
+$(BIN_DIR)/TestTimeUtils.o : TestTimeUtils.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TimeUtils.o : ../Src/TimeUtils.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTimeUtils : $(BIN_DIR)/TestTimeUtils.o $(BIN_DIR)/TimeUtils.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTimeUtils.o $(BIN_DIR)/TimeUtils.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestKalmanPositionGPS with EXTRA_FLAGS only
+$(BIN_DIR)/TestKalmanPositionGPS.o : TestKalmanPositionGPS.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestKalmanPositionGPS : $(BIN_DIR)/TestKalmanPositionGPS.o 
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestKalmanPositionGPS.o $(LIBS)
+
+# Rule for TestKalmanFunctionGPS with EXTRA_FLAGS only
+$(BIN_DIR)/TestKalmanFunctionGPS.o : TestKalmanFunctionGPS.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestKalmanFunctionGPS : $(BIN_DIR)/TestKalmanFunctionGPS.o 
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestKalmanFunctionGPS.o $(LIBS)
+
+# Rule for TestKalmanOrientationMagnetic with EXTRA_FLAGS only
+$(BIN_DIR)/TestKalmanOrientationMagnetic.o : TestKalmanOrientationMagnetic.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestKalmanOrientationMagnetic : $(BIN_DIR)/TestKalmanOrientationMagnetic.o 
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestKalmanOrientationMagnetic.o $(LIBS)
+
+# Rule for TestOrientationTracker with with EXTRA_FLAGS only
+$(BIN_DIR)/TestOrientationTracker.o : TestOrientationTracker.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestOrientationTracker : $(BIN_DIR)/TestOrientationTracker.o $(BIN_DIR)/Quaternion.o
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestOrientationTracker.o $(BIN_DIR)/Quaternion.o $(LIBS)
+
+# Rule for TestQuaternion with with EXTRA_FLAGS only
+$(BIN_DIR)/TestQuaternion.o : TestQuaternion.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/Quaternion.o : ../Src/Quaternion.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestQuaternion : $(BIN_DIR)/TestQuaternion.o $(BIN_DIR)/Quaternion.o
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestQuaternion.o $(BIN_DIR)/Quaternion.o $(LIBS)
+
+# Rule for TestSGP4PositionTracker with with EXTRA_FLAGS only
+$(BIN_DIR)/TestSGP4PositionTracker.o : TestSGP4PositionTracker.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestSGP4PositionTracker : $(BIN_DIR)/TestSGP4PositionTracker.o 
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestSGP4PositionTracker.o $(LIBS)
+
+# Rule for TestPositionTracker9D with with EXTRA_FLAGS only
+$(BIN_DIR)/TestPositionTracker9D.o : TestPositionTracker9D.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestPositionTracker9D : $(BIN_DIR)/TestPositionTracker9D.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/GNSS.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestPositionTracker9D.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/GNSS.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTaskPositionService with with EXTRA_FLAGS only
+$(BIN_DIR)/TestTaskPositionService.o : TestTaskPositionService.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskPositionService : $(BIN_DIR)/TestTaskPositionService.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/GNSS.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/sgp4_tle.o $(BIN_DIR)/coordinate_transformations.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskPositionService.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/GNSS.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/sgp4_tle.o $(BIN_DIR)/coordinate_transformations.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTaskOrientationService with with EXTRA_FLAGS only
+$(BIN_DIR)/TestTaskOrientationService.o : TestTaskOrientationService.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskOrientationService : $(BIN_DIR)/TestTaskOrientationService.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/GNSS.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/Quaternion.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/sgp4_tle.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskOrientationService.o $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/GNSS.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/Quaternion.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/sgp4_tle.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestIMU with with EXTRA_FLAGS only
+$(BIN_DIR)/TestIMU.o : TestIMU.cpp
+	@echo "Compiling $<"
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestIMU : $(BIN_DIR)/TestIMU.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/TimeUtils.o # Link the object file
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestIMU.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/TimeUtils.o $(LIBS)
 
 # Generic rule for all other tests
 $(BIN_DIR)/%.o : %.cpp
 	@echo "Compiling $<"
-	$(CXX) -c $< $(CXXFLAGS) $(INCLUDE_PATHS) -o $@
+	$(CXX) -c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
 $(BIN_DIR)/% : $(BIN_DIR)/%.o
 	@echo "Linking $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) $(LIBS_PATH) -o $@ $< $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $< $(LIBS)
 
 # Run all tests target
 run_all: all

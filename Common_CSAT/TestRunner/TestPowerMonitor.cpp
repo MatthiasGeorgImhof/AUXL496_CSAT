@@ -14,8 +14,8 @@ TEST_SUITE("PowerMonitor")
         uint16_t expected_calibration = 5120000 / (10 * 25); // calibration_value_
 
         // Split the expected calibration value into two bytes (MSB first)
-        expected_calibration_bytes[0] = (expected_calibration >> 8) & 0xFF;
-        expected_calibration_bytes[1] = (expected_calibration & 0xFF);
+        expected_calibration_bytes[0] = static_cast<uint8_t>((expected_calibration >> 8) & 0xFF);
+        expected_calibration_bytes[1] = static_cast<uint8_t>(expected_calibration & 0xFF);
 
         uint8_t init_i2c_data[8]; // Data to inject into I2C memory
         init_i2c_data[0] = 0;     // Raw Shunt Voltage
@@ -53,14 +53,14 @@ TEST_SUITE("PowerMonitor")
         uint16_t raw_value = 100;
 
         uint8_t data[8]; // Data to inject into I2C memory
-        data[0] = (raw_value >> 8) & 0xFF;
-        data[1] = raw_value & 0xFF;
-        data[2] = (raw_value >> 8) & 0xFF;
-        data[3] = raw_value & 0xFF;
-        data[4] = (raw_value >> 8) & 0xFF;
-        data[5] = raw_value & 0xFF;
-        data[6] = (raw_value >> 8) & 0xFF;
-        data[7] = raw_value & 0xFF;
+        data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+        data[1] = static_cast<uint8_t>(raw_value & 0xFF);
+        data[2] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+        data[3] = static_cast<uint8_t>(raw_value & 0xFF);
+        data[4] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+        data[5] = static_cast<uint8_t>(raw_value & 0xFF);
+        data[6] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+        data[7] = static_cast<uint8_t>(raw_value & 0xFF);
 
         inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE), data, 8);
 
@@ -85,8 +85,8 @@ TEST_SUITE("PowerMonitor")
         {
             uint16_t raw_value = 100;
             uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = (raw_value >> 8) & 0xFF;
-            data[1] = raw_value & 0xFF;
+            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
 
             inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE), data, 8);
 
@@ -98,8 +98,8 @@ TEST_SUITE("PowerMonitor")
         {
             uint16_t raw_value = 200;
             uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = (raw_value >> 8) & 0xFF;
-            data[1] = raw_value & 0xFF;
+            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
 
             inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_BUS_VOLTAGE), data, 8);
 
@@ -111,8 +111,8 @@ TEST_SUITE("PowerMonitor")
         {
             uint16_t raw_value = 75;
             uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = (raw_value >> 8) & 0xFF;
-            data[1] = raw_value & 0xFF;
+            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
 
             inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_POWER), data, 8);
 
@@ -124,8 +124,8 @@ TEST_SUITE("PowerMonitor")
         {
             uint16_t raw_value = 400;
             uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = (raw_value >> 8) & 0xFF;
-            data[1] = raw_value & 0xFF;
+            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
 
             inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_CURRENT), data, 8);
 
@@ -137,8 +137,8 @@ TEST_SUITE("PowerMonitor")
         {
             uint16_t raw_value = 0x1234;
             uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = (raw_value >> 8) & 0xFF;
-            data[1] = raw_value & 0xFF;
+            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
 
             inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_MANUFACTURER), data, 8);
             uint16_t returned_value;
@@ -149,8 +149,8 @@ TEST_SUITE("PowerMonitor")
         {
             uint16_t raw_value = 0x5678;
             uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = (raw_value >> 8) & 0xFF;
-            data[1] = raw_value & 0xFF;
+            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
+            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
 
             inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_DIE_ID), data, 8);
             uint16_t returned_value;
@@ -168,8 +168,8 @@ TEST_SUITE("PowerMonitor")
 
         // Split the config value into two bytes (MSB first)
         uint8_t config_bytes[2];
-        config_bytes[0] = (config_value >> 8) & 0xFF;
-        config_bytes[1] = config_value & 0xFF;
+        config_bytes[0] = static_cast<uint8_t>((config_value >> 8) & 0xFF);
+        config_bytes[1] = static_cast<uint8_t>(config_value & 0xFF);
 
         PowerMonitor monitor(&hi2c, address);
         monitor.setConfig(config_value);

@@ -53,7 +53,7 @@ TEST_CASE("TaskCheckMemory")
     O1HeapDiagnostics diagnostic_before = o1heapGetDiagnostics(heap);
 
     // Simulate time passing and handle the task
-    for (int i = 0; i < 101; ++i)
+    for (uint32_t i = 0; i < 101; ++i)
     {
         HAL_SetTick(i);
         task.handleTask();

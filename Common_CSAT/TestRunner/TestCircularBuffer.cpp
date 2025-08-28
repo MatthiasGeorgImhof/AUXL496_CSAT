@@ -229,3 +229,45 @@ TEST_CASE("CircularBuffer - next() test") {
     CHECK(cbf.pop() == 40);
     CHECK(cbf.is_empty());
 }
+
+
+TEST_CASE("CircularBuffer - Clear Functionality") {
+    SUBCASE("Clear on an empty buffer") {
+        CircularBuffer<int, 5> cbf;
+        cbf.clear();
+        CHECK(cbf.size() == 0);
+        CHECK(cbf.is_empty());
+    }
+
+    SUBCASE("Clear on a partially filled buffer") {
+        CircularBuffer<int, 5> cbf;
+        cbf.push(10);
+        cbf.push(20);
+        cbf.clear();
+        CHECK(cbf.size() == 0);
+        CHECK(cbf.is_empty());
+    }
+
+    SUBCASE("Clear on a full buffer") {
+        CircularBuffer<int, 3> cbf;
+        cbf.push(10);
+        cbf.push(20);
+        cbf.push(30);
+        CHECK(cbf.is_full());
+        cbf.clear();
+        CHECK(cbf.size() == 0);
+        CHECK(cbf.is_empty());
+    }
+
+     SUBCASE("Clear and then reuse") {
+        CircularBuffer<int, 3> cbf;
+        cbf.push(10);
+        cbf.push(20);
+        cbf.push(30);
+        cbf.clear();
+        cbf.push(40);
+        CHECK(cbf.size() == 1);
+        CHECK(cbf.pop() == 40);
+        CHECK(cbf.is_empty());
+    }
+}

@@ -9,76 +9,12 @@
 #include <functional>
 #include <iostream>
 #include <numeric>
+#include "imagebuffer/image.hpp"
+#include "imagebuffer/imagebuffer.hpp"
 #include "Checksum.hpp"
-#include "imagebuffer/access.hpp"
 
-enum class CachedImageBufferError : uint32_t
-{
-    NO_ERROR = 0,
-    WRITE_ERROR = 1,
-    READ_ERROR = 2,
-    OUT_OF_BOUNDS = 3,
-    CHECKSUM_ERROR = 4,
-    EMPTY_BUFFER = 5,
-    FULL_BUFFER = 6,
-};
-
-typedef uint32_t crc_t;
-typedef uint32_t image_magic_t;
-constexpr static image_magic_t IMAGE_MAGIC = ('I' << 24) | ('M' << 16) | ('T' << 8) | 'A';
-
-void print(const uint8_t *data, size_t size)
-{
-    printf("           ");
-    for (size_t i = 0; i < size; ++i)
-    {
-        printf("%2x ", data[i]);
-    }
-    printf("\r\n");
-}
-
-// Data Structures (same as before)
-struct ImageMetadata
-{
-    const image_magic_t magic = IMAGE_MAGIC;
-    uint32_t timestamp;
-    size_t image_size;
-    float latitude;
-    float longitude;
-    uint8_t camera_index;
-    mutable crc_t checksum;
-};
-constexpr size_t METADATA_SIZE_WO_CHECKSUM = offsetof(ImageMetadata, checksum);
-constexpr size_t METADATA_SIZE = sizeof(ImageMetadata);
-
-struct CachedBufferState
-{
-    size_t head_;
-    size_t tail_;
-    size_t size_;
-    size_t count_;
-    const size_t FLASH_START_ADDRESS_;
-    const size_t TOTAL_BUFFER_CAPACITY_;
-    uint32_t checksum;
-
-    bool is_empty() const;
-    size_t size() const;
-    size_t count() const;
-    size_t available() const;
-    size_t capacity() const;
-
-    size_t get_head() const;
-    size_t get_tail() const;
-
-    CachedBufferState(size_t head, size_t tail, size_t size, size_t flash_start, size_t total_capacity) : head_(head), tail_(tail), size_(size), count_(0), FLASH_START_ADDRESS_(flash_start), TOTAL_BUFFER_CAPACITY_(total_capacity) {}
-};
-bool CachedBufferState::is_empty() const { return size_ == 0; }
-size_t CachedBufferState::size() const { return size_; };
-size_t CachedBufferState::count() const { return count_; };
-size_t CachedBufferState::available() const { return TOTAL_BUFFER_CAPACITY_ - size_; };
-size_t CachedBufferState::capacity() const { return TOTAL_BUFFER_CAPACITY_; };
-size_t CachedBufferState::get_head() const { return head_; }
-size_t CachedBufferState::get_tail() const { return tail_; }
+typedef ImageBufferError CachedImageBufferError;
+typedef BufferState CachedBufferState; 
 
 template <typename Accessor>
 class CachedImageBuffer

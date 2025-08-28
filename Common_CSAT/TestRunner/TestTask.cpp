@@ -19,7 +19,7 @@ public:
     void unregister_task(std::shared_ptr<Task> task) {
         for (size_t i = 0; i < registered_tasks.size(); ++i) {
             if (registered_tasks[i] == task) {
-                registered_tasks.erase(registered_tasks.begin() + i);
+                registered_tasks.erase(registered_tasks.begin() + static_cast<std::vector<std::shared_ptr<Task>>::difference_type>(i));
                 return;
             }
         }
@@ -93,8 +93,7 @@ int8_t serialize_mock(const void* const data, uint8_t* const payload, size_t* co
     }
     else
     {
-        const int* int_data = static_cast<const int*>(data);
-        payload[0] = *int_data;
+        payload[0] = static_cast<const uint8_t*>(data)[0];
         *payload_size = 1;
     }
     return 1;
@@ -152,9 +151,9 @@ public:
         manager->unregister_task(task);
     }
 
-    size_t getBufferSize() const { return buffer.size(); } // Expose buffer size
+    size_t getBufferSize() const { return buffer_.size(); } // Expose buffer size
 
-    std::shared_ptr<CyphalTransfer> popExpanded() { return buffer.pop(); } // Expose pop
+    std::shared_ptr<CyphalTransfer> popExpanded() { return buffer_.pop(); } // Expose pop
 };
 
 class ConcreteTaskForServer : public TaskForServer<MockAdapter> {

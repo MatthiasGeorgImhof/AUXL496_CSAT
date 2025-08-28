@@ -62,7 +62,7 @@ TEST_CASE("TaskSendHeartBeat: handleTask publishes Heartbeat") {
     REQUIRE(received_heartbeat1.uptime == 10); // HAL_GetTick() / 1024 = 10240 / 1024 = 10
     REQUIRE(received_heartbeat1.health.value == uavcan_node_Health_1_0_NOMINAL);
     REQUIRE(received_heartbeat1.mode.value == uavcan_node_Mode_1_0_OPERATIONAL);
-    delete[] static_cast<uint8_t*>(transfer1.payload);
+    loopardMemoryFree(transfer1.payload);
 
     // Verify the content of the published message on the second adapter
     CyphalTransfer transfer2 = loopard2.buffer.pop();
@@ -79,7 +79,7 @@ TEST_CASE("TaskSendHeartBeat: handleTask publishes Heartbeat") {
     REQUIRE(received_heartbeat2.uptime == 10); // HAL_GetTick() / 1024 = 10240 / 1024 = 10
     REQUIRE(received_heartbeat2.health.value == uavcan_node_Health_1_0_NOMINAL);
     REQUIRE(received_heartbeat2.mode.value == uavcan_node_Mode_1_0_OPERATIONAL);
-    delete[] static_cast<uint8_t*>(transfer2.payload);
+    loopardMemoryFree(transfer2.payload);
 }
 
 

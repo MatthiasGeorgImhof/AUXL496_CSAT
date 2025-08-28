@@ -276,7 +276,7 @@ public:
 
         void _findNextActive()
         {
-            while (m_index < m_boxSet->content.size() && !m_boxSet->is_used(m_index))
+            while (m_index < m_boxSet->content.size() && !m_boxSet->is_used(static_cast<uint8_t>(m_index)))
             {
                 m_index++;
             }
@@ -318,7 +318,7 @@ private:
      */
     void activate(uint8_t index)
     {
-        active |= (static_cast<UType>(1) << index);
+        active |= static_cast<UType>(static_cast<UType>(1) << index);
     }
     /**
      * @brief Resets the bit at the given index in the active bitset.
@@ -326,6 +326,6 @@ private:
      */
     void deactivate(uint8_t index)
     {
-        active &= ~(static_cast<UType>(1) << index);
+        active &= static_cast<UType>(~(static_cast<UType>(1) << index));
     }
 };

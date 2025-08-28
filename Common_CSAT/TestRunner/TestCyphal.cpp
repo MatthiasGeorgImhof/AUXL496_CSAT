@@ -80,7 +80,7 @@ TEST_CASE("Canard Adapter")
     SUBCASE("cyphalRxSubscribe returns negative on full boxset")
     {
         adapter.subscriptions.clear();
-        for (int i = 0; i < CanardAdapter::SUBSCRIPTIONS; ++i)
+        for (CyphalPortID i = 0; i < CanardAdapter::SUBSCRIPTIONS; ++i)
         {
             CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, i, 100, 2000000) == 1);
         }
@@ -183,7 +183,7 @@ TEST_CASE("Canard Send Receive Large")
     {
         CAN_TxHeaderTypeDef header;
         header.ExtId = ti->frame.extended_can_id;
-        header.DLC = ti->frame.payload_size;
+        header.DLC = static_cast<uint8_t>(ti->frame.payload_size);
         header.RTR = CAN_RTR_DATA;
         header.IDE = CAN_ID_EXT;
         uint32_t mailbox;
@@ -360,7 +360,7 @@ TEST_CASE("Serard Adapter")
     SUBCASE("cyphalRxSubscribe returns negative on full boxset")
     {
         adapter.subscriptions.clear();
-        for (int i = 0; i < SerardAdapter::SUBSCRIPTIONS; ++i)
+        for (CyphalPortID i = 0; i < SerardAdapter::SUBSCRIPTIONS; ++i)
         {
             CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, i, 100, 2000000) == 1);
         }
@@ -586,7 +586,7 @@ TEST_CASE("Udpard Adapter")
     SUBCASE("cyphalRxSubscribe returns negative on full boxset")
     {
         adapter.subscriptions.clear();
-        for (int i = 0; i < UdpardAdapter::SUBSCRIPTIONS; ++i)
+        for (CyphalPortID i = 0; i < UdpardAdapter::SUBSCRIPTIONS; ++i)
         {
             CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, i, 100, 2000000) == 1);
         }
@@ -738,7 +738,7 @@ TEST_CASE("Loopard Adapter")
     SUBCASE("cyphalRxSubscribe returns negative on full boxset")
     {
         adapter.subscriptions.clear();
-        for (int i = 0; i < LoopardAdapter::SUBSCRIPTIONS; ++i)
+        for (CyphalPortID i = 0; i < LoopardAdapter::SUBSCRIPTIONS; ++i)
         {
             CHECK(cyphal.cyphalRxSubscribe(CyphalTransferKindMessage, i, 100, 2000000) == 1);
         }
@@ -848,10 +848,10 @@ public:
         metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
         metadata.transfer_id = 0;
 
-        int8_t res0 = std::get<0>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);
-        int8_t res1 = std::get<1>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);
-        int8_t res2 = std::get<2>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);
-        int8_t res3 = std::get<3>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);
+        int32_t res0 = std::get<0>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);
+        int32_t res1 = std::get<1>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);
+        int32_t res2 = std::get<2>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);
+        int32_t res3 = std::get<3>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);
         return (res0 > 0) && (res1 > 0) && (res2 > 0) && (res3 > 0);
     }
 
@@ -868,7 +868,7 @@ public:
         std::apply([&](auto &...adapter)
                    { ([&]()
                       {
-                int8_t res = adapter.cyphalTxPush(0, &metadata, frame_size, frame);
+                int32_t res = adapter.cyphalTxPush(0, &metadata, frame_size, frame);
                 all_successful = all_successful && (res > 0); }(), ...); }, adapters_);
         return all_successful;
     }

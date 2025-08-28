@@ -48,11 +48,11 @@ MockTaskFromBuffer(uint32_t interval, uint32_t tick, const CyphalTransfer transf
 
     void handleTaskImpl() override 
     {
-        CHECK(buffer.size() == 1);
+        CHECK(buffer_.size() == 1);
 
-        for(size_t i=0; i<buffer.size(); ++i)
+        for(size_t i=0; i<buffer_.size(); ++i)
         {
-            auto transfer = buffer.pop();
+            auto transfer = buffer_.pop();
             checkTransfers(transfer_, *transfer);
         }
     }

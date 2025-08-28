@@ -47,8 +47,8 @@ inline void udpartToCyphalMetadata(const UdpardRxTransfer *udpard, const UdpardH
     cyphal->priority = static_cast<CyphalPriority>(udpard->priority);
     cyphal->transfer_kind = CyphalTransferKindMessage;
     cyphal->port_id = header->destination_node_id;
-    cyphal->remote_node_id = udpard->source_node_id;
-    cyphal->transfer_id = udpard->transfer_id;
+    cyphal->remote_node_id = udpardNodeIdToCyphal(udpard->source_node_id);
+    cyphal->transfer_id = udpardTransferIdToCyphal(udpard->transfer_id);
 }
 
 inline void udpartToCyphalTransfer(const UdpardRxTransfer *udpard, const UdpardHeader *header, CyphalTransfer *cyphal)
@@ -136,8 +136,8 @@ public:
         out_transfer->metadata.priority = static_cast<CyphalPriority>(udpard_transfer.priority);
         out_transfer->metadata.transfer_kind = CyphalTransferKindMessage;
         out_transfer->metadata.port_id = header->destination_node_id;
-        out_transfer->metadata.remote_node_id = udpard_transfer.source_node_id;
-        out_transfer->metadata.transfer_id = udpard_transfer.transfer_id;
+        out_transfer->metadata.remote_node_id = udpardNodeIdToCyphal(udpard_transfer.source_node_id);
+        out_transfer->metadata.transfer_id = udpardTransferIdToCyphal(udpard_transfer.transfer_id);
         out_transfer->payload = static_cast<uint8_t *>(const_cast<void *>(udpard_transfer.payload.view.data));
         out_transfer->payload_size = udpard_transfer.payload_size;
         out_transfer->timestamp_usec = udpard_transfer.timestamp_usec;

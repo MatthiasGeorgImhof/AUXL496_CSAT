@@ -60,7 +60,7 @@ public:
 	{
 		int16_t value_;
 		bool result = getRegister(INA226_REGISTERS::INA226_SHUNT_VOLTAGE, reinterpret_cast<uint16_t*>(&value_));
-		value = checkAndCast(5 * abs(value_) / 2);
+		value = checkAndCast(5U * static_cast<uint16_t>(abs(value_)) / 2U);
 		return result;
 	}
 	

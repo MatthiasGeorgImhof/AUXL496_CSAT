@@ -8,6 +8,12 @@
 #include "uavcan/node/Heartbeat_1_0.h"
 #include "uavcan/node/GetInfo_1_0.h"
 
+TEST_CASE("containsMessageByPortIdCompileTime - Found")
+{
+    constexpr bool result = containsMessageByPortIdCompileTime<uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_>();
+    REQUIRE(result == true);
+}
+
 TEST_CASE("findMessageByPortIdCompileTime - Found")
 {
     constexpr CyphalSubscription const *result = findMessageByPortIdCompileTime<uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_>();

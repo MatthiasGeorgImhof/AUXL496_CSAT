@@ -29,17 +29,17 @@ private:
 template <typename... Adapters>
 void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
 {
-    if (buffer.is_empty())
+    if (buffer_.is_empty())
     {
         log(LOG_LEVEL_TRACE, "TaskSubscribeNodePortList: empty buffer\r\n");
         return;
     }
 
     // Process all transfers in the buffer
-	size_t count = buffer.size();
+	size_t count = buffer_.size();
     for (size_t i = 0; i < count; ++i)
     {
-        std::shared_ptr<CyphalTransfer> transfer = buffer.pop();
+        std::shared_ptr<CyphalTransfer> transfer = buffer_.pop();
         size_t payload_size = transfer->payload_size;
         uavcan_node_port_List_1_0 data;  // Declare data here
         int8_t result = uavcan_node_port_List_1_0_deserialize_(&data, static_cast<const uint8_t*>(transfer->payload), &payload_size); // Pass the address

@@ -17,8 +17,8 @@ int can_rx_buffer_count = 0;                       // Number of messages in CAN 
 
 //--- General Mock Variables ---
 extern uint32_t current_tick;
-int current_free_mailboxes = 3;        // Number of free CAN mailboxes
-int current_rx_fifo_fill_level = 0;   // Fill level of CAN RX FIFO
+uint32_t current_free_mailboxes = 3;        // Number of free CAN mailboxes
+uint32_t current_rx_fifo_fill_level = 0;   // Fill level of CAN RX FIFO
 
 
 uint32_t HAL_CAN_AddTxMessage(void */*hcan*/, CAN_TxHeaderTypeDef *pHeader, uint8_t aData[], uint32_t *pTxMailbox)
@@ -159,11 +159,11 @@ CAN_TxMessage_t get_can_tx_message(int pos){
 }
 
 // Status Setters
-void set_current_free_mailboxes(int free_mailboxes) {
+void set_current_free_mailboxes(uint32_t free_mailboxes) {
   current_free_mailboxes = free_mailboxes;
 }
 
-void set_current_rx_fifo_fill_level(int rx_fifo_level){
+void set_current_rx_fifo_fill_level(uint32_t rx_fifo_level){
     current_rx_fifo_fill_level = rx_fifo_level;
 }
 

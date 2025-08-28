@@ -18,9 +18,9 @@ public:
         flash_memory.resize(TOTAL_BUFFER_SIZE, 0); // Allocate and zero-initialize the buffer
     }
 
-    AccessorError write(uint32_t address, const uint8_t *data, size_t size);
-    AccessorError read(uint32_t address, uint8_t *data, size_t size);
-    AccessorError erase(uint32_t address);
+    AccessorError write(size_t address, const uint8_t *data, size_t size);
+    AccessorError read(size_t address, uint8_t *data, size_t size);
+    AccessorError erase(size_t address);
 
     size_t getAlignment() const { return 1; };
     size_t getFlashMemorySize() const { return TOTAL_BUFFER_SIZE; };
@@ -29,7 +29,7 @@ public:
     std::vector<uint8_t> &getFlashMemory() { return flash_memory; }
 
 private:
-    AccessorError checkBounds(uint32_t address, size_t size);
+    AccessorError checkBounds(size_t address, size_t size);
 
 private:
     const size_t FLASH_START_ADDRESS;  // Make it a class member
@@ -37,7 +37,7 @@ private:
     std::vector<uint8_t> flash_memory; // Use a vector for dynamic allocation
 };
 
-AccessorError DirectMemoryAccessor::write(uint32_t address, const uint8_t *data, size_t size)
+AccessorError DirectMemoryAccessor::write(size_t address, const uint8_t *data, size_t size)
 {
     // Check if the access is within bounds using base class method
     if (checkBounds(address, size) != AccessorError::NO_ERROR)
@@ -52,7 +52,7 @@ AccessorError DirectMemoryAccessor::write(uint32_t address, const uint8_t *data,
     return AccessorError::NO_ERROR;
 }
 
-AccessorError DirectMemoryAccessor::read(uint32_t address, uint8_t *data, size_t size)
+AccessorError DirectMemoryAccessor::read(size_t address, uint8_t *data, size_t size)
 {
     // Check if the access is within bounds using base class method
     if (checkBounds(address, size) != AccessorError::NO_ERROR)
@@ -66,7 +66,7 @@ AccessorError DirectMemoryAccessor::read(uint32_t address, uint8_t *data, size_t
     return AccessorError::NO_ERROR; // Return success
 }
 
-AccessorError DirectMemoryAccessor::erase(uint32_t /*address*/)
+AccessorError DirectMemoryAccessor::erase(size_t /*address*/)
 {
     // Simulate erasing a sector (e.g., by setting all bytes in the sector to 0xFF)
     // Implement sector size and erase logic here
@@ -74,7 +74,7 @@ AccessorError DirectMemoryAccessor::erase(uint32_t /*address*/)
     return AccessorError::NO_ERROR;                              // Success
 }
 
-AccessorError DirectMemoryAccessor::checkBounds(uint32_t address, size_t size)
+AccessorError DirectMemoryAccessor::checkBounds(size_t address, size_t size)
 {
     if (address < FLASH_START_ADDRESS || address + size > FLASH_START_ADDRESS + TOTAL_BUFFER_SIZE)
     {

@@ -16,9 +16,9 @@ BoxSet<CONTENT, N> createFilledBoxSet(const std::array<CONTENT, N> &init_data)
 
 // Helper function to add multiple elements to a BoxSet
 template <typename CONTENT, uint8_t N>
-void addMultiple(BoxSet<CONTENT, N> &box, int num_elements)
+void addMultiple(BoxSet<CONTENT, N> &box, size_t num_elements)
 {
-    for (int i = 0; i < num_elements; ++i)
+    for (size_t i = 0; i < num_elements; ++i)
     {
         box.add(static_cast<CONTENT>(std::to_string(i * 10)));
     }
@@ -31,7 +31,7 @@ void removeMultiple(BoxSet<CONTENT, N> &box, size_t num_elements)
     size_t count = 0;
     for (size_t i = 0; i < N; ++i)
     {
-        if (box.is_used(i))
+        if (box.is_used(static_cast<uint8_t>(i)))
         {
             box.remove(static_cast<uint8_t>(i));
             count++;
@@ -54,21 +54,21 @@ void testInitialization(BoxSet<CONTENT, N> &box, std::array<CONTENT, N> initial_
 }
 
 template <typename CONTENT, uint8_t N>
-void testAddAndSize(BoxSet<CONTENT, N> &box, int num_elements)
+void testAddAndSize(BoxSet<CONTENT, N> &box, size_t num_elements)
 {
     addMultiple(box, num_elements);
     CHECK(box.size() == num_elements);
 }
 
 template <typename CONTENT, uint8_t N>
-void testIsFull(BoxSet<CONTENT, N> &box, int num_elements)
+void testIsFull(BoxSet<CONTENT, N> &box, size_t num_elements)
 {
     CHECK(!box.is_full());
     addMultiple(box, num_elements);
     CHECK(box.is_full());
 }
 template <typename CONTENT, uint8_t N>
-void testAddAndRemove(BoxSet<CONTENT, N> &box, int num_elements)
+void testAddAndRemove(BoxSet<CONTENT, N> &box, size_t num_elements)
 {
     addMultiple(box, num_elements);
     CHECK(box.size() == num_elements);
@@ -103,12 +103,12 @@ void testAddAndIsUsed(BoxSet<CONTENT, N> &box)
     {
         box.add(static_cast<CONTENT>(std::to_string(i)));
         for (int j = 0; j < N; ++j)
-            CHECK(box.is_used(j) == (j <= i));
+            CHECK(box.is_used(static_cast<uint8_t>(j)) == (j <= i));
     }
 }
 
 template <typename CONTENT, uint8_t N>
-void testMixedOperations(BoxSet<CONTENT, N> &box, int num_elements)
+void testMixedOperations(BoxSet<CONTENT, N> &box, size_t num_elements)
 {
     addMultiple(box, num_elements);
     CHECK(box.size() == num_elements);
@@ -219,9 +219,9 @@ TEST_CASE("BoxSet Initialization and Empty Check")
     {
         BoxSet<int, static_cast<uint8_t>(32)> box;
         std::array<int, 32> initial_data;
-        for (int i = 0; i < 32; ++i)
+        for (uint8_t i = 0; i < 32; ++i)
         {
-            initial_data[i] = i + 1;
+            initial_data[i] = i + 1U;
         }
         testInitialization<int, static_cast<uint8_t>(32)>(box, initial_data);
     }
@@ -229,9 +229,9 @@ TEST_CASE("BoxSet Initialization and Empty Check")
     {
         BoxSet<int, static_cast<uint8_t>(64)> box;
         std::array<int, 64> initial_data;
-        for (int i = 0; i < 64; ++i)
+        for (uint8_t i = 0; i < 64; ++i)
         {
-            initial_data[i] = i + 1;
+            initial_data[i] = i + 1U;
         }
         testInitialization<int, static_cast<uint8_t>(64)>(box, initial_data);
     }

@@ -75,7 +75,7 @@ public:
                              const size_t /*t extent*/,
                              const CyphalMicrosecond /*transfer_id_timeout_usec*/)
     {
-        adapter_->subscriptions.find_or_create(port_id, [](const uint8_t &a, const uint8_t &b)
+        adapter_->subscriptions.find_or_create(static_cast<u_int8_t>(port_id), [](const uint8_t &a, const uint8_t &b)
                                                { return a == b; });
         return 1;
     }
@@ -83,7 +83,7 @@ public:
     int8_t cyphalRxUnsubscribe(const CyphalTransferKind /*transfer_kind*/,
                                const CyphalPortID port_id)
     {
-        uint8_t *subscription = adapter_->subscriptions.find(port_id, [](const uint8_t &a, const uint8_t &b)
+        uint8_t *subscription = adapter_->subscriptions.find(static_cast<uint8_t>(port_id), [](const uint8_t &a, const uint8_t &b)
                                                              { return a == b; });
         if (subscription)
             adapter_->subscriptions.remove(subscription);

@@ -47,7 +47,7 @@ TEST_CASE("BoxSet Iterator std::find") {
 TEST_CASE("BoxSet Iterator Empty Iteration") {
     BoxSet<int, 8> box;
 
-    size_t count = std::distance(box.begin(), box.end());
+    auto count = std::distance(box.begin(), box.end());
     CHECK(count == 0);
    
     auto it = std::find(box.begin(), box.end(), 10);

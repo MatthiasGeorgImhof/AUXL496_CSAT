@@ -1,21 +1,22 @@
 #ifdef __x86_64__
 
 #include "mock_hal/mock_hal_spi.h"
+#include <cstring>
 #include <string.h>
 #include <stdio.h> //For printf
 
 //--- SPI Buffers ---
 uint8_t spi_tx_buffer[SPI_TX_BUFFER_SIZE];   // SPI transmit buffer
-int spi_tx_buffer_count = 0;                  // Number of bytes in SPI TX buffer
+size_t spi_tx_buffer_count = 0;                  // Number of bytes in SPI TX buffer
 
 uint8_t spi_rx_buffer[SPI_RX_BUFFER_SIZE];   // SPI receive buffer
-int spi_rx_buffer_count = 0;                  // Number of bytes in SPI RX buffer
-int spi_rx_buffer_read_pos = 0;               // Read position in SPI RX buffer
+size_t spi_rx_buffer_count = 0;                  // Number of bytes in SPI RX buffer
+size_t spi_rx_buffer_read_pos = 0;               // Read position in SPI RX buffer
 
 uint32_t HAL_SPI_Transmit(SPI_HandleTypeDef */*hspi*/, uint8_t *pData, uint16_t Size, uint32_t /*Timeout*/) {
     if (!pData) return 1; // HAL_ERROR
     if (spi_tx_buffer_count + Size <= SPI_TX_BUFFER_SIZE) {
-        memcpy(spi_tx_buffer + spi_tx_buffer_count, pData, Size);
+        std::memcpy(spi_tx_buffer + spi_tx_buffer_count, pData, Size);
         spi_tx_buffer_count += Size;
         return 0; // HAL_OK
     }
@@ -30,7 +31,7 @@ uint32_t HAL_SPI_Receive(SPI_HandleTypeDef */*hspi*/, uint8_t *pData, uint16_t S
         if (Size > spi_rx_buffer_count) {
             return 1; //HAL_ERROR. Trying to receive more than available
         }
-        memcpy(pData, spi_rx_buffer + spi_rx_buffer_read_pos, Size);
+        std::memcpy(pData, spi_rx_buffer + spi_rx_buffer_read_pos, Size);
         spi_rx_buffer_read_pos += Size;
 
         if (spi_rx_buffer_read_pos >= spi_rx_buffer_count) {
@@ -47,7 +48,7 @@ uint32_t HAL_SPI_TransmitReceive(SPI_HandleTypeDef */*hspi*/, uint8_t *pTxData, 
 
     //Transmit part
     if (spi_tx_buffer_count + Size <= SPI_TX_BUFFER_SIZE) {
-        memcpy(spi_tx_buffer + spi_tx_buffer_count, pTxData, Size);
+        std::memcpy(spi_tx_buffer + spi_tx_buffer_count, pTxData, Size);
         spi_tx_buffer_count += Size;
     } else {
        return 1; // HAL_ERROR, buffer overflow
@@ -59,7 +60,7 @@ uint32_t HAL_SPI_TransmitReceive(SPI_HandleTypeDef */*hspi*/, uint8_t *pTxData, 
              return 1; //HAL_ERROR. Trying to receive more than available
         }
 
-        memcpy(pRxData, spi_rx_buffer + spi_rx_buffer_read_pos, Size);
+        std::memcpy(pRxData, spi_rx_buffer + spi_rx_buffer_read_pos, Size);
         spi_rx_buffer_read_pos += Size;
 
         if (spi_rx_buffer_read_pos >= spi_rx_buffer_count) {
@@ -82,28 +83,28 @@ uint32_t HAL_SPI_Init(SPI_HandleTypeDef *hspi) {
 }
 
 // SPI Injectors
-void inject_spi_rx_data(uint8_t *data, int size) {
+void inject_spi_rx_data(uint8_t *data, size_t size) {
     if (spi_rx_buffer_count + size <= SPI_RX_BUFFER_SIZE) {
-        memcpy(spi_rx_buffer + spi_rx_buffer_count, data, size);
+        std::memcpy(spi_rx_buffer + spi_rx_buffer_count, data, size);
         spi_rx_buffer_count += size;
     }
 }
 
 // SPI Deleters
 void clear_spi_tx_buffer() {
-    memset(spi_tx_buffer, 0, sizeof(spi_tx_buffer));  // Set all elements to 0
+    std::memset(spi_tx_buffer, 0, sizeof(spi_tx_buffer));  // Set all elements to 0
     spi_tx_buffer_count = 0;
 }
 
 void clear_spi_rx_buffer() {
-    memset(spi_rx_buffer, 0, sizeof(spi_rx_buffer));
+    std::memset(spi_rx_buffer, 0, sizeof(spi_rx_buffer));
     spi_rx_buffer_count = 0;
     spi_rx_buffer_read_pos = 0;
 }
 
 // ----- Getter Functions -----
 
-int get_spi_tx_buffer_count() {
+size_t get_spi_tx_buffer_count() {
     return spi_tx_buffer_count;
 }
 
@@ -111,7 +112,7 @@ uint8_t* get_spi_tx_buffer() {
     return spi_tx_buffer;
 }
 
-int get_spi_rx_buffer_count() {
+size_t get_spi_rx_buffer_count() {
     return spi_rx_buffer_count;
 }
 
@@ -146,7 +147,7 @@ void init_spi_handle(SPI_HandleTypeDef *hspi) {
 void copy_spi_tx_to_rx() {
     if (spi_tx_buffer_count > 0) {
         if (spi_rx_buffer_count + spi_tx_buffer_count <= SPI_RX_BUFFER_SIZE) {
-            memcpy(spi_rx_buffer + spi_rx_buffer_count, spi_tx_buffer, spi_tx_buffer_count);
+            std::memcpy(spi_rx_buffer + spi_rx_buffer_count, spi_tx_buffer, spi_tx_buffer_count);
             spi_rx_buffer_count += spi_tx_buffer_count;
             clear_spi_tx_buffer();  // Optionally clear the TX buffer after copying
         } else {

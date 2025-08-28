@@ -56,7 +56,7 @@ std::shared_ptr<CyphalTransfer> createGetInfoResponse(const uint8_t unique_id[16
     transfer->metadata.transfer_id = 0;       // Dummy Transfer ID
 
     transfer->payload_size = payload_size;
-    transfer->payload = new uint8_t[payload_size];
+    transfer->payload = loopardMemoryAllocate(payload_size);
     std::memcpy(transfer->payload, payload, payload_size);
 
     return transfer;
@@ -120,14 +120,14 @@ TEST_CASE("TaskRequestGetInfo: Sends GetInfo request and handles response")
     CHECK(request1.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(request1.metadata.remote_node_id == node_id1); //Request with client node_id
     CHECK(request1.metadata.transfer_id == transfer_id); //Request with defined transfer_id
-    delete[] static_cast<uint8_t *>(request1.payload);
+    loopardMemoryFree(request1.payload);
 
     CyphalTransfer request2 = loopard2.buffer.pop();
     CHECK(request2.metadata.port_id == uavcan_node_GetInfo_1_0_FIXED_PORT_ID_);
     CHECK(request2.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(request2.metadata.remote_node_id == node_id2); //Request with client node_id
     CHECK(request2.metadata.transfer_id == transfer_id); //Request with defined transfer_id
-    delete[] static_cast<uint8_t *>(request2.payload);
+    loopardMemoryFree(request2.payload);
 
     // Simulate receiving a response: Add a response to the buffer
     std::shared_ptr<CyphalTransfer> response = createGetInfoResponse(unique_id, name);

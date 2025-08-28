@@ -9,7 +9,7 @@ template <typename T, size_t capacity_>
 class CircularBuffer
 {
 public:
-    CircularBuffer() : head_(0), tail_(0), count_(0) {}
+    CircularBuffer() : head_(0), tail_(0), count_(0){}
 
     T &next()
     {
@@ -66,6 +66,13 @@ public:
     size_t capacity() const
     {
         return capacity_;
+    }
+
+    void clear()
+    {
+        head_ = 0;
+        tail_ = 0;
+        count_ = 0; 
     }
 
 private:
