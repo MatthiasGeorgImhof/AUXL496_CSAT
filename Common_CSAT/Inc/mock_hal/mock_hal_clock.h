@@ -56,15 +56,63 @@ extern "C" {
 
 //--- Clock Structures ---
 
-typedef struct {
-    uint32_t OscillatorType;  // Specifies the oscillator type to configure
-    uint32_t HSEState;        // Specifies the new state of the HSE
-    uint32_t HSIState;        // Specifies the new state of the HSI
-    uint8_t HSICalibrationValue; // Specifies the HSI calibration trimming value.
-    struct {
-        uint32_t PLLState;    // Specifies the new state of the PLL.
-    } PLL;
+typedef struct
+{
+  uint32_t PLLState;   /*!< The new state of the PLL.
+                            This parameter can be a value of @ref RCC_PLL_Config                      */
+  uint32_t PLLSource;  /*!< RCC_PLLSource: PLL entry clock source.
+                            This parameter must be a value of @ref RCC_PLL_Clock_Source               */
+  uint32_t PLLM;       /*!< PLLM: Division factor for PLL VCO input clock.
+                            This parameter must be a number between Min_Data = 1 and Max_Data = 16 on STM32L4Rx/STM32L4Sx devices.
+                            This parameter must be a number between Min_Data = 1 and Max_Data = 8 on the other devices */
+  uint32_t PLLN;       /*!< PLLN: Multiplication factor for PLL VCO output clock.
+                            This parameter must be a number between Min_Data = 8 and Max_Data = 86    */
+#if defined(RCC_PLLP_SUPPORT)
+  uint32_t PLLP;       /*!< PLLP: Division factor for SAI clock.
+                            This parameter must be a value of @ref RCC_PLLP_Clock_Divider             */
+#endif /* RCC_PLLP_SUPPORT */
+  uint32_t PLLQ;       /*!< PLLQ: Division factor for SDMMC1, RNG and USB clocks.
+                            This parameter must be a value of @ref RCC_PLLQ_Clock_Divider             */
+  uint32_t PLLR;       /*!< PLLR: Division for the main system clock.
+                            User have to set the PLLR parameter correctly to not exceed max frequency 120MHZ
+                            on STM32L4Rx/STM32L4Sx devices else 80MHz on the other devices.
+                            This parameter must be a value of @ref RCC_PLLR_Clock_Divider             */
+} RCC_PLLInitTypeDef;
+
+
+typedef struct
+{
+  uint32_t OscillatorType;       /*!< The oscillators to be configured.
+                                      This parameter can be a value of @ref RCC_Oscillator_Type                   */
+  uint32_t HSEState;             /*!< The new state of the HSE.
+                                      This parameter can be a value of @ref RCC_HSE_Config                        */
+  uint32_t LSEState;             /*!< The new state of the LSE.
+                                      This parameter can be a value of @ref RCC_LSE_Config                        */
+  uint32_t HSIState;             /*!< The new state of the HSI.
+                                      This parameter can be a value of @ref RCC_HSI_Config                        */
+  uint32_t HSICalibrationValue;  /*!< The calibration trimming value (default is RCC_HSICALIBRATION_DEFAULT).
+                                      This parameter must be a number between Min_Data = 0 and Max_Data = 31 on
+                                      STM32L43x/STM32L44x/STM32L47x/STM32L48x devices.
+                                      This parameter must be a number between Min_Data = 0 and Max_Data = 127 on
+                                      the other devices */
+  uint32_t LSIState;             /*!< The new state of the LSI.
+                                      This parameter can be a value of @ref RCC_LSI_Config                        */
+#if defined(RCC_CSR_LSIPREDIV)
+  uint32_t LSIDiv;               /*!< The division factor of the LSI.
+                                      This parameter can be a value of @ref RCC_LSI_Div                           */
+#endif /* RCC_CSR_LSIPREDIV */
+  uint32_t MSIState;             /*!< The new state of the MSI.
+                                      This parameter can be a value of @ref RCC_MSI_Config */
+  uint32_t MSICalibrationValue;  /*!< The calibration trimming value (default is RCC_MSICALIBRATION_DEFAULT).
+                                      This parameter must be a number between Min_Data = 0x00 and Max_Data = 0xFF */
+  uint32_t MSIClockRange;        /*!< The MSI frequency range.
+                                      This parameter can be a value of @ref RCC_MSI_Clock_Range  */
+  uint32_t HSI48State;             /*!< The new state of the HSI48 (only applicable to STM32L43x/STM32L44x/STM32L49x/STM32L4Ax devices).
+                                        This parameter can be a value of @ref RCC_HSI48_Config */
+  RCC_PLLInitTypeDef PLL;        /*!< Main PLL structure parameters                                               */
+
 } RCC_OscInitTypeDef;
+
 
 typedef struct {
     uint32_t ClockType;       // Specifies the clock to be configured

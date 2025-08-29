@@ -13,13 +13,12 @@ TEST_CASE("Testing doctest setup") {
 TEST_CASE("HAL_RCC_OscConfig - HSE Enable Success") {
     // Arrange: Initialize the mock environment
     set_hse_ready(true);
-    RCC_OscInitTypeDef osc_init = {
-        .OscillatorType = RCC_OSCILLATORTYPE_HSE,
-        .HSEState = RCC_HSE_ON,
-        .HSIState = RCC_HSI_OFF,
-        .HSICalibrationValue = 0,
-        .PLL = { .PLLState = RCC_PLL_NONE }
-    };
+    RCC_OscInitTypeDef osc_init {};
+        osc_init.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+        osc_init.HSEState = RCC_HSE_ON;
+        osc_init.HSIState = RCC_HSI_OFF;
+        osc_init.HSICalibrationValue = 0;
+        osc_init.PLL.PLLState = RCC_PLL_NONE;
 
     // Act: Call the function under test
     HAL_StatusTypeDef status = HAL_RCC_OscConfig(&osc_init);
@@ -33,13 +32,12 @@ TEST_CASE("HAL_RCC_OscConfig - HSE Enable Success") {
 TEST_CASE("HAL_RCC_OscConfig - HSE Enable Failure") {
     // Arrange: Initialize the mock environment to simulate HSE failure
     set_hse_ready(false);
-    RCC_OscInitTypeDef osc_init = {
-        .OscillatorType = RCC_OSCILLATORTYPE_HSE,
-        .HSEState = RCC_HSE_ON,
-        .HSIState = RCC_HSI_OFF,
-        .HSICalibrationValue = 0,
-        .PLL = { .PLLState = RCC_PLL_NONE }
-    };
+    RCC_OscInitTypeDef osc_init {};
+        osc_init.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+        osc_init.HSEState = RCC_HSE_ON;
+        osc_init.HSIState = RCC_HSI_OFF;
+        osc_init.HSICalibrationValue = 0;
+        osc_init.PLL.PLLState = RCC_PLL_NONE;
 
     // Act: Call the function under test
     HAL_StatusTypeDef status = HAL_RCC_OscConfig(&osc_init);
@@ -56,13 +54,12 @@ TEST_CASE("HAL_RCC_OscConfig - HSE Disable") {
     RCC->CR |= RCC_CR_HSEON;
     RCC->CR |= RCC_CR_HSERDY;
 
-    RCC_OscInitTypeDef osc_init = {
-      .OscillatorType = RCC_OSCILLATORTYPE_HSE,
-      .HSEState = RCC_HSE_OFF,
-      .HSIState = RCC_HSI_OFF,
-      .HSICalibrationValue = 0,
-      .PLL = { .PLLState = RCC_PLL_NONE }
-    };
+    RCC_OscInitTypeDef osc_init {};
+      osc_init.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+      osc_init.HSEState = RCC_HSE_OFF;
+      osc_init.HSIState = RCC_HSI_OFF;
+      osc_init.HSICalibrationValue = 0;
+      osc_init.PLL.PLLState = RCC_PLL_NONE;
 
     // Act
     HAL_StatusTypeDef status = HAL_RCC_OscConfig(&osc_init);
@@ -76,13 +73,12 @@ TEST_CASE("HAL_RCC_OscConfig - HSE Disable") {
 TEST_CASE("HAL_RCC_OscConfig - HSI Enable Success") {
     // Arrange:
     set_hsi_ready(true);
-    RCC_OscInitTypeDef osc_init = {
-      .OscillatorType = RCC_OSCILLATORTYPE_HSI,
-      .HSEState = RCC_HSE_OFF,
-      .HSIState = RCC_HSI_ON,
-      .HSICalibrationValue = 0,
-      .PLL = { .PLLState = RCC_PLL_NONE }
-    };
+    RCC_OscInitTypeDef osc_init {};
+      osc_init.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+      osc_init.HSEState = RCC_HSE_OFF;
+      osc_init.HSIState = RCC_HSI_ON;
+      osc_init.HSICalibrationValue = 0;
+      osc_init.PLL.PLLState = RCC_PLL_NONE;
 
     // Act:
     HAL_StatusTypeDef status = HAL_RCC_OscConfig(&osc_init);
@@ -96,13 +92,12 @@ TEST_CASE("HAL_RCC_OscConfig - HSI Enable Success") {
 TEST_CASE("HAL_RCC_OscConfig - HSI Enable Failure") {
     // Arrange:
     set_hsi_ready(false);
-    RCC_OscInitTypeDef osc_init = {
-      .OscillatorType = RCC_OSCILLATORTYPE_HSI,
-      .HSEState = RCC_HSE_OFF,
-      .HSIState = RCC_HSI_ON,
-      .HSICalibrationValue = 0,
-      .PLL = { .PLLState = RCC_PLL_NONE }
-    };
+    RCC_OscInitTypeDef osc_init {};
+      osc_init.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+      osc_init.HSEState = RCC_HSE_OFF;
+      osc_init.HSIState = RCC_HSI_ON;
+      osc_init.HSICalibrationValue = 0;
+      osc_init.PLL.PLLState = RCC_PLL_NONE;
 
     // Act:
     HAL_StatusTypeDef status = HAL_RCC_OscConfig(&osc_init);
@@ -119,13 +114,12 @@ TEST_CASE("HAL_RCC_OscConfig - HSI Disable") {
     RCC->CR |= RCC_CR_HSION;
     RCC->CR |= RCC_CR_HSIRDY;
 
-    RCC_OscInitTypeDef osc_init = {
-        .OscillatorType = RCC_OSCILLATORTYPE_HSI,
-        .HSEState = RCC_HSE_OFF,
-        .HSIState = RCC_HSI_OFF,
-        .HSICalibrationValue = 0,
-        .PLL = { .PLLState = RCC_PLL_NONE }
-    };
+    RCC_OscInitTypeDef osc_init {};
+        osc_init.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+        osc_init.HSEState = RCC_HSE_OFF;
+        osc_init.HSIState = RCC_HSI_OFF;
+        osc_init.HSICalibrationValue = 0;
+        osc_init.PLL.PLLState = RCC_PLL_NONE;
 
     // Act
     HAL_StatusTypeDef status = HAL_RCC_OscConfig(&osc_init);

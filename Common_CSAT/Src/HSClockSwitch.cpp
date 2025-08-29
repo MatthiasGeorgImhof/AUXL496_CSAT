@@ -58,12 +58,25 @@ HAL_StatusTypeDef HSClockSwitch::switchToHSI()
 
 HAL_StatusTypeDef HSClockSwitch::configureHSE()
 {
-    RCC_OscInitTypeDef RCC_OscInitStruct = {
+    RCC_OscInitTypeDef RCC_OscInitStruct {
         .OscillatorType = RCC_OSCILLATORTYPE_HSE,
         .HSEState = RCC_HSE_ON,
+        .LSEState {},
         .HSIState = RCC_HSI_OFF,
-        .HSICalibrationValue = 0, // Or the default value
-        .PLL = {.PLLState = RCC_PLL_NONE} // Initialize PLL struct
+        .HSICalibrationValue = 0,
+        .LSIState {},
+        .MSIState {},
+        .MSICalibrationValue {},
+        .MSIClockRange {},
+        .HSI48State {},
+        .PLL {
+            .PLLState = RCC_PLL_NONE,
+            .PLLSource {},
+            .PLLM {},
+            .PLLN {},
+            .PLLQ {},
+            .PLLR {}
+        }
     };
 
     // Check if HSE is already enabled. If so, no need to configure.
@@ -94,12 +107,25 @@ HAL_StatusTypeDef HSClockSwitch::configureHSE()
 
 HAL_StatusTypeDef HSClockSwitch::configureHSI()
 {
-    RCC_OscInitTypeDef RCC_OscInitStruct = {
+    RCC_OscInitTypeDef RCC_OscInitStruct {
         .OscillatorType = RCC_OSCILLATORTYPE_HSI,
-        .HSEState = RCC_HSE_OFF, // Ensure HSE is off when configuring HSI
+        .HSEState = RCC_HSE_OFF,
+        .LSEState {},
         .HSIState = RCC_HSI_ON,
         .HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT,
-        .PLL = {.PLLState = RCC_PLL_NONE} // Initialize PLL struct
+        .LSIState {},
+        .MSIState {},
+        .MSICalibrationValue {},
+        .MSIClockRange {},
+        .HSI48State {},
+        .PLL {
+            .PLLState = RCC_PLL_NONE,
+            .PLLSource {},
+            .PLLM {},
+            .PLLN {},
+            .PLLQ {},
+            .PLLR {}
+        }
     };
 
     // Check if HSI is already enabled. If so, no need to configure.
