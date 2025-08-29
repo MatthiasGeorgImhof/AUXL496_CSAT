@@ -53,32 +53,32 @@ constexpr size_t O1HEAP_SIZE = 65536;
 uint8_t o1heap_buffer[O1HEAP_SIZE] __attribute__ ((aligned (O1HEAP_ALIGNMENT)));
 O1HeapInstance *o1heap;
 
-void* canardMemoryAllocate(CanardInstance *const canard, const size_t size)
+void* canardMemoryAllocate(CanardInstance *const /*canard*/, const size_t size)
 {
 	return o1heapAllocate(o1heap, size);
 }
 
-void canardMemoryDeallocate(CanardInstance *const canard, void *const pointer)
+void canardMemoryDeallocate(CanardInstance *const /*canard*/, void *const pointer)
 {
 	o1heapFree(o1heap, pointer);
 }
 
-void* serardMemoryAllocate(void *const user_reference, const size_t size)
+void* serardMemoryAllocate(void *const /*user_reference*/, const size_t size)
 {
 	return o1heapAllocate(o1heap, size);
 }
 
-void serardMemoryDeallocate(void *const user_reference, const size_t size, void *const pointer)
+void serardMemoryDeallocate(void *const /*user_reference*/, const size_t /*size*/, void *const pointer)
 {
 	o1heapFree(o1heap, pointer);
 };
 
-bool serialSendHuart2(void* user_reference, uint8_t data_size, const uint8_t* data)
+bool serialSendHuart2(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
 {
 	return (HAL_UART_Transmit(huart2_, data, data_size, 1000) == HAL_OK);
 }
 
-bool serialSendHuart3(void* user_reference, uint8_t data_size, const uint8_t* data)
+bool serialSendHuart3(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
 {
 	return (HAL_UART_Transmit(huart3_, data, data_size, 1000) == HAL_OK);
 }
@@ -145,7 +145,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 #ifdef __cplusplus
 extern "C" {
 #endif
-bool serial_send(void* user_reference, uint8_t data_size, const uint8_t* data)
+bool serial_send(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
 {
 //	constexpr size_t BUFFER_SIZE = 1024;
 //	char hex_string_buffer[BUFFER_SIZE];
@@ -177,7 +177,7 @@ void cppmain(HAL_Handles handles)
 		Error_Handler();
 	}
 
-	CAN_FilterTypeDef filter = { 0 };
+	CAN_FilterTypeDef filter {};
 	filter.FilterIdHigh = 0x1fff;
 	filter.FilterIdLow = 0xffff;
 	filter.FilterMaskIdHigh = 0;

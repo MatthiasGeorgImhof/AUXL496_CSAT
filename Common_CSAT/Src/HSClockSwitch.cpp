@@ -3,7 +3,6 @@
 #ifdef __arm__
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_hal_rcc.h"
-#include "stm32l4xx_hal_rtc.h"
 #endif
 #ifdef __x86_64__
 #include "mock_hal.h"
@@ -74,6 +73,7 @@ HAL_StatusTypeDef HSClockSwitch::configureHSE()
             .PLLSource {},
             .PLLM {},
             .PLLN {},
+            .PLLP {},
             .PLLQ {},
             .PLLR {}
         }
@@ -123,6 +123,7 @@ HAL_StatusTypeDef HSClockSwitch::configureHSI()
             .PLLSource {},
             .PLLM {},
             .PLLN {},
+            .PLLP {},
             .PLLQ {},
             .PLLR {}
         }
