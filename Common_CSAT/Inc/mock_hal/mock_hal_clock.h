@@ -9,6 +9,7 @@ extern "C" {
 #include <stdbool.h>
 
 #include "mock_hal/mock_hal_core.h" // For HAL_StatusTypeDef, etc.
+#define RCC_PLLP_SUPPORT
 
 //--- Clock Defines ---
 
