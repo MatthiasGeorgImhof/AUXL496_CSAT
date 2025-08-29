@@ -5,7 +5,9 @@
 #include <ctime>
 #include <cstdint>
 #ifdef __arm__
-#include "usbd_cdc_if.h"
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_rcc.h"
+#include "stm32l4xx_hal_rtc.h"
 #endif
 #ifdef __x86_64__
 #include "mock_hal.h"

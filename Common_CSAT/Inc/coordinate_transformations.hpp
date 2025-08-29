@@ -3,13 +3,18 @@
 
 #include <cmath>
 #include <array>
+#include <numbers>
 #include "au.hpp"
 
 namespace coordinate_transformations
 {
 
-    // --- Constants ---
-    constexpr float DEG_TO_RAD = M_PIf / 180.0f; // Conversion factor from degrees to radians
+	#ifdef M_PIf
+	#undef M_PIf
+	#endif
+	// --- Constants ---
+    constexpr float M_PIf = static_cast<float>(std::numbers::pi);
+	constexpr float DEG_TO_RAD = M_PIf / 180.0f; // Conversion factor from degrees to radians
     constexpr float RAD_TO_DEG = 180.0f / M_PIf; // Conversion factor from radians to degrees
 
     // --- Constants for WGS84 ---

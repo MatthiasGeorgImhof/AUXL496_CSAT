@@ -1,4 +1,6 @@
-#pragma once
+#ifndef __ORIENTATION_TRACKER_HPP__
+#define __ORIENTATION_TRACKER_HPP__
+
 #include <Eigen/Dense>
 #include <functional>
 #include "Kalman.hpp"
@@ -116,7 +118,8 @@ public:
 
     void printDebugState(const std::string &label = "") const
     {
-        const auto &x = ekf.stateVector;
+    	constexpr float M_PIf = static_cast<float>(std::numbers::pi);
+    	const auto &x = ekf.stateVector;
         std::cout << "\n[Tracker State] " << label << "\n";
         std::cout << "Quaternion: [" << x(0) << ", " << x(1) << ", " << x(2) << ", " << x(3) << "]\n";
         std::cout << "Angular rate: [" << x(4) << ", " << x(5) << ", " << x(6) << "]\n";
@@ -313,6 +316,7 @@ private:
 };
 
 template <typename Tracker, typename IMU, typename MAG>
+requires HasBodyGyroscope<IMU> && HasBodyMagnetometer<MAG>
 bool GyrMagOrientation<Tracker, IMU, MAG>::predict(std::array<float, 4> &q, au::QuantityU64<au::Milli<au::Seconds>> &timestamp)
 {
     TimeUtils::RTCDateTimeSubseconds rtc;
@@ -331,6 +335,7 @@ bool GyrMagOrientation<Tracker, IMU, MAG>::predict(std::array<float, 4> &q, au::
 }
 
 template <typename Tracker, typename IMU, typename MAG>
+requires HasBodyGyroscope<IMU> && HasBodyMagnetometer<MAG>
 void GyrMagOrientation<Tracker, IMU, MAG>::update(au::QuantityU64<au::Milli<au::Seconds>> &timestamp)
 {
     if (imu_counter_ % imu_rate_ == 0)
@@ -387,6 +392,7 @@ private:
 };
 
 template <typename Tracker, typename IMU, typename MAG>
+requires HasBodyGyroscope<IMU> && HasBodyMagnetometer<MAG> && HasBodyAccelerometer<IMU>
 bool AccGyrMagOrientation<Tracker, IMU, MAG>::predict(std::array<float, 4> &q, au::QuantityU64<au::Milli<au::Seconds>> &timestamp)
 {
     TimeUtils::RTCDateTimeSubseconds rtc;
@@ -405,6 +411,7 @@ bool AccGyrMagOrientation<Tracker, IMU, MAG>::predict(std::array<float, 4> &q, a
 }
 
 template <typename Tracker, typename IMU, typename MAG>
+requires HasBodyGyroscope<IMU> && HasBodyMagnetometer<MAG> && HasBodyAccelerometer<IMU>
 void AccGyrMagOrientation<Tracker, IMU, MAG>::update(au::QuantityU64<au::Milli<au::Seconds>> &timestamp)
 {
     if (imu_counter_ % imu_rate_ == 0)
@@ -436,3 +443,5 @@ void AccGyrMagOrientation<Tracker, IMU, MAG>::update(au::QuantityU64<au::Milli<a
     ++imu_counter_;
     ++mag_counter_;
 }
+
+#endif // __ORIENTATION_TRACKER_HPP__

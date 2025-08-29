@@ -1,8 +1,12 @@
+#include <cstddef>
+#include <cstdio>
+
 #ifdef LOGGER_ENABLED
 #include "Logger.hpp"
 #include <cstdarg>
 #include <cstring>
 #include <iostream>
+#include "stddef.h"
 
 #ifdef __arm__
 #include "usbd_cdc_if.h"

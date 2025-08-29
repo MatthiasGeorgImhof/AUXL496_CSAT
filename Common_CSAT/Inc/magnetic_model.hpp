@@ -37,6 +37,11 @@ namespace magnetic_model
     template <size_t NMAX>
     MagneticField calculateMagneticField(float latitude_deg, float longitude_deg, float radius_m, int year, const std::array<GaussCoefficient, (NMAX + 1) * (NMAX + 2) / 2 - 1> &coefficients);
 
+	#ifdef M_PIf
+	#undef M_PIf
+	#endif
+    constexpr float M_PIf = static_cast<float>(std::numbers::pi);
+
     // Constants (from IGRF documentation)
     constexpr float R_EARTH = 6371200.f; // Earth's radius in m
 

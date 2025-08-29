@@ -14,6 +14,7 @@
 #include "mock_hal.h"
 #endif
 
+constexpr float M_PIf = static_cast<float>(std::numbers::pi);
 constexpr float DEG_TO_RAD = M_PIf / 180.0f; // Conversion factor from degrees to radians
 constexpr float RAD_TO_DEG = 180.0f / M_PIf; // Conversion factor from radians to degrees
 
@@ -138,6 +139,7 @@ protected:
 };
 
 template <typename Tracker, typename GNSS, typename IMU>
+requires(HasEcefAccelerometer<IMU>)
 class GNSSandAccelPosition
 {
 public:

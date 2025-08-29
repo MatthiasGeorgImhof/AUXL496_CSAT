@@ -1,3 +1,5 @@
+#ifdef __x86_64__
+
 #include "mock_hal/mock_hal_clock.h"
 #include "mock_hal/mock_hal_time.h" // For HAL_Delay
 
@@ -124,3 +126,5 @@ void reset_rcc(void) {
     memset(&last_rcc_osc_init_struct, 0, sizeof(last_rcc_osc_init_struct));
     memset(&last_rcc_clk_init_struct, 0, sizeof(last_rcc_clk_init_struct));
 }
+
+#endif

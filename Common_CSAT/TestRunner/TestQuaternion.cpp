@@ -8,6 +8,7 @@
 #include "OrientationTracker.hpp"
 
 
+constexpr float M_PIf = static_cast<float>(std::numbers::pi);
 const float kTolerance = 1e-6f; // Consistent tolerance
 const float kNumericalEpsilon = 1e-2f; // Epsilon value for numerical derivatives
 const float kAlignmentThreshold = 0.999f; //Threshold for the dot product

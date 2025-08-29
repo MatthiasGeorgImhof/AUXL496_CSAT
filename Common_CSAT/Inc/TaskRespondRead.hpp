@@ -29,13 +29,13 @@ protected:
     Accessor& accessor_;
 };
 
-template <typename Accessor, typename... Adapters>
+template <FileAccessConcept Accessor, typename... Adapters>
 void TaskRespondRead<Accessor, Adapters...>::handleTaskImpl()
 {
     (void)respond();
 }
 
-template <typename Accessor, typename... Adapters>
+template <FileAccessConcept Accessor, typename... Adapters>
 bool TaskRespondRead<Accessor, Adapters...>::respond()
 {
     if (TaskForServer<Adapters...>::buffer_.is_empty())
@@ -86,13 +86,13 @@ bool TaskRespondRead<Accessor, Adapters...>::respond()
     return true;
 }
 
-template <typename Accessor, typename... Adapters>
+template <FileAccessConcept Accessor, typename... Adapters>
 void TaskRespondRead<Accessor, Adapters...>::registerTask(RegistrationManager *manager, std::shared_ptr<Task> task)
 {
     manager->server(uavcan_file_Read_1_1_FIXED_PORT_ID_, task);
 }
 
-template <typename Accessor, typename... Adapters>
+template <FileAccessConcept Accessor, typename... Adapters>
 void TaskRespondRead<Accessor, Adapters...>::unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task)
 {
     manager->unserver(uavcan_file_Read_1_1_FIXED_PORT_ID_, task);

@@ -1,6 +1,20 @@
 #include "HSClockSwitch.hpp"
 
+#ifdef __arm__
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_rcc.h"
+#include "stm32l4xx_hal_rtc.h"
+#endif
+#ifdef __x86_64__
+#include "mock_hal.h"
+#endif
+
 constexpr uint32_t TIMEOUT = 10;
+
+#ifdef __arm__
+uint32_t HAL_RCC_GetFlashLatency(void) { return (FLASH->ACR & FLASH_ACR_LATENCY); }
+uint32_t HAL_RCC_GetSysClockSource(void) { return (RCC->CFGR & RCC_CFGR_SWS); }
+#endif
 
 HSClockSwitch::HSClockSwitch() {}
 

@@ -6,6 +6,8 @@
 #include <iostream>
 #include <cmath>
 
+constexpr float M_PIf = static_cast<float>(std::numbers::pi);
+
 TEST_CASE("GyrMagOrientationTracker initializes with identity quaternion")
 {
     GyrMagOrientationTracker tracker;

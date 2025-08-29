@@ -7,9 +7,7 @@
 #include "au.hpp"
 #include "IMU.hpp"
 
-#ifdef __arm__
-#include "utilities.h"
-#elif __x86_64__
+#ifdef __x86_64__
 #include "mock_hal.h"
 #endif
 
