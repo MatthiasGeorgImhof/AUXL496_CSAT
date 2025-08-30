@@ -35,6 +35,8 @@
 #ifdef __arm__
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_uart.h"
 #elif __x86_64__
 #include "mock_hal.h"
 #endif
