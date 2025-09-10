@@ -16,6 +16,16 @@ struct SPI_PortDef
 	UART_HandleTypeDef *hspi;
 	GPIO_TypeDef* GPIO;
 	uint16_t pin;
+
+	void select() const
+	{
+		HAL_GPIO_WritePin(GPIO, pin, GPIO_PIN_RESET);
+	}
+
+	void deselect() const
+	{
+		HAL_GPIO_WritePin(GPIO, pin, GPIO_PIN_SET);
+	}
 };
 
 class BMI270

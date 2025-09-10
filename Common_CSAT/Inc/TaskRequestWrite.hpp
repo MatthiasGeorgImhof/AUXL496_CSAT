@@ -191,7 +191,7 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
     uint8_t payload[PAYLOAD_SIZE];
     TaskForClient<Adapters...>::publish(PAYLOAD_SIZE, payload, data_.get(),
                                         reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_file_Write_Request_1_1_serialize_),
-                                        uavcan_file_Write_1_1_FIXED_PORT_ID_, TaskForClient<Adapters...>::node_id_, TaskForClient<Adapters...>::transfer_id_);
+                                        uavcan_file_Write_1_1_FIXED_PORT_ID_, TaskForClient<Adapters...>::node_id_);
     log(LOG_LEVEL_DEBUG, "TaskRequestWrite: sent request\r\n");
     return true;
 }

@@ -86,9 +86,9 @@ protected:
 	void publishImpl(size_t payload_size, uint8_t *payload, void *data,
 					 int8_t (*serialize)(const void *const, uint8_t *const, size_t *const),
 					 CyphalPortID port_id,
-					 CyphalTransferKind transfer_kind = CyphalTransferKindMessage,
-					 CyphalNodeID node_id = CYPHAL_NODE_ID_UNSET,
-					 CyphalTransferID transfer_id = 0)
+					 CyphalTransferKind transfer_kind,
+					 CyphalNodeID node_id,
+					 CyphalTransferID transfer_id)
 	{
 		int8_t result = serialize(data, payload, &payload_size);
 		if (result < 0)
@@ -97,7 +97,7 @@ protected:
 		CyphalTransferMetadata metadata =
 			{
 				CyphalPriorityNominal,
-				static_cast<CyphalTransferKind>(transfer_kind), // Use the transfer_kind argument
+				transfer_kind,
 				port_id,
 				node_id,
 				transfer_id,
@@ -275,9 +275,9 @@ protected:
 
 	void publish(size_t payload_size, uint8_t *payload, void *data,
 						int8_t (*serialize)(const void *const, uint8_t *const, size_t *const),
-						CyphalPortID port_id, CyphalNodeID node_id, CyphalTransferID transfer_id)
+						CyphalPortID port_id, CyphalNodeID node_id)
 	{
-		Publisher<Adapters...>::publishImpl(payload_size, payload, data, serialize, port_id, CyphalTransferKindRequest, node_id, transfer_id);
+		Publisher<Adapters...>::publishImpl(payload_size, payload, data, serialize, port_id, CyphalTransferKindRequest, node_id, transfer_id_);
 	}
 
 protected:
