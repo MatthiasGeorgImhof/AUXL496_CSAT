@@ -73,7 +73,7 @@ void TaskSendNodePortList<Adapters...>::handleTaskImpl()
     for(uint16_t i=0; i<server_size; ++i)
     {
         nunavutSetBit(data.servers.mask_bitpacked_, sizeof(data.servers.mask_bitpacked_), registration_manager_->getServers()[i], true);
-        snprintf(substring, sizeof(substring), "%d", registration_manager_->getServers()[i]);
+        snprintf(servstring, sizeof(substring), "%d", registration_manager_->getServers()[i]);
     }
 
     log(LOG_LEVEL_DEBUG, "TaskSendNodePortList ( %s) ( %s) ( %s) ( %s)\r\n", substring, pubstring, clistring, servstring);

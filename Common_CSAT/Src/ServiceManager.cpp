@@ -19,6 +19,8 @@ void ServiceManager::initializeServices(uint32_t now) const
 
 void ServiceManager::handleMessage(std::shared_ptr<CyphalTransfer> transfer) const
 {
+	log(LOG_LEVEL_DEBUG, "ServiceManager::handleMessage %4d %2d %4d\r\n",
+			transfer->metadata.remote_node_id, transfer->metadata.transfer_kind, transfer->metadata.port_id);
 	for(auto handler : handlers_)
 	{
 		if (handler.port_id == transfer->metadata.port_id)

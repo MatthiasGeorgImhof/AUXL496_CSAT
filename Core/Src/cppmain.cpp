@@ -32,6 +32,7 @@
 #include "TaskCheckMemory.hpp"
 #include "TaskBlinkLED.hpp"
 #include "TaskSendHeartBeat.hpp"
+#include "TaskProcessHeartBeat.hpp"
 #include "TaskSendNodePortList.hpp"
 #include "TaskSubscribeNodePortList.hpp"
 #include "TaskRespondGetInfo.hpp"
@@ -226,6 +227,9 @@ void cppmain(HAL_Handles handles)
 
 	O1HeapAllocator<TaskSendHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSendHeartBeat(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSendHeartBeat, 1000, 100, 0, sercan_adapters));
+
+	O1HeapAllocator<TaskProcessHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskProcessHeartBeat(o1heap);
+	registration_manager.add(allocate_unique_custom<TaskProcessHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskProcessHeartBeat, 1000, 100, sercan_adapters));
 
 	O1HeapAllocator<TaskSendNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSendNodePortList(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000, 100, 0, sercan_adapters));
