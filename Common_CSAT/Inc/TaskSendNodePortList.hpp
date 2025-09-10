@@ -36,10 +36,11 @@ void TaskSendNodePortList<Adapters...>::handleTaskImpl()
 {
 	uavcan_node_port_List_1_0 data;
     
-    char substring[64];
-    char pubstring[64];
-    char clistring[64];
-    char servstring[64];
+    constexpr size_t MAX_CHARS = 64;
+    char substring[MAX_CHARS];
+    char pubstring[MAX_CHARS];
+    char clistring[MAX_CHARS];
+    char servstring[MAX_CHARS];
 
     size_t subscription_size = registration_manager_->getSubscriptions().size();
     data.subscribers.sparse_list.count = subscription_size;
@@ -73,7 +74,7 @@ void TaskSendNodePortList<Adapters...>::handleTaskImpl()
     for(uint16_t i=0; i<server_size; ++i)
     {
         nunavutSetBit(data.servers.mask_bitpacked_, sizeof(data.servers.mask_bitpacked_), registration_manager_->getServers()[i], true);
-        snprintf(servstring, sizeof(substring), "%d", registration_manager_->getServers()[i]);
+        snprintf(servstring, sizeof(servstring), "%d", registration_manager_->getServers()[i]);
     }
 
     log(LOG_LEVEL_DEBUG, "TaskSendNodePortList ( %s) ( %s) ( %s) ( %s)\r\n", substring, pubstring, clistring, servstring);
