@@ -243,7 +243,7 @@ void cppmain(HAL_Handles handles)
 	registration_manager.add(allocate_unique_custom<TaskRespondGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskRespondGetInfo, uuid, node_name, 10000, 100, sercan_adapters));
 
 	O1HeapAllocator<TaskRequestGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskRequestGetInfo(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskRequestGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskRequestGetInfo, 10000, 100, 21, 0, sercan_adapters));
+	registration_manager.add(allocate_unique_custom<TaskRequestGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskRequestGetInfo, 10000, 100, 31, 0, sercan_adapters));
 
 	O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(o1heap);
 	registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, GPIOC, LED1_Pin, 1000, 100));

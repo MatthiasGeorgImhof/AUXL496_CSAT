@@ -47,18 +47,16 @@ void TaskRequestGetInfo<Adapters...>::handleTaskImpl()
     for (size_t i = 0; i < count; ++i)
     {
         std::shared_ptr<CyphalTransfer> transfer = TaskForClient<Adapters...>::buffer_.pop();
-        if (transfer->metadata.remote_node_id != TaskRequestGetInfo<Adapters...>::node_id_)
+        if (transfer->metadata.remote_node_id != TaskRequestGetInfo<Adapters...>::node_id_ ||
+        	transfer->metadata.transfer_kind != CyphalTransferKindResponse	)
         {
-            log(LOG_LEVEL_DEBUG, "TaskRequestGetInfo: Unexpected Node ID\r\n");
+            log(LOG_LEVEL_ERROR, "TaskRequestGetInfo Error: %4d %4d %4d\r\n",
+            		TaskRequestGetInfo<Adapters...>::node_id_,
+					transfer->metadata.remote_node_id,
+					transfer->metadata.transfer_kind);
             return;
         }
         
-        if (transfer->metadata.transfer_kind != CyphalTransferKindResponse)
-        {
-            log(LOG_LEVEL_ERROR, "TaskRequestGetInfo: Expected Response transfer kind\r\n");
-            return;
-        }
-
         uavcan_node_GetInfo_Response_1_0 data;
         size_t payload_size = transfer->payload_size;
 
@@ -69,7 +67,7 @@ void TaskRequestGetInfo<Adapters...>::handleTaskImpl()
             return;
         }
 
-        log(LOG_LEVEL_DEBUG, "TaskRequestGetInfo: received response\r\n");
+        log(LOG_LEVEL_DEBUG, "TaskRequestGetInfo: received response from %4d\r\n", transfer->metadata.remote_node_id);
     }
 }
 
