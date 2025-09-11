@@ -44,7 +44,7 @@ void TaskRespondGetInfo<Adapters...>::handleTaskImpl()
         std::shared_ptr<CyphalTransfer> transfer = TaskForServer<Adapters...>::buffer_.pop();
         if (transfer->metadata.transfer_kind != CyphalTransferKindRequest)
         {
-            log(LOG_LEVEL_ERROR, "TaskRequestGetInfo Error: %4d %4d\r\n",
+            log(LOG_LEVEL_ERROR, "TaskRespondGetInfo Error: %4d %4d\r\n",
             		transfer->metadata.remote_node_id,
 					transfer->metadata.transfer_kind);
             return;
