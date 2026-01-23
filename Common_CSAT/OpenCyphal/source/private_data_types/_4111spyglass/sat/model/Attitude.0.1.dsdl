@@ -1,0 +1,7 @@
+uavcan.time.SynchronizedTimestamp.1.0 timestamp
+uavcan.si.unit.angle.Quaternion.1.0 quaternion
+uavcan.si.unit.angular_velocity.Vector3.1.0 rad_s
+uavcan.si.unit.angle.Scalar.1.0 yaw_rad
+uavcan.si.unit.angle.Scalar.1.0 pitch_rad
+uavcan.si.unit.angle.Scalar.1.0 roll_rad
+@sealed

@@ -15,7 +15,6 @@
 #include "loopard_adapter.hpp"    // Or your specific adapter header
 #include "RegistrationManager.hpp"
 #include "ServiceManager.hpp" // Include ServiceManager header if needed
-#include "Allocator.hpp"       // Include Allocator header if needed
 
 #include "uavcan/node/GetInfo_1_0.h"
 

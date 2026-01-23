@@ -304,12 +304,9 @@ namespace TimeUtils
 
   float hoursToRadians(float gsm)
   {
-	#ifdef M_PIf
-	#undef M_PIf
-	#endif
-	constexpr float M_PIf = static_cast<float>(std::numbers::pi);
-	constexpr float M_2PIf = 2.0f * M_PIf;
-    return gsm * M_2PIf / 24.0f;
+	constexpr float m_pif = static_cast<float>(std::numbers::pi);
+	constexpr float m_2pif = 2.0f * m_pif;
+    return gsm * m_2pif / 24.0f;
   }
 
 } // namespace TimeUtils

@@ -11,12 +11,12 @@
 
 
 template <FileAccessConcept Accessor, typename... Adapters>
-class TaskRespondRead : public TaskForServer<Adapters...>
+class TaskRespondRead : public TaskForServer<CyphalBuffer8, Adapters...>
 {
 public:
     TaskRespondRead() = delete;
     TaskRespondRead(Accessor& accessor, uint32_t interval, uint32_t tick, std::tuple<Adapters...> &adapters)
-        : TaskForServer<Adapters...>(interval, tick, adapters), accessor_(accessor) {}
+        : TaskForServer<CyphalBuffer8, Adapters...>(interval, tick, adapters), accessor_(accessor) {}
 
     virtual void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task) override;
     virtual void unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task) override;
@@ -38,10 +38,10 @@ void TaskRespondRead<Accessor, Adapters...>::handleTaskImpl()
 template <FileAccessConcept Accessor, typename... Adapters>
 bool TaskRespondRead<Accessor, Adapters...>::respond()
 {
-    if (TaskForServer<Adapters...>::buffer_.is_empty())
+    if (TaskForServer<CyphalBuffer8, Adapters...>::buffer_.is_empty())
         return true;
 
-    std::shared_ptr<CyphalTransfer> transfer = TaskForServer<Adapters...>::buffer_.pop();
+    std::shared_ptr<CyphalTransfer> transfer = TaskForServer<CyphalBuffer8, Adapters...>::buffer_.pop();
     if (transfer->metadata.transfer_kind != CyphalTransferKindRequest)
     {
         log(LOG_LEVEL_ERROR, "TaskRespondRead: Expected Request transfer kind\r\n");
@@ -77,7 +77,7 @@ bool TaskRespondRead<Accessor, Adapters...>::respond()
     // Serialize and publish the response
     constexpr size_t PAYLOAD_SIZE = uavcan_file_Read_Response_1_1_SERIALIZATION_BUFFER_SIZE_BYTES_;
     uint8_t payload[PAYLOAD_SIZE];
-    TaskForServer<Adapters...>::publish(PAYLOAD_SIZE, payload, &response_data,
+    TaskForServer<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE, payload, &response_data,
                                          reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_file_Read_Response_1_1_serialize_),
                                          transfer->metadata.port_id, transfer->metadata.remote_node_id, transfer->metadata.transfer_id);
 

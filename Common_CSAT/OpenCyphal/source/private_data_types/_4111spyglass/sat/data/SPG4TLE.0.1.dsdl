@@ -1,0 +1,16 @@
+int32 satelliteNumber               # Satellite Catalog Number: up to 99999 (5 digits). Can be negative for some test satellites.
+uint16 elementNumber                # Element Set Number: Sequence number of the TLE.  Can be up to 9999.
+uint8 ephemerisType                 # Ephemeris Type: Typically 0, but can be other small integers.
+uint8 epochYear                     # Epoch Year: Last two digits of the year (00-99).
+float32 epochDay                    # Epoch Day: Day of the year (fractional). Max is < 366
+float32 meanMotionDerivative1       # First Time Derivative of Mean Motion: Can be positive or negative, and very small.
+float32 meanMotionDerivative2       # Second Time Derivative of Mean Motion: Can be positive or negative, and very small
+float32 bStarDrag                   # BSTAR drag term: Can be positive or negative, and very small.
+float32 inclination                 # Inclination: Angle in degrees (0-180).
+float32 rightAscensionAscendingNode # Right Ascension of Ascending Node: Angle in degrees (0-360).
+float32 eccentricity                # Eccentricity: 0.0 to < 1.0
+float32 argumentOfPerigee           # Argument of Perigee: Angle in degrees (0-360)
+float32 meanAnomaly                 # Mean Anomaly: Angle in degrees (0-360).
+float32 meanMotion                  # Mean Motion: Revolutions per day.  Can be a wide range of values.
+int32 revolutionNumberAtEpoch       # Revolution Number at Epoch: Can be large.
+@sealed

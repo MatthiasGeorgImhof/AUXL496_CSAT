@@ -3,7 +3,6 @@
 
 #include "ServiceManager.hpp"
 #include "RegistrationManager.hpp"
-#include "Allocator.hpp"
 #include <memory>
 #include <iostream> // For cout
 #include "Task.hpp"

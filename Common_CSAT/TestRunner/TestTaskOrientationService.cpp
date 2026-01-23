@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include "TaskOrientationService.hpp"
-#include "OrientationTracker.hpp"
+#include "OrientationService.hpp"
 
 #include "IMU.hpp"
 #include "mock_hal.h"
@@ -17,7 +17,7 @@ class MockIMUinBodyFrame
 public:
     MockIMUinBodyFrame() : has_acc_data(false), has_gyro_data(false), has_mag_data(false) {}
 
-    void setAcceleration(float x, float y, float z)
+    void setAccelerometer(float x, float y, float z)
     {
         acceleration= { au::make_quantity<au::MetersPerSecondSquaredInBodyFrame>(x), 
                         au::make_quantity<au::MetersPerSecondSquaredInBodyFrame>(y),
@@ -145,14 +145,14 @@ TEST_CASE("TaskOrientationService Test with GyrMagOrientation")
         REQUIRE(loopard.buffer.size() == 1);
 
         auto transfer = loopard.buffer.pop();
-        CHECK(transfer.metadata.port_id == _uavcan_si_sample_angle_Quaternion_1_0_PORT_ID_);
+        CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_OrientationSolution_0_1_PORT_ID_);
         CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
         CHECK(transfer.metadata.remote_node_id == id);
-        CHECK(transfer.payload_size == uavcan_si_sample_angle_Quaternion_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_);
+        CHECK(transfer.payload_size == _4111spyglass_sat_solution_OrientationSolution_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
-        uavcan_si_sample_angle_Quaternion_1_0 received_data;
+        _4111spyglass_sat_solution_OrientationSolution_0_1 received_data;
         size_t deserialized_size = transfer.payload_size;
-        int8_t deserialization_result = uavcan_si_sample_angle_Quaternion_1_0_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
+        int8_t deserialization_result = _4111spyglass_sat_solution_OrientationSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
         REQUIRE(deserialization_result >= 0);
 
         Eigen::Quaternionf current_orientation = tracker.getOrientation();
@@ -164,10 +164,10 @@ TEST_CASE("TaskOrientationService Test with GyrMagOrientation")
         if (i > 50)
         {
             CHECK(received_data.timestamp.microsecond == duration.count() * 1000);
-            CHECK(received_data.wxyz[0] == doctest::Approx(qw).epsilon(0.1f));
-            CHECK(received_data.wxyz[1] == doctest::Approx(qx).epsilon(0.1f));
-            CHECK(received_data.wxyz[2] == doctest::Approx(qy).epsilon(0.1f));
-            CHECK(received_data.wxyz[3] == doctest::Approx(qz).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[0] == doctest::Approx(qw).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[1] == doctest::Approx(qx).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[2] == doctest::Approx(qy).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[3] == doctest::Approx(qz).epsilon(0.1f));
         }
         duration += dduration;
         auto rtc = TimeUtils::to_rtc(duration, secondFraction);
@@ -175,3 +175,133 @@ TEST_CASE("TaskOrientationService Test with GyrMagOrientation")
         set_mocked_rtc_date(rtc.date);
     }
 }
+
+TEST_CASE("TaskOrientationService Test with AccGyrOrientation")
+{
+    RTC_HandleTypeDef hrtc;
+    const uint32_t secondFraction = 1023;
+    hrtc.Init.SynchPrediv = secondFraction;
+
+    TimeUtils::DateTimeComponents dtc{2000, 1, 1, 0, 0, 1, 0};
+    auto duration = TimeUtils::to_epoch_duration(dtc);
+    auto rtc = TimeUtils::to_rtc(duration, secondFraction);
+    set_mocked_rtc_time(rtc.time);
+    set_mocked_rtc_date(rtc.date);
+
+    constexpr CyphalNodeID id = 13;
+    LoopardAdapter loopard;
+    loopard.memory_allocate = loopardMemoryAllocate;
+    loopard.memory_free = loopardMemoryFree;
+    Cyphal<LoopardAdapter> loopard_cyphal(&loopard);
+    loopard_cyphal.setNodeID(id);
+    std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
+
+    MockIMUinBodyFrame imu;
+    AccGyrOrientationTracker tracker;
+    tracker.setReferenceVectors(Eigen::Vector3f(0.f, 0.f, 9.81f));
+    AccGyrOrientation orientationTracker(&hrtc, tracker, imu);
+    auto task = TaskOrientationService(orientationTracker, 100, 1, 0, adapters);
+
+    const float dt = 0.1f;
+    std::chrono::milliseconds dduration(100);
+
+    for (int i = 0; i < 100; ++i)
+    {
+        float t = dt * static_cast<float>(i);
+        imu.setGyroscope(0.1f * t, 0.2f * t, 0.3f * t);
+        imu.setAccelerometer(0.f, 0.f, 9.81f);
+
+        task.handleTaskImpl();
+        REQUIRE(loopard.buffer.size() == 1);
+
+        auto transfer = loopard.buffer.pop();
+        CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_OrientationSolution_0_1_PORT_ID_);
+        CHECK(transfer.metadata.remote_node_id == id);
+
+        _4111spyglass_sat_solution_OrientationSolution_0_1 received_data;
+        size_t deserialized_size = transfer.payload_size;
+        int8_t result = _4111spyglass_sat_solution_OrientationSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
+        REQUIRE(result >= 0);
+
+        Eigen::Quaternionf q = tracker.getOrientation();
+        if (i > 50)
+        {
+            CHECK(received_data.quaternion_ned.wxyz[0] == doctest::Approx(q.w()).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[1] == doctest::Approx(q.x()).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[2] == doctest::Approx(q.y()).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[3] == doctest::Approx(q.z()).epsilon(0.1f));
+        }
+
+        duration += dduration;
+        auto rtc = TimeUtils::to_rtc(duration, secondFraction);
+        set_mocked_rtc_time(rtc.time);
+        set_mocked_rtc_date(rtc.date);
+    }
+}
+
+
+TEST_CASE("TaskOrientationService Test with AccGyrMagOrientation")
+{
+    RTC_HandleTypeDef hrtc;
+    const uint32_t secondFraction = 1023;
+    hrtc.Init.SynchPrediv = secondFraction;
+
+    TimeUtils::DateTimeComponents dtc{2000, 1, 1, 0, 0, 1, 0};
+    auto duration = TimeUtils::to_epoch_duration(dtc);
+    auto rtc = TimeUtils::to_rtc(duration, secondFraction);
+    set_mocked_rtc_time(rtc.time);
+    set_mocked_rtc_date(rtc.date);
+
+    constexpr CyphalNodeID id = 12;
+    LoopardAdapter loopard;
+    loopard.memory_allocate = loopardMemoryAllocate;
+    loopard.memory_free = loopardMemoryFree;
+    Cyphal<LoopardAdapter> loopard_cyphal(&loopard);
+    loopard_cyphal.setNodeID(id);
+    std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
+
+    MockIMUinBodyFrame imu;
+    AccGyrMagOrientationTracker tracker;
+    tracker.setReferenceVectors(Eigen::Vector3f(0.f, 0.f, 9.81f), Eigen::Vector3f(1.f, 0.f, 0.f));
+    AccGyrMagOrientation orientationTracker(&hrtc, tracker, imu, imu);
+    auto task = TaskOrientationService(orientationTracker, 100, 1, 0, adapters);
+
+    const float dt = 0.1f;
+    std::chrono::milliseconds dduration(100);
+
+    for (int i = 0; i < 100; ++i)
+    {
+        float t = dt * static_cast<float>(i);
+        imu.setGyroscope(0.1f * t, 0.2f * t, 0.3f * t);
+        imu.setAccelerometer(0.f, 0.f, 9.81f);
+        imu.setMagnetometer(0.4f * t, 0.5f * t, 0.6f * t);
+
+        task.handleTaskImpl();
+        REQUIRE(loopard.buffer.size() == 1);
+
+        auto transfer = loopard.buffer.pop();
+        CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_OrientationSolution_0_1_PORT_ID_);
+        CHECK(transfer.metadata.remote_node_id == id);
+
+        _4111spyglass_sat_solution_OrientationSolution_0_1 received_data;
+        size_t deserialized_size = transfer.payload_size;
+        int8_t result = _4111spyglass_sat_solution_OrientationSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
+        REQUIRE(result >= 0);
+
+        Eigen::Quaternionf q = tracker.getOrientation();
+        if (i > 50)
+        {
+            CHECK(received_data.quaternion_ned.wxyz[0] == doctest::Approx(q.w()).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[1] == doctest::Approx(q.x()).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[2] == doctest::Approx(q.y()).epsilon(0.1f));
+            CHECK(received_data.quaternion_ned.wxyz[3] == doctest::Approx(q.z()).epsilon(0.1f));
+        }
+
+        duration += dduration;
+        auto rtc = TimeUtils::to_rtc(duration, secondFraction);
+        set_mocked_rtc_time(rtc.time);
+        set_mocked_rtc_date(rtc.date);
+    }
+}
+
+

@@ -47,10 +47,10 @@ public:
 
     void handleTaskImpl()
     {
-        if (TaskForServer<Adapters...>::buffer_.is_empty())
+        if (TaskForServer<CyphalBuffer8, Adapters...>::buffer_.is_empty())
             return;
 
-        std::shared_ptr<CyphalTransfer> transfer = TaskForServer<Adapters...>::buffer_.pop();
+        std::shared_ptr<CyphalTransfer> transfer = TaskForServer<CyphalBuffer8, Adapters...>::buffer_.pop();
         if (transfer->metadata.transfer_kind != CyphalTransferKindRequest)
         {
             log(LOG_LEVEL_ERROR, "TaskRespondRead: Expected Request transfer kind\r\n");
@@ -66,7 +66,7 @@ public:
         // Serialize and publish the response
         constexpr size_t PAYLOAD_SIZE = uavcan_file_Read_Response_1_1_SERIALIZATION_BUFFER_SIZE_BYTES_;
         uint8_t payload[PAYLOAD_SIZE];
-        TaskForServer<Adapters...>::publish(PAYLOAD_SIZE, payload, &response_data,
+        TaskForServer<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE, payload, &response_data,
                                             reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_file_Read_Response_1_1_serialize_),
                                             transfer->metadata.port_id, transfer->metadata.remote_node_id, transfer->metadata.transfer_id);
     }

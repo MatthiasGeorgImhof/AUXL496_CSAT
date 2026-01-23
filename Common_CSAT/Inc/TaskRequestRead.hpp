@@ -11,7 +11,7 @@
 #include "uavcan/file/Error_1_0.h"
 
 template <FileSourceConcept FileSource, OutputStreamConcept OutputStream, typename... Adapters>
-class TaskRequestRead : public TaskForClient<Adapters...>
+class TaskRequestRead : public TaskForClient<CyphalBuffer8, Adapters...>
 {
 public:
     enum State
@@ -25,7 +25,7 @@ public:
 public:
     TaskRequestRead() = delete;
     TaskRequestRead(FileSource &source, OutputStream &output, uint32_t interval, uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters)
-        : TaskForClient<Adapters...>(interval, tick, node_id, transfer_id, adapters),
+        : TaskForClient<CyphalBuffer8, Adapters...>(interval, tick, node_id, transfer_id, adapters),
           source_(source),
           output_(output),
           state_(IDLE)
@@ -57,10 +57,10 @@ void TaskRequestRead<FileSource, OutputStream, Adapters...>::handleTaskImpl()
 template <FileSourceConcept FileSource, OutputStreamConcept OutputStream, typename... Adapters>
 bool TaskRequestRead<FileSource, OutputStream, Adapters...>::respond()
 {
-    if (TaskForClient<Adapters...>::buffer_.is_empty())
+    if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
         return true;
 
-    std::shared_ptr<CyphalTransfer> transfer = TaskForClient<Adapters...>::buffer_.pop();
+    std::shared_ptr<CyphalTransfer> transfer = TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
     if (transfer->metadata.transfer_kind != CyphalTransferKindResponse)
     {
         log(LOG_LEVEL_ERROR, "TaskRequestRead: Expected Response transfer kind\r\n");
@@ -112,7 +112,7 @@ bool TaskRequestRead<FileSource, OutputStream, Adapters...>::request()
     if (state_ == WAIT_RESPONSE)
         return true;
 
-    if (!TaskForClient<Adapters...>::buffer_.is_empty())
+    if (!TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
         return true;
 
     if (state_ == IDLE)
@@ -131,9 +131,9 @@ bool TaskRequestRead<FileSource, OutputStream, Adapters...>::request()
 
     constexpr size_t PAYLOAD_SIZE = uavcan_file_Read_Request_1_1_SERIALIZATION_BUFFER_SIZE_BYTES_;
     uint8_t payload[PAYLOAD_SIZE];
-    TaskForClient<Adapters...>::publish(PAYLOAD_SIZE, payload, request_data_.get(),
+    TaskForClient<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE, payload, request_data_.get(),
                                         reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_file_Read_Request_1_1_serialize_),
-                                        uavcan_file_Read_1_1_FIXED_PORT_ID_, TaskForClient<Adapters...>::node_id_);
+                                        uavcan_file_Read_1_1_FIXED_PORT_ID_, TaskForClient<CyphalBuffer8, Adapters...>::node_id_);
     log(LOG_LEVEL_DEBUG, "TaskRequestRead: Sent request for offset %zu, path '%s'\r\n", request_data_->offset, request_data_->path.path.elements);
 
     state_ = WAIT_RESPONSE;

@@ -1,0 +1,8 @@
+int32 velN
+int32 velE
+int32 velD
+int32 gSpeed
+int32 headMot
+uint32 sAcc
+uint32 headAcc
+@sealed

@@ -1,6 +1,7 @@
 //#define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest.h"
 #include "mock_hal.h"
+#include <array>
 #include <string.h>
 #include <stdio.h>
 
@@ -100,3 +101,24 @@ TEST_CASE("get_gpio_pin_state and set_gpio_pin_reset")
     }
 }
 
+TEST_CASE("HAL_GPIO_WritePin and HAL_GPIO_ReadPin every pin test")
+{
+    GPIO_TypeDef GPIOx;
+    std::array<uint16_t, MAX_GPIO_PINS> pins {
+        GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_2, GPIO_PIN_3, 
+        GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6, GPIO_PIN_7, 
+        GPIO_PIN_8, GPIO_PIN_9, GPIO_PIN_10, GPIO_PIN_11, 
+        GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14, GPIO_PIN_15
+
+    };
+
+    for(auto pin : pins) {
+        // Write a pin high, and check if we can read it back as high.
+        HAL_GPIO_WritePin(&GPIOx, pin, GPIO_PIN_SET);
+        CHECK(HAL_GPIO_ReadPin(&GPIOx, pin) == GPIO_PIN_SET);
+
+        // Write a pin low, and check if we can read it back as low.
+        HAL_GPIO_WritePin(&GPIOx, pin, GPIO_PIN_RESET);
+        CHECK(HAL_GPIO_ReadPin(&GPIOx, pin) == GPIO_PIN_RESET);
+    }
+}

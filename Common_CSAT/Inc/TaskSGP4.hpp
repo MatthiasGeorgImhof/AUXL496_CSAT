@@ -139,7 +139,7 @@ bool SGP4::predict(std::array<au::QuantityF<au::MetersInEcefFrame>, 3> &r, std::
 #
 #
 
-class TaskSGP4 : public TaskFromBuffer
+class TaskSGP4 : public TaskFromBuffer<CyphalBuffer1>
 {
 public:
     TaskSGP4() = delete;

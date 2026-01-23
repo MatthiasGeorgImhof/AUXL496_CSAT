@@ -9,13 +9,12 @@
 #include "loopard_adapter.hpp"
 #include "RegistrationManager.hpp"
 #include "ServiceManager.hpp"
-#include "Allocator.hpp"
 #include "TimeUtils.hpp"
+#include "HeapAllocation.hpp"
 
 #include "mock_hal.h"  // Include the mock HAL header
 
-void *loopardMemoryAllocate(size_t amount) { return static_cast<void *>(malloc(amount)); };
-void loopardMemoryFree(void *pointer) { free(pointer); };
+using Heap = HeapAllocation<>;
 
 TEST_CASE("TaskSendTimeSynchronization: handleTask publishes TimeSynchronization") {
     // Set up mock environment for x86_64
@@ -49,10 +48,12 @@ TEST_CASE("TaskSendTimeSynchronization: handleTask publishes TimeSynchronization
     
     constexpr CyphalNodeID id1 = 11;
 
+    Heap::initialize();
+
     // Create adapters
     LoopardAdapter loopard;
-    loopard.memory_allocate = loopardMemoryAllocate;
-    loopard.memory_free = loopardMemoryFree;
+    loopard.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard);
     loopard_cyphal1.setNodeID(id1);
     
@@ -81,7 +82,7 @@ TEST_CASE("TaskSendTimeSynchronization: handleTask publishes TimeSynchronization
     REQUIRE(deserialization_result1 >= 0); // Check if deserialization was successful
 
     REQUIRE(received_time_sync1.previous_transmission_timestamp_microsecond == 0);
-    loopardMemoryFree(static_cast<uint8_t*>(transfer1.payload));
+    Heap::loopardMemoryDeallocate(static_cast<uint8_t*>(transfer1.payload));
 
     REQUIRE(loopard.buffer.size() == 0);
     task.handleTaskImpl();
@@ -101,7 +102,7 @@ TEST_CASE("TaskSendTimeSynchronization: handleTask publishes TimeSynchronization
     REQUIRE(deserialization_result2 >= 0); // Check if deserialization was successful
 
     REQUIRE(received_time_sync2.previous_transmission_timestamp_microsecond == expected_duration.count() * 1000);
-    loopardMemoryFree(static_cast<uint8_t*>(transfer1.payload));
+    Heap::loopardMemoryDeallocate(static_cast<uint8_t*>(transfer2.payload));
 
     clear_mocked_rtc();
 }
@@ -138,8 +139,14 @@ TEST_CASE("TaskSendTimeSynchronization: snippet to registration with std::alloc"
     constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
+    Heap::initialize();
+
     LoopardAdapter loopard1, loopard2;
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
+    loopard1.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard1.memory_free = Heap::loopardMemoryDeallocate;
+    loopard2.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard2.memory_free = Heap::loopardMemoryDeallocate;
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);
     
@@ -192,13 +199,11 @@ TEST_CASE("TaskSendTimeSynchronization: snippet to registration with O1HeapAlloc
     constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
-    char buffer[4192] __attribute__ ((aligned (256)));
-    O1HeapInstance* heap = o1heapInit(buffer, 4192);
-    REQUIRE(heap != nullptr);
-    O1HeapDiagnostics diagnostics = o1heapGetDiagnostics(heap);
+    Heap::initialize();
+    auto diagnostics = Heap::getDiagnostics();
     size_t allocated = diagnostics.allocated;
 
-    O1HeapAllocator<TaskSendTimeSynchronization<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>> taskAllocator(heap);
+    SafeAllocator<TaskSendTimeSynchronization<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>, Heap> taskAllocator;
 
     LoopardAdapter loopard1, loopard2;
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
@@ -207,9 +212,8 @@ TEST_CASE("TaskSendTimeSynchronization: snippet to registration with O1HeapAlloc
 
     std::tuple<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>> adapters(loopard_cyphal1, loopard_cyphal2);
 
-    auto task_sendtimesync = allocate_shared_custom<TaskSendTimeSynchronization<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>>(
-        taskAllocator, &hrtc, 1000, 0, 0, adapters);
-    diagnostics = o1heapGetDiagnostics(heap);
+    auto task_sendtimesync = alloc_shared_custom<TaskSendTimeSynchronization<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>>(taskAllocator, &hrtc, 1000, 0, 0, adapters);
+    diagnostics = Heap::getDiagnostics();
     CHECK(diagnostics.allocated > allocated);
     CHECK(task_sendtimesync.use_count() == 1);
 
@@ -223,7 +227,7 @@ TEST_CASE("TaskSendTimeSynchronization: snippet to registration with O1HeapAlloc
     
     CHECK(task_sendtimesync.use_count() == 1);
     task_sendtimesync.reset();
-    diagnostics = o1heapGetDiagnostics(heap);
+    diagnostics = Heap::getDiagnostics();
     CHECK(diagnostics.allocated == allocated);
 
     clear_mocked_rtc();

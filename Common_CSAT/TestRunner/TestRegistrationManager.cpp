@@ -447,7 +447,7 @@ void checkTransfers(const CyphalTransfer transfer1, const CyphalTransfer transfe
     CHECK(strncmp(static_cast<const char *>(transfer1.payload), static_cast<const char *>(transfer2.payload), transfer1.payload_size) == 0);
 }
 
-class BasicTaskFromBuffer : public TaskFromBuffer
+class BasicTaskFromBuffer : public TaskFromBuffer<CyphalBuffer8>
 {
 public:
     BasicTaskFromBuffer(uint32_t interval, uint32_t tick, const CyphalTransfer transfer) : TaskFromBuffer(interval, tick), transfer_(transfer) {}

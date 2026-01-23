@@ -1,0 +1,13 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest/doctest.h>
+
+#include "MLX90640EEPROM.h"
+
+
+TEST_CASE("MLX90640 EEPROM defined registers")
+{
+    CHECK(MLX90640_EEPROM[0x0C] == 0x1901);
+    CHECK(MLX90640_EEPROM[0x0D] == 0x0000);
+    CHECK(MLX90640_EEPROM[0x0E] == 0x0000);
+    CHECK(MLX90640_EEPROM[0x0F] == 0xBE33);
+}

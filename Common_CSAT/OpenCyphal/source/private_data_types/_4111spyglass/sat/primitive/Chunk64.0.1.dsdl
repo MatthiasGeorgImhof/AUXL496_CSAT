@@ -1,0 +1,4 @@
+uint32 offset
+uint16 size
+uint8[64] payload
+@sealed

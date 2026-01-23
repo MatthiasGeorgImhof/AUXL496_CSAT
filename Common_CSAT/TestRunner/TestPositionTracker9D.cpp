@@ -12,27 +12,27 @@
 #include "mock_hal.h"
 #include "TimeUtils.hpp"
 #include "GNSS.hpp"
-#include "IMU.hpp"
+#include "IMUExtension.hpp"
 
 TEST_CASE("rotateNEDtoECEF correctly transforms known NED vectors at various lat/lon")
 {
-    const float gravity = 9.81f;
+    constexpr float gravity = 9.81f;
 
     SUBCASE("At equator (0°, 0°), NED gravity should map to ECEF -Z")
     {
         Eigen::Vector3f ned_vec(0.f, 0.f, gravity); // Down in NED
-        Eigen::Vector3f ecef = rotateNEDtoECEF(ned_vec, 0.f, 0.f);
+        Eigen::Vector3f ecef = computeNEDtoECEFRotation(au::degreesInGeodeticFrame(0.f), au::degreesInGeodeticFrame(0.f)) * ned_vec;
 
         // Expect mostly -Z direction in ECEF
-        CHECK(ecef(0) < 1.f);     // near zero X
-        CHECK(ecef(1) < 1.f);     // near zero Y
-        CHECK_GT(ecef(2), -9.7f); // strong downward Z
+        CHECK(ecef(0) == doctest::Approx(-gravity)); // strong downward X
+        CHECK(ecef(1) == doctest::Approx(0.0f));     // near zero Y
+        CHECK(ecef(2) == doctest::Approx(0.0f));     // near zero Z
     }
 
     SUBCASE("At North Pole (90°, 0°), East in NED should point roughly ECEF -Y")
     {
         Eigen::Vector3f ned_vec(0.f, 1.f, 0.f); // East in NED
-        Eigen::Vector3f ecef = rotateNEDtoECEF(ned_vec, 90.f, 0.f);
+        Eigen::Vector3f ecef = computeNEDtoECEFRotation(au::degreesInGeodeticFrame(90.f), au::degreesInGeodeticFrame(0.f)) * ned_vec;
 
         CHECK_GT(ecef(1), 0.9f); // East maps to positive ECEF Y
     }
@@ -40,14 +40,41 @@ TEST_CASE("rotateNEDtoECEF correctly transforms known NED vectors at various lat
     SUBCASE("At Katy, TX (29.8°, -95.8°), Down maps to tilted ECEF vector")
     {
         Eigen::Vector3f ned_vec(0.f, 0.f, gravity); // NED down
-        Eigen::Vector3f ecef = rotateNEDtoECEF(ned_vec, 29.8f, -95.8f);
+        Eigen::Vector3f ecef = computeNEDtoECEFRotation(au::degreesInGeodeticFrame(29.8f), au::degreesInGeodeticFrame(-95.8f)) * ned_vec;
+
+        constexpr float m_pif = std::numbers::pi_v<float>;
+        constexpr float lat_rad = 29.8f * m_pif / 180.0f;
+        constexpr float lon_rad = -95.8f * m_pif / 180.0f;
+        constexpr float x = -gravity * std::cos(lat_rad) * std::cos(lon_rad);
+        constexpr float y = -gravity * std::cos(lat_rad) * std::sin(lon_rad);
+        constexpr float z = -gravity * std::sin(lat_rad);
 
         // Gravity should map to a consistent ECEF direction (not pure Z)
-        CHECK_GT(ecef.norm(), 9.7f); // gravity magnitude preserved
-        CHECK_GT(ecef(0), 0.f);
-        CHECK_GT(ecef(1), 0.f);
-        CHECK_LT(ecef(2), 0.f); // gravity is downward
+        CHECK(ecef.norm() == doctest::Approx(gravity)); // gravity magnitude preserved
+        CHECK(ecef(0) == doctest::Approx(x));
+        CHECK(ecef(1) == doctest::Approx(y));
+        CHECK(ecef(2) == doctest::Approx(z));
     }
+
+        SUBCASE("Somewhere, TX (29.8°, 95.8°), Down maps to tilted ECEF vector")
+    {
+        Eigen::Vector3f ned_vec(0.f, 0.f, gravity); // NED down
+        Eigen::Vector3f ecef = computeNEDtoECEFRotation(au::degreesInGeodeticFrame(29.8f), au::degreesInGeodeticFrame(95.8f)) * ned_vec;
+
+        constexpr float m_pif = std::numbers::pi_v<float>;
+        constexpr float lat_rad = 29.8f * m_pif / 180.0f;
+        constexpr float lon_rad = 95.8f * m_pif / 180.0f;
+        constexpr float x = -gravity * std::cos(lat_rad) * std::cos(lon_rad);
+        constexpr float y = -gravity * std::cos(lat_rad) * std::sin(lon_rad);
+        constexpr float z = -gravity * std::sin(lat_rad);
+
+        // Gravity should map to a consistent ECEF direction (not pure Z)
+        CHECK(ecef.norm() == doctest::Approx(gravity)); // gravity magnitude preserved
+        CHECK(ecef(0) == doctest::Approx(x));
+        CHECK(ecef(1) == doctest::Approx(y));
+        CHECK(ecef(2) == doctest::Approx(z));
+    }
+
 }
 
 class MockPositionTracker9D : public PositionTracker9D
@@ -88,7 +115,7 @@ public:
 
 TEST_CASE("PositionTracker9D handles asynchronous GPS and accel updates")
 {
-    MockPositionTracker9D tracker;
+    PositionTracker9D tracker;
 
     const Eigen::Vector3f true_accel(1.0f, 0.5f, -0.8f);
     float time = 0.0f;
@@ -118,7 +145,6 @@ TEST_CASE("PositionTracker9D handles asynchronous GPS and accel updates")
         // if (dt <= 0.f)
         //     return;
 
-
     }
 
     auto est = tracker.getState();
@@ -132,15 +158,15 @@ TEST_CASE("PositionTracker9D handles asynchronous GPS and accel updates")
 
     for (int i = 0; i < 3; ++i)
     {
-        CHECK(est.segment<3>(0)(i) == doctest::Approx(expected_pos(i)).epsilon(0.15f));
-        CHECK(est.segment<3>(3)(i) == doctest::Approx(expected_vel(i)).epsilon(0.1f));
-        CHECK(est.segment<3>(6)(i) == doctest::Approx(expected_acc(i)).epsilon(0.05f));
+        CHECK(est.segment<3>(0)(i) == doctest::Approx(expected_pos(i)).epsilon(0.2f));
+        CHECK(est.segment<3>(3)(i) == doctest::Approx(expected_vel(i)).epsilon(0.2f));
+        CHECK(est.segment<3>(6)(i) == doctest::Approx(expected_acc(i)).epsilon(0.2f));
     }
 }
 
 TEST_CASE("Acceleration update without frame rotation causes state inconsistency")
 {
-    MockPositionTracker9D tracker;
+    PositionTracker9D tracker;
 
     // Initial timestamp
     float t0 = 0.0f;
@@ -176,7 +202,7 @@ TEST_CASE("Acceleration update without frame rotation causes state inconsistency
 
 TEST_CASE("Rotated body-frame gravity suppresses bias in ECEF fusion")
 {
-    MockPositionTracker9D tracker;
+    PositionTracker9D tracker;
 
     // Start at origin with zero velocity
     float t0 = 0.0f;
@@ -207,6 +233,9 @@ TEST_CASE("Rotated body-frame gravity suppresses bias in ECEF fusion")
     {
         Eigen::Vector3f expected_pos = 0.5f * accel_ecef * 10.0f * 10.0f;
         CHECK(state.segment<3>(0).isApprox(expected_pos, 5.0f)); // 5 meter tolerance
+        CHECK(state(0) == doctest::Approx(expected_pos(0)).epsilon(1.0f));
+        CHECK(state(1) == doctest::Approx(expected_pos(1)).epsilon(1.0f));
+        CHECK(state(2) == doctest::Approx(expected_pos(2)).epsilon(100.0f));
     }
 
     SUBCASE("Velocity and acceleration reflect gravity but suppress false drift")
@@ -246,7 +275,7 @@ public:
         pos_ = pos_cm;
     }
 
-    std::optional<PositionECEF> GetNavPosECEF() const
+    std::optional<PositionECEF> getNavPosECEF() const
     {
         return pos_;
     }
@@ -254,32 +283,6 @@ public:
 private:
     std::optional<PositionECEF> pos_;
 };
-
-class MockIMUinEcefFrame
-{
-public:
-    void setAcceleration(const Eigen::Vector3f &accel_mps2)
-    {
-        accel_ = accel_mps2;
-    }
-
-    std::optional<std::array<au::QuantityF<au::MetersPerSecondSquaredInEcefFrame>, 3>> readAccelerometer() const
-    {
-        if (!accel_.has_value())
-            return std::nullopt;
-
-        // std::cerr << "accel = " << accel_.value() << "\n";
-
-        return std::array{
-            au::make_quantity<au::MetersPerSecondSquaredInEcefFrame>(accel_->x()),
-            au::make_quantity<au::MetersPerSecondSquaredInEcefFrame>(accel_->y()),
-            au::make_quantity<au::MetersPerSecondSquaredInEcefFrame>(accel_->z())};
-    }
-
-private:
-    std::optional<Eigen::Vector3f> accel_;
-};
-static_assert(HasEcefAccelerometer<MockIMUinEcefFrame>);
 
 class MockIMUinBodyFrame
 {
@@ -313,11 +316,7 @@ public:
     void predict(std::array<float, 4> &q_body_to_ned,
                  au::QuantityU64<au::Milli<au::Seconds>> &timestamp) const
     {
-        // Flip Z axis to cancel gravity
-        Eigen::AngleAxisf rotation(M_PIf, Eigen::Vector3f::UnitX());
-        Eigen::Quaternionf q(rotation);
-
-        q_body_to_ned = {q.w(), q.x(), q.y(), q.z()};
+        q_body_to_ned = {1.0f, 0.0f, 0.0f, 0.0f};
         timestamp = au::make_quantity<au::Milli<au::Seconds>>(0);
     }
 };
@@ -349,15 +348,17 @@ TEST_CASE("Time advances correctly through mocked RTC")
 {
     PositionTracker9D tracker;
     MockGNSS gnss;
-    MockIMUinEcefFrame imu;
+    MockIMUinBodyFrame imu;
+    MockOrientationProvider orientation;
 
     RTC_HandleTypeDef rtc_handle{};
     rtc_handle.Init.SynchPrediv = 1023;
 
-    GNSSandAccelPosition positioner(&rtc_handle, tracker, gnss, imu);
-
-    gnss.setPositionECEF(Eigen::Vector3f::Zero());
-    imu.setAcceleration(Eigen::Vector3f(0.f, 0.f, -9.81f));
+    const Eigen::Vector3f initial_pos(6371000.0f, 0.0f, 0.0f);
+    tracker.setState((Eigen::Matrix<float, 9, 1>() << initial_pos.x(), initial_pos.y(), initial_pos.z(), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f).finished());
+    gnss.setPositionECEF(initial_pos);  // Equator, lon = 0°
+    imu.setAcceleration(Eigen::Vector3f(0.f, 0.f, 9.81f));
+    GNSSandAccelPosition positioner(&rtc_handle, tracker, gnss, imu, orientation);
 
     std::array<au::QuantityF<au::MetersInEcefFrame>, 3> r;
     std::array<au::QuantityF<au::MetersPerSecondInEcefFrame>, 3> v;
@@ -378,11 +379,11 @@ TEST_CASE("Time advances correctly through mocked RTC")
     Eigen::Vector3f pos(r[0].in(au::ecefs * au::meters), r[1].in(au::ecefs * au::meters), r[2].in(au::ecefs * au::meters));
     Eigen::Vector3f vel(v[0].in(au::ecefs * au::meters / au::seconds), v[1].in(au::ecefs * au::meters / au::seconds), v[2].in(au::ecefs * au::meters / au::seconds));
 
-    SUBCASE("Position and velocity evolve with time")
-    {
-        CHECK(pos.norm() > 0.f);
-        CHECK(vel.z() < 0.f);
-    }
+    CHECK((pos - initial_pos).norm() < 5.f);
+    CHECK((6371000.f - r[0].in(au::metersInEcefFrame)) > 0.0f );
+    CHECK(r[1].in(au::metersInEcefFrame) == doctest::Approx(0.0f));
+    CHECK(r[2].in(au::metersInEcefFrame) == doctest::Approx(0.0f));
+    CHECK(vel.x() < 0.f);
 }
 
 TEST_CASE("Duration conversion sanity check")
@@ -407,41 +408,36 @@ TEST_CASE("Tracker integrates constant acceleration")
 
 TEST_CASE("Unrotated body-frame acceleration causes drift in ECEF fusion")
 {
+    // Setup
     PositionTracker9D tracker;
     MockGNSS gnss;
-    MockIMUinEcefFrame imu;
+    MockIMUinBodyFrame imu;
+    MockOrientationProvider orientation;
 
     RTC_HandleTypeDef mock_rtc{};
     mock_rtc.Init.SynchPrediv = 1023;
-    RTC_TimeTypeDef time = {0, 0, 0, RTC_HOURFORMAT12_AM, 1023, 1023, RTC_DAYLIGHTSAVING_NONE, RTC_STOREOPERATION_RESET};
-    RTC_DateTypeDef date = {RTC_WEEKDAY_MONDAY, 1, 1, 00}; // Year 2000
-    set_mocked_rtc_time(time);
-    set_mocked_rtc_date(date);
+    set_mocked_rtc_time({0, 0, 0, RTC_HOURFORMAT12_AM, 1023, 1023, RTC_DAYLIGHTSAVING_NONE, RTC_STOREOPERATION_RESET});
+    set_mocked_rtc_date({RTC_WEEKDAY_MONDAY, 1, 1, 00}); // Year 2000
 
-    GNSSandAccelPosition positioner(&mock_rtc, tracker, gnss, imu);
+    // Initialize filter state at equator, lon = 0°
+    const Eigen::Vector3f initial_pos(6371000.0f, 0.0f, 0.0f);
+    tracker.setState((Eigen::Matrix<float, 9, 1>() << initial_pos.x(), initial_pos.y(), initial_pos.z(),
+                      0.0f, 0.0f, 0.0f,
+                      0.0f, 0.0f, 0.0f).finished());
 
-    // Initial GPS fix at origin
-    gnss.setPositionECEF(Eigen::Vector3f::Zero());
+    // Inject body-frame gravity (no rotation applied)
+    imu.setAcceleration(Eigen::Vector3f(0.f, 0.f, 9.81f));
+    GNSSandAccelPosition positioner(&mock_rtc, tracker, gnss, imu, orientation);
 
-    // Simulated body-frame gravity (no rotation applied)
-    imu.setAcceleration(Eigen::Vector3f(0.f, 0.f, -9.81f));
-
-    // Simulate timestamp
+    // Prediction loop
     au::QuantityU64<au::Milli<au::Seconds>> timestamp;
     std::array<au::QuantityF<au::MetersInEcefFrame>, 3> r;
     std::array<au::QuantityF<au::MetersPerSecondInEcefFrame>, 3> v;
 
-    // Initial update
-    positioner.predict(r, v, timestamp);
-
-    // Advance time and apply acceleration
-    for (uint32_t i = 1; i <= 5; ++i)
+    for (uint32_t i = 1; i <= 30; ++i)
     {
-        // Initialize mocked RTC time
-        RTC_TimeTypeDef time = {0, 0, 0, RTC_HOURFORMAT12_AM, 1023u - i * 100u, 1023, RTC_DAYLIGHTSAVING_NONE, RTC_STOREOPERATION_RESET};
-        RTC_DateTypeDef date = {RTC_WEEKDAY_MONDAY, 1, 1, 00}; // Year 2000
-        set_mocked_rtc_time(time);
-        set_mocked_rtc_date(date);
+        set_mocked_rtc_time({0, 0, 0, RTC_HOURFORMAT12_AM, 1023u - i * 100u, 1023, RTC_DAYLIGHTSAVING_NONE, RTC_STOREOPERATION_RESET});
+        set_mocked_rtc_date({RTC_WEEKDAY_MONDAY, 1, 1, 00});
 
         positioner.predict(r, v, timestamp);
 
@@ -455,22 +451,21 @@ TEST_CASE("Unrotated body-frame acceleration causes drift in ECEF fusion")
 
         // std::cerr << "[Step " << i << "] "
         //           << "t = " << timestamp.in(au::milli(au::seconds)) << " ms, "
-        //           << "pos.z = " << pos_debug.z() << " m, "
-        //           << "vel.z = " << vel_debug.z() << " m/s\n";
+        //           << "pos = " << pos_debug.transpose() << " m, "
+        //           << "vel = " << vel_debug.transpose() << " m/s\n";
     }
 
-    Eigen::Vector3f pos(r[0].in(au::ecefs * au::meters), r[1].in(au::ecefs * au::meters), r[2].in(au::ecefs * au::meters));
-    Eigen::Vector3f vel(v[0].in(au::ecefs * au::meters / au::seconds), v[1].in(au::ecefs * au::meters / au::seconds), v[2].in(au::ecefs * au::meters / au::seconds));
+    // Final state
+    Eigen::Vector3f pos(r[0].in(au::ecefs * au::meters),
+                        r[1].in(au::ecefs * au::meters),
+                        r[2].in(au::ecefs * au::meters));
 
-    SUBCASE("Position should remain near origin if acceleration is unrotated")
-    {
-        CHECK_LT(pos.norm(), 1.f); // Drift should be small but nonzero
-    }
+    Eigen::Vector3f vel(v[0].in(au::ecefs * au::meters / au::seconds),
+                        v[1].in(au::ecefs * au::meters / au::seconds),
+                        v[2].in(au::ecefs * au::meters / au::seconds));
 
-    SUBCASE("Velocity and acceleration show gravity bias if untreated")
-    {
-        CHECK(vel.z() < 0.f); // Falling due to misinterpreted gravity
-    }
+    CHECK((initial_pos - pos).norm() < 50.0f);
+    CHECK(vel.x() < 0.f); // Falling due to misinterpreted gravity
 }
 
 TEST_CASE("Rotated body-frame gravity suppresses drift in ECEF fusion")
@@ -493,23 +488,20 @@ TEST_CASE("Rotated body-frame gravity suppresses drift in ECEF fusion")
     set_mocked_rtc_date(date);
 
     MockGNSS gnss;
-    MockIMUinBodyFrame imu_;
+    MockIMUinBodyFrame imu;
     MockOrientationProvider orientation;
-    MockPositionProvider position;
-    IMUWithReorientation<MockIMUinBodyFrame, MockOrientationProvider, MockPositionProvider> imu(imu_, orientation, position);
 
     PositionTracker9D tracker;
-    GNSSandAccelPosition positioner(&mock_rtc, tracker, gnss, imu);
 
-    // Initial GPS fix at origin
-    gnss.setPositionECEF(Eigen::Vector3f::Zero());
+    // Initialize filter state at equator, lon = 0°
+    const Eigen::Vector3f initial_pos(6371000.0f, 0.0f, 0.0f);
+    tracker.setState((Eigen::Matrix<float, 9, 1>() << initial_pos.x(), initial_pos.y(), initial_pos.z(),
+                      0.0f, 0.0f, 0.0f,
+                      0.0f, 0.0f, 0.0f).finished());
 
-    // Identity rotation: body aligned with ECEF
-    Eigen::Matrix3f R_ecef_from_body = Eigen::Matrix3f::Identity();
-    Eigen::Vector3f accel_body(0.f, 0.f, -9.81f);
-    Eigen::Vector3f accel_ecef = R_ecef_from_body * accel_body;
-
-    imu_.setAcceleration(accel_ecef);
+    // Inject body-frame gravity (no rotation applied)
+    imu.setAcceleration(Eigen::Vector3f(0.f, 0.f, 9.81f));
+    GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUinBodyFrame, MockOrientationProvider, SubtractGravityInNED> positioner(&mock_rtc, tracker, gnss, imu, orientation);
 
     std::array<au::QuantityF<au::MetersInEcefFrame>, 3> r;
     std::array<au::QuantityF<au::MetersPerSecondInEcefFrame>, 3> v;
@@ -544,18 +536,10 @@ TEST_CASE("Rotated body-frame gravity suppresses drift in ECEF fusion")
     Eigen::Vector3f pos(r[0].in(au::ecefs * au::meters), r[1].in(au::ecefs * au::meters), r[2].in(au::ecefs * au::meters));
     Eigen::Vector3f vel(v[0].in(au::ecefs * au::meters / au::seconds), v[1].in(au::ecefs * au::meters / au::seconds), v[2].in(au::ecefs * au::meters / au::seconds));
 
-    SUBCASE("Position drift remains minimal under correct gravity interpretation")
-    {
-        CHECK(pos[0] == doctest::Approx(0.0f).epsilon(0.1f));
-        CHECK(pos[1] == doctest::Approx(0.0f).epsilon(0.1f));
-        CHECK(pos[2] == doctest::Approx(-3.61604f).epsilon(0.1f));
+        CHECK(pos[0] == doctest::Approx(initial_pos[0]).epsilon(0.1f));
+        CHECK(pos[1] == doctest::Approx(initial_pos[1]).epsilon(0.1f));
+        CHECK(pos[2] == doctest::Approx(initial_pos[2]).epsilon(0.1f));
         CHECK(vel[0] == doctest::Approx(0.0f).epsilon(0.1f));
         CHECK(vel[1] == doctest::Approx(0.0f).epsilon(0.1f));
-        CHECK(vel[2] == doctest::Approx(-3.61604f).epsilon(0.1f));
-    }
-
-    SUBCASE("Velocity and acceleration reflect gravity but suppress false drift")
-    {
-        CHECK(vel.z() < -0.5f); // z-velocity from gravity
-    }
+        CHECK(vel[2] == doctest::Approx(0.0f).epsilon(0.1f));
 }

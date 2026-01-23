@@ -1,274 +1,248 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
+
 #include "PowerMonitor.hpp"
-#include "mock_hal.h" // Include your mock HAL header
+#include "mock_hal.h"
 
-TEST_SUITE("PowerMonitor")
+// ─────────────────────────────────────────────
+// Test Fixture
+// ─────────────────────────────────────────────
+struct PowerMonitorFixture
 {
+    static inline I2C_HandleTypeDef hi2c{};
+    static constexpr uint8_t address = 0x40;
 
-    TEST_CASE("Constructor sets calibration register")
+    using Config    = I2C_Register_Config<hi2c, address>;
+    using Transport = I2CRegisterTransport<Config>;
+
+    Transport transport;
+
+    // NOTE: monitor is NOT constructed here — tests construct it explicitly
+    PowerMonitorFixture()
     {
-        I2C_HandleTypeDef hi2c = {};
-        uint8_t address = 0x40;
-        uint8_t expected_calibration_bytes[2];
-        uint16_t expected_calibration = 5120000 / (10 * 25); // calibration_value_
-
-        // Split the expected calibration value into two bytes (MSB first)
-        expected_calibration_bytes[0] = static_cast<uint8_t>((expected_calibration >> 8) & 0xFF);
-        expected_calibration_bytes[1] = static_cast<uint8_t>(expected_calibration & 0xFF);
-
-        uint8_t init_i2c_data[8]; // Data to inject into I2C memory
-        init_i2c_data[0] = 0;     // Raw Shunt Voltage
-        init_i2c_data[1] = 0;
-
-        init_i2c_data[2] = 0; // Raw Bus Voltage
-        init_i2c_data[3] = 0;
-
-        init_i2c_data[4] = 0; // Raw Power
-        init_i2c_data[5] = 0;
-
-        init_i2c_data[6] = 0; // Raw Current
-        init_i2c_data[7] = 0;
-        inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE), init_i2c_data, 8);
-
-        PowerMonitor monitor(&hi2c, address);
-
-        // Verify that HAL_I2C_Mem_Write was called with the correct arguments and values
-        CHECK_EQ(get_i2c_mem_buffer_dev_address(), address << 1);
-        CHECK_EQ(get_i2c_mem_buffer_mem_address(), static_cast<uint8_t>(INA226_REGISTERS::INA226_CALIBRATION));
-        CHECK_EQ(get_i2c_mem_buffer_count(), 2);
-        CHECK_EQ(get_i2c_buffer()[0], expected_calibration_bytes[0]);
-        CHECK_EQ(get_i2c_buffer()[1], expected_calibration_bytes[1]);
-
-        clear_i2c_mem_data();
+        clear_i2c_addresses();
+        clear_i2c_rx_data();
     }
 
-    TEST_CASE("Readings are correctly scaled and returned: PowerMonitorData")
+    void inject16(uint16_t value)
     {
-        I2C_HandleTypeDef hi2c = {};
-        uint8_t address = 0x40;
+        uint8_t data[2] = {
+            static_cast<uint8_t>((value >> 8U) & 0xFFU),
+            static_cast<uint8_t>( value        & 0xFFU)
+        };
+        inject_i2c_rx_data(address << 1, data, 2);
+    }
+};
 
-        PowerMonitor monitor(&hi2c, address);
+// ─────────────────────────────────────────────
+// Constructor Behavior
+// ─────────────────────────────────────────────
+TEST_CASE_FIXTURE(PowerMonitorFixture,
+                  "Constructor writes calibration register")
+{
+    clear_i2c_addresses();
+    clear_i2c_rx_data();
 
-        uint16_t raw_value = 100;
+    PowerMonitor<Transport> monitor(transport);
 
-        uint8_t data[8]; // Data to inject into I2C memory
-        data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-        data[1] = static_cast<uint8_t>(raw_value & 0xFF);
-        data[2] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-        data[3] = static_cast<uint8_t>(raw_value & 0xFF);
-        data[4] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-        data[5] = static_cast<uint8_t>(raw_value & 0xFF);
-        data[6] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-        data[7] = static_cast<uint8_t>(raw_value & 0xFF);
+    uint16_t expected_cal = 5120000U / (10U * 25U);
+    uint8_t msb = static_cast<uint8_t>((expected_cal >> 8U) & 0xFFU);
+    uint8_t lsb = static_cast<uint8_t>( expected_cal        & 0xFFU);
 
-        inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE), data, 8);
+    CHECK_EQ(get_i2c_tx_buffer_count(), 2);
+    CHECK_EQ(get_i2c_mem_address(),
+             static_cast<uint8_t>(INA226_REGISTERS::INA226_CALIBRATION));
+    CHECK_EQ(get_i2c_tx_buffer()[0], msb);
+    CHECK_EQ(get_i2c_tx_buffer()[1], lsb);
+}
 
-        PowerMonitorData returned_data;
-        CHECK_EQ(monitor(returned_data), true);
+// ─────────────────────────────────────────────
+// reset() Behavior
+// ─────────────────────────────────────────────
+TEST_CASE_FIXTURE(PowerMonitorFixture,
+                  "reset() writes configuration and calibration registers")
+{
+    PowerMonitor<Transport> monitor(transport);
 
-        CHECK_EQ(returned_data.voltage_shunt_uV, 5 * raw_value / 2);
-        CHECK_EQ(returned_data.voltage_bus_mV, 5 * raw_value / 4);
-        CHECK_EQ(returned_data.power_mW, raw_value * 25 * 25);
-        CHECK_EQ(returned_data.current_uA, raw_value * 25);
-        clear_i2c_mem_data();
+    clear_i2c_addresses();
+    clear_i2c_tx_data();
+
+    CHECK(monitor.reset());
+
+    // Last write should be CALIBRATION
+    CHECK_EQ(get_i2c_mem_address(),
+             static_cast<uint8_t>(INA226_REGISTERS::INA226_CALIBRATION));
+    CHECK_EQ(get_i2c_tx_buffer_count(), 2);
+}
+
+// ─────────────────────────────────────────────
+// Getter Scaling Tests
+// ─────────────────────────────────────────────
+TEST_CASE_FIXTURE(PowerMonitorFixture,
+                  "Getter functions return scaled values")
+{
+    PowerMonitor<Transport> monitor(transport);
+
+    SUBCASE("Shunt Voltage")
+    {
+        uint16_t raw = 100;
+        inject16(raw);
+
+        uint16_t out{};
+        CHECK(monitor.getShuntVoltage(out));
+        CHECK_EQ(out, 5U * raw / 2U);
+
+        CHECK_EQ(get_i2c_mem_address(),
+                 static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE));
     }
 
-    TEST_CASE("Readings are correctly scaled and returned: getters")
+    SUBCASE("Bus Voltage")
     {
-        I2C_HandleTypeDef hi2c = {};
-        uint8_t address = 0x40;
+        uint16_t raw = 200;
+        inject16(raw);
 
-        PowerMonitor monitor(&hi2c, address);
+        uint16_t out{};
+        CHECK(monitor.getBusVoltage(out));
+        CHECK_EQ(out, 5U * raw / 4U);
 
-        SUBCASE("Shunt Voltage")
-        {
-            uint16_t raw_value = 100;
-            uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
-
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE), data, 8);
-
-            uint16_t returned_value;
-            CHECK_EQ(monitor.getShuntVoltage(returned_value), true);
-            CHECK_EQ(returned_value, 5 * raw_value / 2);
-        }
-        SUBCASE("Bus Voltage")
-        {
-            uint16_t raw_value = 200;
-            uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
-
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_BUS_VOLTAGE), data, 8);
-
-            uint16_t returned_value;
-            CHECK_EQ(monitor.getBusVoltage(returned_value), true);
-            CHECK_EQ(returned_value, 5 * raw_value / 4);
-        }
-        SUBCASE("Power")
-        {
-            uint16_t raw_value = 75;
-            uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
-
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_POWER), data, 8);
-
-            uint16_t returned_value;
-            CHECK_EQ(monitor.getPower(returned_value), true);
-            CHECK_EQ(returned_value, raw_value * 25 * 25);
-        }
-        SUBCASE("Current")
-        {
-            uint16_t raw_value = 400;
-            uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
-
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_CURRENT), data, 8);
-
-            uint16_t returned_value;
-            CHECK_EQ(monitor.getCurrent(returned_value), true);
-            CHECK_EQ(returned_value, raw_value * 25);
-        }
-        SUBCASE("Manufacturer ID")
-        {
-            uint16_t raw_value = 0x1234;
-            uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
-
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_MANUFACTURER), data, 8);
-            uint16_t returned_value;
-            CHECK_EQ(monitor.getManufacturerId(returned_value), true);
-            CHECK_EQ(returned_value, raw_value);
-        }
-        SUBCASE("Die ID")
-        {
-            uint16_t raw_value = 0x5678;
-            uint8_t data[2]; // Data to inject into I2C memory
-            data[0] = static_cast<uint8_t>((raw_value >> 8) & 0xFF);
-            data[1] = static_cast<uint8_t>(raw_value & 0xFF);
-
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_DIE_ID), data, 8);
-            uint16_t returned_value;
-            CHECK_EQ(monitor.getDieId(returned_value), true);
-            CHECK_EQ(returned_value, raw_value);
-        }
+        CHECK_EQ(get_i2c_mem_address(),
+                 static_cast<uint8_t>(INA226_REGISTERS::INA226_BUS_VOLTAGE));
     }
 
-
-    TEST_CASE("setConfig writes the config to the correct register")
+    SUBCASE("Power")
     {
-        I2C_HandleTypeDef hi2c = {};
-        uint8_t address = 0x40;
-        uint16_t config_value = 0x1234;
+        uint16_t raw = 75;
+        inject16(raw);
 
-        // Split the config value into two bytes (MSB first)
-        uint8_t config_bytes[2];
-        config_bytes[0] = static_cast<uint8_t>((config_value >> 8) & 0xFF);
-        config_bytes[1] = static_cast<uint8_t>(config_value & 0xFF);
+        uint16_t out{};
+        CHECK(monitor.getPower(out));
+        CHECK_EQ(out, raw * 25U * 25U);
 
-        PowerMonitor monitor(&hi2c, address);
-        monitor.setConfig(config_value);
-
-        // Verify that HAL_I2C_Mem_Write was called with the correct arguments and values
-        CHECK_EQ(get_i2c_mem_buffer_dev_address(), address << 1);
-        CHECK_EQ(get_i2c_mem_buffer_mem_address(), static_cast<uint8_t>(INA226_REGISTERS::INA226_CONFIGURATION));
-        CHECK_EQ(get_i2c_mem_buffer_count(), 2);
-        CHECK_EQ(get_i2c_buffer()[0], config_bytes[0]);
-        CHECK_EQ(get_i2c_buffer()[1], config_bytes[1]);
-        clear_i2c_mem_data();
+        CHECK_EQ(get_i2c_mem_address(),
+                 static_cast<uint8_t>(INA226_REGISTERS::INA226_POWER));
     }
 
-    TEST_CASE("checkAndCast limits values to uint16_t max")
+    SUBCASE("Current")
     {
-        I2C_HandleTypeDef hi2c = {};
-        uint8_t address = 0x40;
+        uint16_t raw = 400;
+        inject16(raw);
 
-        PowerMonitor monitor(&hi2c, address);
-        clear_i2c_mem_data();
+        uint16_t out{};
+        CHECK(monitor.getCurrent(out));
+        CHECK_EQ(out, raw * 25U);
 
-        SUBCASE("checkAndCast Shunt Voltage")
-        {
-            uint8_t init_i2c_data[8] = {0x7F, 0xFF};
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE), init_i2c_data, sizeof(init_i2c_data));
-            uint16_t return_value;
-            bool result = monitor.getShuntVoltage(return_value);
-            CHECK_EQ(result, true); 
-            CHECK_EQ(return_value, std::numeric_limits<uint16_t>::max());
-        }
-
-        SUBCASE("checkAndCast Bus Voltage")
-        {
-            uint8_t init_i2c_data[8] = {0xFF, 0xFF};
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_BUS_VOLTAGE), init_i2c_data, sizeof(init_i2c_data));
-            uint16_t return_value;
-            bool result = monitor.getBusVoltage(return_value);
-            CHECK_EQ(result, true); 
-            CHECK_EQ(return_value, std::numeric_limits<uint16_t>::max());
-        }
-        
-        SUBCASE("checkAndCast Power")
-        {
-            uint8_t init_i2c_data[8] = {0xFF, 0xFF};
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_POWER), init_i2c_data, sizeof(init_i2c_data));
-            uint16_t return_value;
-            bool result = monitor.getPower(return_value);
-            CHECK_EQ(result, true); 
-            CHECK_EQ(return_value, std::numeric_limits<uint16_t>::max());
-        }
-        
-        SUBCASE("checkAndCast Current")
-        {
-            uint8_t init_i2c_data[8] = {0xFF, 0xFF};
-            inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_CURRENT), init_i2c_data, sizeof(init_i2c_data));
-            uint16_t return_value;
-            bool result = monitor.getCurrent(return_value);
-            CHECK_EQ(result, true); 
-            CHECK_EQ(return_value, std::numeric_limits<uint16_t>::max());
-        }
+        CHECK_EQ(get_i2c_mem_address(),
+                 static_cast<uint8_t>(INA226_REGISTERS::INA226_CURRENT));
     }
 
-    TEST_CASE("I2C Read Failure")
+    SUBCASE("Manufacturer ID")
     {
-        I2C_HandleTypeDef hi2c = {};
-        uint8_t address = 0x40;
-        uint8_t initial_i2c_data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}; // Some initial data
-        inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE), initial_i2c_data, 8);
+        uint16_t raw = 0x1234;
+        inject16(raw);
 
-        PowerMonitor monitor(&hi2c, address);
-        // Mock I2C read failure
-        uint8_t zeros[8] = {0};
-        inject_i2c_mem_data(address << 1, static_cast<uint8_t>(INA226_REGISTERS::INA226_SHUNT_VOLTAGE), zeros, 8);
+        uint16_t out{};
+        CHECK(monitor.getManufacturerId(out));
+        CHECK_EQ(out, raw);
 
-        PowerMonitorData data;
-        CHECK_EQ(monitor(data), true);
-
-        // Values should be zero because of I2C read failure.
-        CHECK_EQ(data.voltage_shunt_uV, 0);
-        CHECK_EQ(data.voltage_bus_mV, 0);
-        CHECK_EQ(data.power_mW, 0);
-        CHECK_EQ(data.current_uA, 0);
-        clear_i2c_mem_data();
+        CHECK_EQ(get_i2c_mem_address(),
+                 static_cast<uint8_t>(INA226_REGISTERS::INA226_MANUFACTURER));
     }
 
-    TEST_CASE("I2C Write Failure")
+    SUBCASE("Die ID")
     {
-        I2C_HandleTypeDef hi2c = {};
-        uint8_t address = 0x40;
-        uint16_t config_value = 0x1234;
+        uint16_t raw = 0x5678;
+        inject16(raw);
 
-        // // Capture initial state of i2c_mem_buffer and i2c_mem_buffer_count
-        // uint8_t initial_i2c_mem_buffer[I2C_MEM_BUFFER_SIZE];
-        // uint16_t initial_i2c_mem_buffer_count = get_i2c_mem_buffer_count();
-        PowerMonitor monitor(&hi2c, address);
+        uint16_t out{};
+        CHECK(monitor.getDieId(out));
+        CHECK_EQ(out, raw);
 
-        // Restore initial state
-
-        monitor.setConfig(config_value);
-        // This is very hard to test if the write fails. We will just let it continue without assertion
+        CHECK_EQ(get_i2c_mem_address(),
+                 static_cast<uint8_t>(INA226_REGISTERS::INA226_DIE_ID));
     }
+}
+
+// ─────────────────────────────────────────────
+// setConfig() Behavior
+// ─────────────────────────────────────────────
+TEST_CASE_FIXTURE(PowerMonitorFixture,
+                  "setConfig writes correct register and payload")
+{
+    PowerMonitor<Transport> monitor(transport);
+
+    uint16_t cfg = 0x1234U;
+    uint8_t msb = static_cast<uint8_t>((cfg >> 8U) & 0xFFU);
+    uint8_t lsb = static_cast<uint8_t>( cfg        & 0xFFU);
+
+    monitor.setConfig(cfg);
+
+    CHECK_EQ(get_i2c_dev_address(), address << 1);
+    CHECK_EQ(get_i2c_mem_address(),
+             static_cast<uint8_t>(INA226_REGISTERS::INA226_CONFIGURATION));
+    CHECK_EQ(get_i2c_tx_buffer_count(), 2);
+    CHECK_EQ(get_i2c_tx_buffer()[0], msb);
+    CHECK_EQ(get_i2c_tx_buffer()[1], lsb);
+}
+
+// ─────────────────────────────────────────────
+// Overflow Handling
+// ─────────────────────────────────────────────
+TEST_CASE_FIXTURE(PowerMonitorFixture,
+                  "checkAndCast clamps values to uint16_t max")
+{
+    PowerMonitor<Transport> monitor(transport);
+
+    SUBCASE("Shunt Voltage")
+    {
+        uint8_t data[2] = {0x7F, 0xFF};
+        inject_i2c_rx_data(address << 1, data, 2);
+
+        uint16_t out{};
+        CHECK(monitor.getShuntVoltage(out));
+        CHECK_EQ(out, std::numeric_limits<uint16_t>::max());
+    }
+
+    SUBCASE("Bus Voltage")
+    {
+        uint8_t data[2] = {0xFF, 0xFF};
+        inject_i2c_rx_data(address << 1, data, 2);
+
+        uint16_t out{};
+        CHECK(monitor.getBusVoltage(out));
+        CHECK_EQ(out, std::numeric_limits<uint16_t>::max());
+    }
+
+    SUBCASE("Power")
+    {
+        uint8_t data[2] = {0xFF, 0xFF};
+        inject_i2c_rx_data(address << 1, data, 2);
+
+        uint16_t out{};
+        CHECK(monitor.getPower(out));
+        CHECK_EQ(out, std::numeric_limits<uint16_t>::max());
+    }
+
+    SUBCASE("Current")
+    {
+        uint8_t data[2] = {0xFF, 0xFF};
+        inject_i2c_rx_data(address << 1, data, 2);
+
+        uint16_t out{};
+        CHECK(monitor.getCurrent(out));
+        CHECK_EQ(out, std::numeric_limits<uint16_t>::max());
+    }
+}
+
+// ─────────────────────────────────────────────
+// I2C Write Failure Placeholder
+// ─────────────────────────────────────────────
+TEST_CASE_FIXTURE(PowerMonitorFixture,
+                  "I2C Write Failure (placeholder)")
+{
+    PowerMonitor<Transport> monitor(transport);
+
+    uint16_t cfg = 0x1234U;
+    monitor.setConfig(cfg);
+
+    CHECK(true); // mock HAL cannot simulate write failure yet
 }

@@ -12,12 +12,12 @@
 #include <cstring>
 
 template <OutputStreamConcept Stream, typename... Adapters>
-class TaskRespondWrite : public TaskForServer<Adapters...>
+class TaskRespondWrite : public TaskForServer<CyphalBuffer8, Adapters...>
 {
 public:
     TaskRespondWrite() = delete;
     TaskRespondWrite(Stream &stream, uint32_t interval, uint32_t tick, std::tuple<Adapters...> &adapters) : 
-    TaskForServer<Adapters...>(interval, tick, adapters), stream_(stream) {}
+    TaskForServer<CyphalBuffer8, Adapters...>(interval, tick, adapters), stream_(stream) {}
 
     virtual void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task) override;
     virtual void unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task) override;
@@ -31,17 +31,17 @@ private:
 template <OutputStreamConcept Stream, typename... Adapters>
 void TaskRespondWrite<Stream, Adapters...>::handleTaskImpl()
 {
-    if (TaskForServer<Adapters...>::buffer_.is_empty())
+    if (TaskForServer<CyphalBuffer8, Adapters...>::buffer_.is_empty())
     {
         log(LOG_LEVEL_TRACE, "TaskRespondWrite: empty buffer\r\n");
         return;
     }
 
     log(LOG_LEVEL_INFO, "TaskRespondWrite: received request\r\n");
-    size_t count = TaskForServer<Adapters...>::buffer_.size();
+    size_t count = TaskForServer<CyphalBuffer8, Adapters...>::buffer_.size();
     for (size_t i = 0; i < count; ++i)
     {
-        std::shared_ptr<CyphalTransfer> transfer = TaskForServer<Adapters...>::buffer_.pop();
+        std::shared_ptr<CyphalTransfer> transfer = TaskForServer<CyphalBuffer8, Adapters...>::buffer_.pop();
         if (transfer->metadata.transfer_kind != CyphalTransferKindRequest)
             continue;
 
@@ -60,7 +60,7 @@ void TaskRespondWrite<Stream, Adapters...>::handleTaskImpl()
         constexpr size_t PAYLOAD_SIZE = uavcan_file_Write_Response_1_1_SERIALIZATION_BUFFER_SIZE_BYTES_;
         uint8_t payload[PAYLOAD_SIZE];
 
-        TaskForServer<Adapters...>::publish(PAYLOAD_SIZE, payload, &response,
+        TaskForServer<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE, payload, &response,
                                             reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_file_Write_Response_1_1_serialize_),
                                             uavcan_file_Write_1_1_FIXED_PORT_ID_, transfer->metadata.remote_node_id, transfer->metadata.transfer_id);
         log(LOG_LEVEL_INFO, "TaskRespondWrite: sent response\r\n");

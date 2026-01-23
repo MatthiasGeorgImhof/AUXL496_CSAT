@@ -1,0 +1,18 @@
+#ifndef __TRANSPORT_CONFIG_H__
+#define __TRANSPORT_CONFIG_H__
+
+#if defined(HAL_I2C_MODULE_ENABLED) || defined(MOCK_HAL_I2C_ENABLED) 
+#define HAS_I2C_HANDLE_TYPEDEF
+#endif
+
+#if defined(HAL_SPI_MODULE_ENABLED) || defined(MOCK_HAL_SPI_ENABLED) 
+#define HAS_SPI_HANDLE_TYPEDEF
+#endif
+
+#if defined(HAL_UART_MODULE_ENABLED) || defined(MOCK_HAL_UART_ENABLED) 
+#define HAS_UART_HANDLE_TYPEDEF
+#endif
+
+#define HAS_SCCB
+
+#endif // __TRANSPORT_CONFIG_H__

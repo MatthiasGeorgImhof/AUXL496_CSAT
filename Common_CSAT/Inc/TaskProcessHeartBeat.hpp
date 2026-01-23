@@ -11,18 +11,20 @@
 #include "Task.hpp"
 #include "RegistrationManager.hpp"
 #include "Logger.hpp"
+#include "cyphal_subscriptions.hpp"
 
 #include "nunavut_assert.h"
 #include "uavcan/node/Heartbeat_1_0.h"
 #include "nunavut/support/serialization.h"
 
 
+using TaskProcessHeartBeatBase = TaskFromBuffer<CyphalBuffer8>;
 template <typename... Adapters>
-class TaskProcessHeartBeat : public TaskFromBuffer
+class TaskProcessHeartBeat : public TaskProcessHeartBeatBase
 {
 public:
     TaskProcessHeartBeat() = delete;
-    TaskProcessHeartBeat(uint32_t interval, uint32_t tick, std::tuple<Adapters...>& adapters) : TaskFromBuffer(interval, tick), adapters_(adapters) {}
+    TaskProcessHeartBeat(uint32_t interval, uint32_t tick, std::tuple<Adapters...>& adapters) : TaskProcessHeartBeatBase(interval, tick), adapters_(adapters) {}
 
     virtual void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task) override;
     virtual void unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task) override;
@@ -48,12 +50,12 @@ template <typename... Adapters>
 void TaskProcessHeartBeat<Adapters...>::handleTaskImpl()
 {
     // Process all transfers in the buffer
-	size_t count = buffer_.size();
+	size_t count = this->buffer_.size();
     for (size_t i = 0; i < count; ++i)
     {
-        std::shared_ptr<CyphalTransfer> transfer = buffer_.pop();
+        std::shared_ptr<CyphalTransfer> transfer = this->buffer_.pop();
         size_t payload_size = transfer->payload_size;
-        uavcan_node_Heartbeat_1_0 heart_beat;
+        uavcan_node_Heartbeat_1_0 heart_beat{};
         uavcan_node_Heartbeat_1_0_deserialize_(&heart_beat, (const uint8_t *) transfer->payload, &payload_size);
 		log(LOG_LEVEL_DEBUG, "TaskProcessHeartBeat %d: %d\r\n", transfer->metadata.remote_node_id, heart_beat.uptime);
     }

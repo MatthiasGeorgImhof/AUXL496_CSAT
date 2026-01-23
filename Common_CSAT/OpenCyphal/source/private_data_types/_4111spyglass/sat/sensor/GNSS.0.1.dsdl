@@ -1,0 +1,6 @@
+_4111spyglass.sat.sensor.SensorHeader.0.1 sensor
+_4111spyglass.sat.sensor.GNSSStatus.0.1 status
+_4111spyglass.sat.common.DateTime.0.1 date_time
+_4111spyglass.sat.common.Position.0.1 position
+_4111spyglass.sat.common.AttitudeVelocity.0.1 velocity
+@sealed

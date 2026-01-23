@@ -21,6 +21,8 @@
 #include "_4111Spyglass.h"
 #include "_4111spyglass/sat/sensor/Magnetometer_0_1.h"
 #include "_4111spyglass/sat/sensor/GNSS_0_1.h"
+#include "_4111spyglass/sat/solution/OrientationSolution_0_1.h"
+#include "_4111spyglass/sat/solution/PositionSolution_0_1.h"
 
 constexpr static std::array CYPHAL_MESSAGES =
 {
@@ -31,6 +33,8 @@ CyphalSubscription{uavcan_time_Synchronization_1_0_FIXED_PORT_ID_, uavcan_time_S
 CyphalSubscription{uavcan_time_GetSynchronizationMasterInfo_0_1_FIXED_PORT_ID_, uavcan_time_GetSynchronizationMasterInfo_Request_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
 CyphalSubscription{_4111spyglass_sat_sensor_Magnetometer_0_1_PORT_ID_, _4111spyglass_sat_sensor_Magnetometer_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
 CyphalSubscription{_4111spyglass_sat_sensor_GNSS_0_1_PORT_ID_, _4111spyglass_sat_sensor_GNSS_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
+CyphalSubscription{_4111spyglass_sat_solution_OrientationSolution_0_1_PORT_ID_, _4111spyglass_sat_solution_OrientationSolution_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
+CyphalSubscription{_4111spyglass_sat_solution_PositionSolution_0_1_PORT_ID_, _4111spyglass_sat_solution_PositionSolution_0_1_EXTENT_BYTES_, CyphalTransferKindMessage},
 };
 
 constexpr static std::array CYPHAL_REQUESTS =

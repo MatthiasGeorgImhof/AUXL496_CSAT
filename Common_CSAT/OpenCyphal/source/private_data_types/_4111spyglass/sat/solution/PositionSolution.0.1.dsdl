@@ -1,0 +1,9 @@
+uavcan.time.SynchronizedTimestamp.1.0 timestamp
+uavcan.si.unit.length.Vector3.1.0 position_ecef
+uavcan.si.sample.velocity.Vector3.1.0 velocity_ecef
+uavcan.si.unit.acceleration.Vector3.1.0 acceleration_ecef
+bool valid_position
+bool valid_velocity
+bool valid_acceleration
+void5
+@sealed

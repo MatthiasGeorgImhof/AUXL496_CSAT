@@ -23,7 +23,8 @@ TEST_CASE("POSIXFileAccess Test") {
     test_file.close();
 
     POSIXFileAccess file_access;
-    std::array<char, NAME_LENGTH> path;
+    std::array<char, NAME_LENGTH> path{};
+
     const char* src = NAME;
 
     std::copy(src, src + std::min((size_t)NAME_LENGTH - 1, std::strlen(src)), path.begin());
@@ -289,7 +290,7 @@ TEST_CASE("InMemoryFileAccess Test") {
     size_t content_length = data.size();
 
     InMemoryFileAccess file_access(vfs);
-    std::array<char, NAME_LENGTH> path;
+    std::array<char, NAME_LENGTH> path{};
 
     const char* src = NAME;
     std::copy(src, src + std::min((size_t)NAME_LENGTH - 1, std::strlen(src)), path.begin());

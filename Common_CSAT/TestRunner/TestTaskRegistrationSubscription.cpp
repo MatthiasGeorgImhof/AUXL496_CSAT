@@ -45,7 +45,7 @@ public:
 };
 
 // Mock TaskFromBuffer implementation
-class MockTaskFromBuffer : public TaskFromBuffer {
+class MockTaskFromBuffer : public TaskFromBuffer<CyphalBuffer4> {
 public:
     MockTaskFromBuffer(uint32_t interval, uint32_t tick) : TaskFromBuffer(interval, tick) {}
 
@@ -71,7 +71,7 @@ public:
 };
 
 // Mock TaskForServer implementation
-class MockTaskForServer : public TaskForServer<MockCyphalAdapter> {
+class MockTaskForServer : public TaskForServer<CyphalBuffer4, MockCyphalAdapter> {
 public:
     MockTaskForServer(uint32_t interval, uint32_t tick, std::tuple<MockCyphalAdapter>& adapters)
         : TaskForServer(interval, tick, adapters) {}
@@ -97,7 +97,7 @@ public:
 };
 
 // Mock TaskForClient implementation
-class MockTaskForClient : public TaskForClient<MockCyphalAdapter> {
+class MockTaskForClient : public TaskForClient<CyphalBuffer4, MockCyphalAdapter> {
 public:
     MockTaskForClient(uint32_t interval, uint32_t tick, CyphalNodeID server_node_id, CyphalTransferID transfer_id, std::tuple<MockCyphalAdapter>& adapters)
         : TaskForClient(interval, tick, server_node_id, transfer_id, adapters) {}

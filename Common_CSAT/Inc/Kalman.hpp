@@ -70,7 +70,7 @@ public:
         stateVector = A * stateVector + B * u;
         stateCovarianceMatrix = A * stateCovarianceMatrix * A.transpose() + processNoiseCovarianceMatrix;
         static_assert(static_cast<int>(ControlMatrix::ColsAtCompileTime) == static_cast<int>(ControlVector::RowsAtCompileTime),
-              "Control matrix columns must match control vector rows");
+                      "Control matrix columns must match control vector rows");
     }
 
     // Method to perform the update step of the Kalman Filter
@@ -173,5 +173,15 @@ public:
     Eigen::Matrix<float, StateSize, 1> getState() const
     {
         return stateVector;
+    }
+
+    void setState(const Eigen::Matrix<float, StateSize, 1> &newState)
+    {
+        stateVector = newState;
+    }
+
+    void setCovarianceMatrix(const Eigen::Matrix<float, StateSize, StateSize> &newCovariance)
+    {
+        stateCovarianceMatrix = newCovariance;
     }
 };

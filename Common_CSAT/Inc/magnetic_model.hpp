@@ -4,6 +4,7 @@
 #include "wmm_legendre.hpp"
 #include <cmath>
 #include <array>
+#include <numbers>
 
 // https://www.ngdc.noaa.gov/geomag/WMM/data/WMM2020/WMM2020_Report.pdf
 
@@ -37,16 +38,13 @@ namespace magnetic_model
     template <size_t NMAX>
     MagneticField calculateMagneticField(float latitude_deg, float longitude_deg, float radius_m, int year, const std::array<GaussCoefficient, (NMAX + 1) * (NMAX + 2) / 2 - 1> &coefficients);
 
-	#ifdef M_PIf
-	#undef M_PIf
-	#endif
-    constexpr float M_PIf = static_cast<float>(std::numbers::pi);
+    constexpr float m_pif = static_cast<float>(std::numbers::pi);
 
     // Constants (from IGRF documentation)
     constexpr float R_EARTH = 6371200.f; // Earth's radius in m
 
-    constexpr float DEG_TO_RAD = M_PIf / 180.0f; // Conversion factor from degrees to radians
-    constexpr float RAD_TO_DEG = 180.0f / M_PIf; // Conversion factor from radians to degrees
+    constexpr float DEG_TO_RAD = m_pif / 180.0f; // Conversion factor from degrees to radians
+    constexpr float RAD_TO_DEG = 180.0f / m_pif; // Conversion factor from radians to degrees
 
     constexpr float epsilon = 1e-6f;
 

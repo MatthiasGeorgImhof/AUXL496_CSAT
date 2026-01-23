@@ -10,11 +10,11 @@
 #include <cstring>
 
 template <typename... Adapters>
-class TaskRespondGetInfo : public TaskForServer<Adapters...>
+class TaskRespondGetInfo : public TaskForServer<CyphalBuffer8, Adapters...>
 {
 public:
     TaskRespondGetInfo() = delete;
-    TaskRespondGetInfo(const uint8_t unique_id[16], const char name[50], uint32_t interval, uint32_t tick, std::tuple<Adapters...> &adapters) : TaskForServer<Adapters...>(interval, tick, adapters),  unique_id_{}, name_{} {
+    TaskRespondGetInfo(const uint8_t unique_id[16], const char name[50], uint32_t interval, uint32_t tick, std::tuple<Adapters...> &adapters) : TaskForServer<CyphalBuffer8, Adapters...>(interval, tick, adapters),  unique_id_{}, name_{} {
         std::memcpy(unique_id_, unique_id, 16);
         std::memcpy(name_, name, 50);
     }
@@ -31,23 +31,23 @@ protected:
 template <typename... Adapters>
 void TaskRespondGetInfo<Adapters...>::handleTaskImpl()
 {
-    if (TaskForServer<Adapters...>::buffer_.is_empty())
+    if (TaskForServer<CyphalBuffer8, Adapters...>::buffer_.is_empty())
     {
         log(LOG_LEVEL_TRACE, "TaskRespondGetInfo: empty buffer\r\n");
         return;
     }
 
     log(LOG_LEVEL_INFO, "TaskRespondGetInfo: received request\r\n");
-    size_t count = TaskForServer<Adapters...>::buffer_.size();
+    size_t count = TaskForServer<CyphalBuffer8, Adapters...>::buffer_.size();
     for (size_t i = 0; i < count; ++i)
     {
-        std::shared_ptr<CyphalTransfer> transfer = TaskForServer<Adapters...>::buffer_.pop();
+        std::shared_ptr<CyphalTransfer> transfer = TaskForServer<CyphalBuffer8, Adapters...>::buffer_.pop();
         if (transfer->metadata.transfer_kind != CyphalTransferKindRequest)
         {
             log(LOG_LEVEL_ERROR, "TaskRespondGetInfo Error: %4d %4d\r\n",
             		transfer->metadata.remote_node_id,
 					transfer->metadata.transfer_kind);
-            return;
+            continue;
         }
         uavcan_node_GetInfo_Response_1_0 data = {
             .protocol_version = {uavcan_node_Version_1_0{.major = 1, .minor = 0}},
@@ -67,7 +67,7 @@ void TaskRespondGetInfo<Adapters...>::handleTaskImpl()
         constexpr size_t PAYLOAD_SIZE = uavcan_node_GetInfo_Response_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_;
         uint8_t payload[PAYLOAD_SIZE];
 
-        TaskForServer<Adapters...>::publish(PAYLOAD_SIZE, payload, &data,
+        TaskForServer<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE, payload, &data,
                                             reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_node_GetInfo_Response_1_0_serialize_),
                                             uavcan_node_GetInfo_1_0_FIXED_PORT_ID_, transfer->metadata.remote_node_id, transfer->metadata.transfer_id);
         log(LOG_LEVEL_DEBUG, "TaskRespondGetInfo: sent response %4d \r\n", transfer->metadata.remote_node_id);

@@ -1,0 +1,13 @@
+uavcan.time.SynchronizedTimestamp.1.0 timestamp
+uavcan.si.unit.angle.Quaternion.1.0 quaternion_ned
+uavcan.si.unit.angular_velocity.Vector3.1.0 angular_velocity_ned
+uavcan.si.unit.magnetic_flux_density.Vector3.1.0 magnetic_field_body
+uavcan.si.unit.angle.Scalar.1.0 yaw_ned
+uavcan.si.unit.angle.Scalar.1.0 pitch_ned
+uavcan.si.unit.angle.Scalar.1.0 roll_ned
+void4
+bool valid_quaternion
+bool valid_angular_velocity
+bool valid_magnetic_field
+bool valid_yaw_pitch_roll
+@sealed

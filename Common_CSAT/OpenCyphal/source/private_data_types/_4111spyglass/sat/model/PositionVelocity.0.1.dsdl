@@ -1,0 +1,4 @@
+uavcan.time.SynchronizedTimestamp.1.0 timestamp
+float32[3] position_m
+float32[3] velocity_ms
+@sealed

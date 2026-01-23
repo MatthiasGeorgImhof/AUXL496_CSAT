@@ -39,6 +39,7 @@ concept Accessor = requires(T a, size_t address, const uint8_t* data, uint8_t* r
     { a.getAlignment() } -> std::convertible_to<size_t>;
     { a.getFlashMemorySize() } -> std::convertible_to<size_t>;
     { a.getFlashStartAddress() } -> std::convertible_to<size_t>;
+    { a.getEraseBlockSize() } -> std::convertible_to<size_t>;
 };
 
 #endif /* IMAGE_BUFFER_ACCESSOR_H */

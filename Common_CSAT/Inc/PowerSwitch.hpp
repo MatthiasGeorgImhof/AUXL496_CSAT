@@ -1,86 +1,114 @@
 #ifndef _POWER_SWITCH_H_
 #define _POWER_SWITCH_H_
 
-#include "mock_hal.h"
-#include <array>
+#include "Transport.hpp"
 #include <cstdint>
+#include <cstring>
+#include <array>
 
+// MCP23008 Register Definitions
+enum class MCP23008_REGISTERS : uint8_t
+{
+    MCP23008_IODIR = 0x00,
+    MCP23008_IPOL = 0x01,
+    MCP23008_GPINTEN = 0x02,
+    MCP23008_DEFVAL = 0x03,
+    MCP23008_INTCON = 0x04,
+    MCP23008_IOCON = 0x05,
+    MCP23008_GPPU = 0x06,
+    MCP23008_INTF = 0x07,
+    MCP23008_INTCAP = 0x08,
+    MCP23008_GPIO = 0x09,
+    MCP23008_OLAT = 0x0A,
+};
+
+enum class CIRCUITS : uint8_t
+{
+    CIRCUIT_0 = 0b00000001,
+    CIRCUIT_1 = 0b00000010,
+    CIRCUIT_2 = 0b00000100,
+    CIRCUIT_3 = 0b00001000,
+    CIRCUIT_4 = 0b00010000,
+    CIRCUIT_5 = 0b00100000,
+    CIRCUIT_6 = 0b01000000,
+    CIRCUIT_7 = 0b10000000,
+};
+
+template <typename Transport>
+    requires RegisterModeTransport<Transport>
 class PowerSwitch
 {
 public:
     PowerSwitch() = delete;
-    PowerSwitch(I2C_HandleTypeDef *hi2c, uint8_t i2c_address) : hi2c_(hi2c), i2c_address_(i2c_address), register_value_(0)
+
+    explicit PowerSwitch(const Transport &transport, GPIO_TypeDef *resetPort, uint16_t resetPin)
+        : transport_(transport), register_value_(0), reset_port_(resetPort), reset_pin_(resetPin)
     {
-    	uint8_t reset[] = {0,0,0,0,0,0,0,0,0,0,0};
-    	writeRegister(IODIR, reset, sizeof(reset));
+        releaseReset();
     }
 
-    bool on(const uint8_t slot)
+    bool on(CIRCUITS circuit)
     {
-        if (invalidslot(slot))
-        {
-            return false;
-        }
-
-        uint8_t mask = 1 << (2 * slot);
-        register_value_ |= mask;
-        return writeRegister(GPIO, &register_value_, 1);
+        register_value_ |= static_cast<uint8_t>(circuit);
+        return writeRegister(MCP23008_REGISTERS::MCP23008_OLAT, &register_value_, 1);
     }
 
-    bool off(const uint8_t slot)
+    bool off(CIRCUITS circuit)
     {
-        if (invalidslot(slot))
-        {
-            return false;
-        }
-
-        uint8_t mask = static_cast<uint8_t>(~(1 << (2 * slot)));
-        register_value_ &= mask;
-        return writeRegister(GPIO, &register_value_, 1);
+        register_value_ &= ~static_cast<uint8_t>(circuit);
+        return writeRegister(MCP23008_REGISTERS::MCP23008_OLAT, &register_value_, 1);
     }
 
-    bool status(const uint8_t slot)
+    bool status(CIRCUITS circuit) const
     {
-        if (invalidslot(slot))
-        {
-            return false;
-        }
-
-        uint8_t mask = 1 << (2 * slot);
-        return (register_value_ & mask) != 0;
+        return (register_value_ & static_cast<uint8_t>(circuit));
     }
 
-    bool  setState(const uint8_t mask)
+    bool setState(uint8_t mask)
     {
-    	register_value_ = mask;
-        return writeRegister(GPIO, &register_value_, 1);
+        register_value_ = mask;
+        return writeRegister(MCP23008_REGISTERS::MCP23008_OLAT, &register_value_, 1);
     }
 
     uint8_t getState()
     {
-    	return register_value_;
+        register_value_ = readRegister(MCP23008_REGISTERS::MCP23008_OLAT);
+        return register_value_;
     }
 
-private:
-    static constexpr uint8_t IODIR = 0x00;
-    static constexpr uint8_t GPIO = 0x09;
-    static constexpr uint8_t OLAT = 0x0A;
-
-private:
-    bool writeRegister(uint8_t reg, uint8_t *data, uint16_t size)
+    void holdReset()
     {
-        return (HAL_I2C_Mem_Write(hi2c_, i2c_address_<<1, reg, I2C_MEMADD_SIZE_8BIT, data, size, HAL_MAX_DELAY) == HAL_OK);
+        // Set *Reset pin low
+        HAL_GPIO_WritePin(reset_port_, reset_pin_, GPIO_PIN_RESET);
     }
 
-    inline bool invalidslot(const uint8_t slot)
+    void releaseReset()
     {
-        return (slot >= 4);
+        // Set *Reset pin high
+        HAL_GPIO_WritePin(reset_port_, reset_pin_, GPIO_PIN_SET);
+
+        uint8_t reset[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        writeRegister(MCP23008_REGISTERS::MCP23008_IODIR, reset, sizeof(reset));
     }
 
 private:
-    I2C_HandleTypeDef *hi2c_;
-    uint8_t i2c_address_;
+    bool writeRegister(MCP23008_REGISTERS reg, const uint8_t *data, uint16_t size)
+    {
+        return transport_.write_reg(static_cast<uint16_t>(reg), data, size);
+    }
+
+    uint8_t readRegister(MCP23008_REGISTERS reg) const
+    {
+        uint8_t rx{};
+        transport_.read_reg(static_cast<uint16_t>(reg), &rx, 1);
+        return rx;
+    }
+
+private:
+    const Transport &transport_;
     uint8_t register_value_;
+    GPIO_TypeDef *reset_port_;
+    uint16_t reset_pin_;
 };
 
-#endif /*_POWER_SWITCH_H */
+#endif /* _POWER_SWITCH_H_ */

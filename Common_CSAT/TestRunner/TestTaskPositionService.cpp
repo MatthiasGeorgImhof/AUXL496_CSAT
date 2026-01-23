@@ -30,7 +30,7 @@ public:
         has_data = true;
     }
 
-    std::optional<PositionECEF> GetNavPosECEF()
+    std::optional<PositionECEF> getNavPosECEF()
     {
         if (has_data)
         {
@@ -78,38 +78,6 @@ private:
     bool has_data;
 };
 static_assert(HasBodyAccelerometer<MockIMUinBodyFrame>);
-
-template <typename IMU>
-class MockIMUwithoutReorientation
-{
-public:
-    MockIMUwithoutReorientation(IMU &imu) : imu_(imu) {}
-
-    void setAcceleration(float x, float y, float z)
-    {
-        imu_.setAcceleration(x, y, z);
-    }
-
-    std::optional<std::array<au::QuantityF<au::MetersPerSecondSquaredInEcefFrame>, 3>> readAccelerometer()
-    {
-        auto optional_accel = imu_.readAccelerometer();
-        if (optional_accel.has_value())
-        {
-            auto accel = optional_accel.value();
-            return std::array<au::QuantityF<au::MetersPerSecondSquaredInEcefFrame>, 3>{
-                au::make_quantity<au::MetersPerSecondSquaredInEcefFrame>(accel[0].in(au::metersPerSecondSquaredInBodyFrame)),
-                au::make_quantity<au::MetersPerSecondSquaredInEcefFrame>(accel[1].in(au::metersPerSecondSquaredInBodyFrame)),
-                au::make_quantity<au::MetersPerSecondSquaredInEcefFrame>(accel[2].in(au::metersPerSecondSquaredInBodyFrame))};
-        }
-        else
-        {
-            return std::nullopt;
-        }
-    }
-
-private:
-    IMU &imu_;
-};
 
 class MockSGP4
 {
@@ -201,11 +169,12 @@ TEST_CASE("TaskPositionService Test with GNSSandAccelPosition")
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
 
     MockGNSS gnss;
-    MockIMUinBodyFrame imu_;
-    MockIMUwithoutReorientation imu(imu_);
+    MockIMUinBodyFrame imu;
     PositionTracker9D position_tracker;
-    GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUwithoutReorientation<MockIMUinBodyFrame>> positionTracker(&hrtc, position_tracker, gnss, imu);
-    auto task = TaskPositionService<GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUwithoutReorientation<MockIMUinBodyFrame>>, Cyphal<LoopardAdapter>>(positionTracker, 100, 1, 123, adapters);
+    MockOrientation orientation;
+    GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUinBodyFrame, MockOrientation> positionTracker(&hrtc, position_tracker, gnss, imu, orientation);
+
+    auto task = TaskPositionService<GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUinBodyFrame, MockOrientation>, Cyphal<LoopardAdapter>>(positionTracker, 100, 1, 123, adapters);
 
     const float x0 = 100.0f;
     const float y0 = 200.0f;
@@ -237,14 +206,14 @@ TEST_CASE("TaskPositionService Test with GNSSandAccelPosition")
         REQUIRE(loopard.buffer.size() == 1);
 
         auto transfer = loopard.buffer.pop();
-        CHECK(transfer.metadata.port_id == _4111spyglass_sat_model_PositionVelocity_0_1_PORT_ID_);
+        CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_PositionSolution_0_1_PORT_ID_);
         CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
         CHECK(transfer.metadata.remote_node_id == id);
-        CHECK(transfer.payload_size == _4111spyglass_sat_model_PositionVelocity_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
+        CHECK(transfer.payload_size == _4111spyglass_sat_solution_PositionSolution_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
-        _4111spyglass_sat_model_PositionVelocity_0_1 received_data;
+        _4111spyglass_sat_solution_PositionSolution_0_1 received_data;
         size_t deserialized_size = transfer.payload_size;
-        int8_t deserialization_result = _4111spyglass_sat_model_PositionVelocity_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
+        int8_t deserialization_result = _4111spyglass_sat_solution_PositionSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
         REQUIRE(deserialization_result >= 0);
 
         float vx = vx0 + ax0 * t;
@@ -254,12 +223,12 @@ TEST_CASE("TaskPositionService Test with GNSSandAccelPosition")
         if (i > 50)
         {
             CHECK(received_data.timestamp.microsecond == duration.count() * 1000);
-            CHECK(received_data.position_m[0] == doctest::Approx(x).epsilon(0.1f));
-            CHECK(received_data.position_m[1] == doctest::Approx(y).epsilon(0.1f));
-            CHECK(received_data.position_m[2] == doctest::Approx(z).epsilon(0.1f));
-            CHECK(received_data.velocity_ms[0] == doctest::Approx(vx).epsilon(0.1f));
-            CHECK(received_data.velocity_ms[1] == doctest::Approx(vy).epsilon(0.1f));
-            CHECK(received_data.velocity_ms[2] == doctest::Approx(vz).epsilon(0.1f));
+            CHECK(received_data.position_ecef.meter[0] == doctest::Approx(x).epsilon(0.1f));
+            CHECK(received_data.position_ecef.meter[1] == doctest::Approx(y).epsilon(0.1f));
+            CHECK(received_data.position_ecef.meter[2] == doctest::Approx(z).epsilon(0.1f));
+            CHECK(received_data.velocity_ecef.meter_per_second[0] == doctest::Approx(vx).epsilon(0.1f));
+            CHECK(received_data.velocity_ecef.meter_per_second[1] == doctest::Approx(vy).epsilon(0.1f));
+            CHECK(received_data.velocity_ecef.meter_per_second[2] == doctest::Approx(vz).epsilon(0.1f));
         }
         duration += dduration;
         auto rtc = TimeUtils::to_rtc(duration, secondFraction);
@@ -297,11 +266,12 @@ TEST_CASE("TaskPositionService Test with GNSSandAccelPosition: noisy measurement
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
 
     MockGNSS gnss;
-    MockIMUinBodyFrame imu_;
-    MockIMUwithoutReorientation<MockIMUinBodyFrame> imu(imu_);
+    MockIMUinBodyFrame imu;
     PositionTracker9D position_tracker;
-    GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUwithoutReorientation<MockIMUinBodyFrame>> positionTracker(&hrtc, position_tracker, gnss, imu);
-    auto task = TaskPositionService<GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUwithoutReorientation<MockIMUinBodyFrame>>, Cyphal<LoopardAdapter>>(positionTracker, 100, 1, 123, adapters);
+    MockOrientation orientation;
+    GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUinBodyFrame, MockOrientation> positionTracker(&hrtc, position_tracker, gnss, imu, orientation);
+
+    auto task = TaskPositionService<GNSSandAccelPosition<PositionTracker9D, MockGNSS, MockIMUinBodyFrame, MockOrientation>, Cyphal<LoopardAdapter>>(positionTracker, 100, 1, 123, adapters);
 
     const float x0 = 100.0f;
     const float y0 = 200.0f;
@@ -341,14 +311,14 @@ TEST_CASE("TaskPositionService Test with GNSSandAccelPosition: noisy measurement
         REQUIRE(loopard.buffer.size() == 1);
 
         auto transfer = loopard.buffer.pop();
-        CHECK(transfer.metadata.port_id == _4111spyglass_sat_model_PositionVelocity_0_1_PORT_ID_);
+        CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_PositionSolution_0_1_PORT_ID_);
         CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
         CHECK(transfer.metadata.remote_node_id == id);
-        CHECK(transfer.payload_size == _4111spyglass_sat_model_PositionVelocity_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
+        CHECK(transfer.payload_size == _4111spyglass_sat_solution_PositionSolution_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
-        _4111spyglass_sat_model_PositionVelocity_0_1 received_data;
+        _4111spyglass_sat_solution_PositionSolution_0_1 received_data;
         size_t deserialized_size = transfer.payload_size;
-        int8_t deserialization_result = _4111spyglass_sat_model_PositionVelocity_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
+        int8_t deserialization_result = _4111spyglass_sat_solution_PositionSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
         REQUIRE(deserialization_result >= 0);
 
         float vx = vx0 + ax0 * t;
@@ -358,12 +328,12 @@ TEST_CASE("TaskPositionService Test with GNSSandAccelPosition: noisy measurement
         if (i > 50)
         {
             CHECK(received_data.timestamp.microsecond == duration.count() * 1000);
-            CHECK(received_data.position_m[0] == doctest::Approx(x).epsilon(0.1f));
-            CHECK(received_data.position_m[1] == doctest::Approx(y).epsilon(0.1f));
-            CHECK(received_data.position_m[2] == doctest::Approx(z).epsilon(0.1f));
-            CHECK(received_data.velocity_ms[0] == doctest::Approx(vx).epsilon(0.1f));
-            CHECK(received_data.velocity_ms[1] == doctest::Approx(vy).epsilon(0.1f));
-            CHECK(received_data.velocity_ms[2] == doctest::Approx(vz).epsilon(0.1f));
+            CHECK(received_data.position_ecef.meter[0] == doctest::Approx(x).epsilon(0.1f));
+            CHECK(received_data.position_ecef.meter[1] == doctest::Approx(y).epsilon(0.1f));
+            CHECK(received_data.position_ecef.meter[2] == doctest::Approx(z).epsilon(0.1f));
+            CHECK(received_data.velocity_ecef.meter_per_second[0] == doctest::Approx(vx).epsilon(0.1f));
+            CHECK(received_data.velocity_ecef.meter_per_second[1] == doctest::Approx(vy).epsilon(0.1f));
+            CHECK(received_data.velocity_ecef.meter_per_second[2] == doctest::Approx(vz).epsilon(0.1f));
         }
         duration += dduration;
         auto rtc = TimeUtils::to_rtc(duration, secondFraction);
@@ -453,25 +423,25 @@ TEST_CASE("TaskPositionService Test with SGP4andGNSSandPosition")
         REQUIRE(loopard.buffer.size() == 1);
 
         auto transfer = loopard.buffer.pop();
-        CHECK(transfer.metadata.port_id == _4111spyglass_sat_model_PositionVelocity_0_1_PORT_ID_);
+        CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_PositionSolution_0_1_PORT_ID_);
         CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
         CHECK(transfer.metadata.remote_node_id == id);
-        CHECK(transfer.payload_size == _4111spyglass_sat_model_PositionVelocity_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
+        CHECK(transfer.payload_size == _4111spyglass_sat_solution_PositionSolution_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
-        _4111spyglass_sat_model_PositionVelocity_0_1 received_data;
+        _4111spyglass_sat_solution_PositionSolution_0_1 received_data;
         size_t deserialized_size = transfer.payload_size;
-        int8_t deserialization_result = _4111spyglass_sat_model_PositionVelocity_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
+        int8_t deserialization_result = _4111spyglass_sat_solution_PositionSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
         REQUIRE(deserialization_result >= 0);
 
         if (i > 250)
         {
             CHECK(received_data.timestamp.microsecond == duration.count() * 1000);
-            CHECK(received_data.position_m[0] == doctest::Approx(x).epsilon(0.1f));
-            CHECK(received_data.position_m[1] == doctest::Approx(y).epsilon(0.1f));
-            CHECK(received_data.position_m[2] == doctest::Approx(z).epsilon(0.1f));
-            CHECK(received_data.velocity_ms[0] == doctest::Approx(vx).epsilon(10.f));
-            CHECK(received_data.velocity_ms[1] == doctest::Approx(vy).epsilon(10.f));
-            CHECK(received_data.velocity_ms[2] == doctest::Approx(vz).epsilon(10.f));
+            CHECK(received_data.position_ecef.meter[0] == doctest::Approx(x).epsilon(0.1f));
+            CHECK(received_data.position_ecef.meter[1] == doctest::Approx(y).epsilon(0.1f));
+            CHECK(received_data.position_ecef.meter[2] == doctest::Approx(z).epsilon(0.1f));
+            CHECK(received_data.velocity_ecef.meter_per_second[0] == doctest::Approx(vx).epsilon(10.f));
+            CHECK(received_data.velocity_ecef.meter_per_second[1] == doctest::Approx(vy).epsilon(10.f));
+            CHECK(received_data.velocity_ecef.meter_per_second[2] == doctest::Approx(vz).epsilon(10.f));
         }
         duration += dduration;
         auto rtc = TimeUtils::to_rtc(duration, secondFraction);
@@ -510,7 +480,8 @@ TEST_CASE("plain SGP4: send position 2025 6 25 18 0 0")
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
 
     SGP4 sgp4(&hrtc);
-    auto task = std::make_shared<TaskPositionService<SGP4, Cyphal<LoopardAdapter>>>(sgp4, 1000, 0, 0, adapters);
+    SGP4Position<SGP4> sgp4_position(&hrtc, sgp4);
+    auto task = std::make_shared<TaskPositionService<SGP4Position<SGP4>, Cyphal<LoopardAdapter>>>(sgp4_position, 1000, 0, 0, adapters);
 
     // ISS (ZARYA)
     char longstr1[] = "1 25544U 98067A   25176.73245655  .00008102  00000-0  14854-3 0  9994";
@@ -542,27 +513,27 @@ TEST_CASE("plain SGP4: send position 2025 6 25 18 0 0")
     REQUIRE(loopard.buffer.size() == 1);
 
     auto transfer = loopard.buffer.pop();
-    CHECK(transfer.metadata.port_id == _4111spyglass_sat_model_PositionVelocity_0_1_PORT_ID_);
+    CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_PositionSolution_0_1_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
     CHECK(transfer.metadata.remote_node_id == id);
-    CHECK(transfer.payload_size == _4111spyglass_sat_model_PositionVelocity_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
+    CHECK(transfer.payload_size == _4111spyglass_sat_solution_PositionSolution_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
     // Deserialize the payload and verify the values
-    _4111spyglass_sat_model_PositionVelocity_0_1 received_data;
+    _4111spyglass_sat_solution_PositionSolution_0_1 received_data;
     size_t deserialized_size = transfer.payload_size;
-    int8_t deserialization_result = _4111spyglass_sat_model_PositionVelocity_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
+    int8_t deserialization_result = _4111spyglass_sat_solution_PositionSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
     REQUIRE(deserialization_result >= 0);
     CHECK(received_data.timestamp.microsecond == 804189600000000);
 
     std::array<float, 3> expected_r{2715.4f, -4518.34f, -4291.31f};
     std::array<float, 3> expected_v{3.75928f, 5.63901f, -3.55967f};
 
-    CHECK(received_data.position_m[0] == doctest::Approx(expected_r[0] * 1000.f).epsilon(0.01));
-    CHECK(received_data.position_m[1] == doctest::Approx(expected_r[1] * 1000.f).epsilon(0.01));
-    CHECK(received_data.position_m[2] == doctest::Approx(expected_r[2] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[0] == doctest::Approx(expected_v[0] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[1] == doctest::Approx(expected_v[1] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[2] == doctest::Approx(expected_v[2] * 1000.f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[0] == doctest::Approx(expected_r[0] * 1000.f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[1] == doctest::Approx(expected_r[1] * 1000.f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[2] == doctest::Approx(expected_r[2] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[0] == doctest::Approx(expected_v[0] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[1] == doctest::Approx(expected_v[1] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[2] == doctest::Approx(expected_v[2] * 1000.f).epsilon(0.01));
     loopardMemoryFree(transfer.payload);
 }
 
@@ -596,7 +567,8 @@ TEST_CASE("plain SGP4: send position 2025 7 6 20 43 13")
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
 
     SGP4 sgp4(&hrtc);
-    auto task = std::make_shared<TaskPositionService<SGP4, Cyphal<LoopardAdapter>>>(sgp4, 1000, 0, 0, adapters);
+    SGP4Position<SGP4> sgp4_position(&hrtc, sgp4);
+    auto task = std::make_shared<TaskPositionService<SGP4Position<SGP4>, Cyphal<LoopardAdapter>>>(sgp4_position, 1000, 0, 0, adapters);
 
     // ISS (ZARYA)
     char longstr1[] = "1 25544U 98067A   25176.73245655  .00008102  00000-0  14854-3 0  9994";
@@ -628,26 +600,26 @@ TEST_CASE("plain SGP4: send position 2025 7 6 20 43 13")
     REQUIRE(loopard.buffer.size() == 1);
 
     auto transfer = loopard.buffer.pop();
-    CHECK(transfer.metadata.port_id == _4111spyglass_sat_model_PositionVelocity_0_1_PORT_ID_);
+    CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_PositionSolution_0_1_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
     CHECK(transfer.metadata.remote_node_id == id);
-    CHECK(transfer.payload_size == _4111spyglass_sat_model_PositionVelocity_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
+    CHECK(transfer.payload_size == _4111spyglass_sat_solution_PositionSolution_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
     // Deserialize the payload and verify the values
-    _4111spyglass_sat_model_PositionVelocity_0_1 received_data;
+    _4111spyglass_sat_solution_PositionSolution_0_1 received_data;
     size_t deserialized_size = transfer.payload_size;
-    int8_t deserialization_result = _4111spyglass_sat_model_PositionVelocity_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
+    int8_t deserialization_result = _4111spyglass_sat_solution_PositionSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t *>(transfer.payload), &deserialized_size);
     REQUIRE(deserialization_result >= 0);
     CHECK(received_data.timestamp.microsecond == 805149793000000);
 
     std::array<float, 3> expected_r{6356.42f, -1504.07f, 1859.27f};
     std::array<float, 3> expected_v{-0.42784f, 5.18216f, 5.63173f};
 
-    CHECK(received_data.position_m[0] == doctest::Approx(expected_r[0] * 1000.f).epsilon(0.01));
-    CHECK(received_data.position_m[1] == doctest::Approx(expected_r[1] * 1000.f).epsilon(0.01));
-    CHECK(received_data.position_m[2] == doctest::Approx(expected_r[2] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[0] == doctest::Approx(expected_v[0] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[1] == doctest::Approx(expected_v[1] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[2] == doctest::Approx(expected_v[2] * 1000.f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[0] == doctest::Approx(expected_r[0] * 1000.f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[1] == doctest::Approx(expected_r[1] * 1000.f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[2] == doctest::Approx(expected_r[2] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[0] == doctest::Approx(expected_v[0] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[1] == doctest::Approx(expected_v[1] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[2] == doctest::Approx(expected_v[2] * 1000.f).epsilon(0.01));
     loopardMemoryFree(transfer.payload);
 }

@@ -12,6 +12,8 @@ extern "C" {
 // Include core definitions
 #include "mock_hal/mock_hal_core.h"
 
+#define MOCK_HAL_SPI_ENABLED
+
 //--- SPI Structures ---
 typedef struct {
   uint32_t Mode;                      // Specifies the operation mode for the SPI.

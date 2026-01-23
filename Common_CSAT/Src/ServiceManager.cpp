@@ -7,7 +7,6 @@
 
 #include "ServiceManager.hpp"
 #include <algorithm>
-#include "Allocator.hpp"
 
 void ServiceManager::initializeServices(uint32_t now) const
 {

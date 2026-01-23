@@ -10,25 +10,21 @@
 #include "RegistrationManager.hpp"
 #include "SubscriptionManager.hpp"
 #include "ServiceManager.hpp"
-#include "Allocator.hpp"
 #include "TaskCheckMemory.hpp"
 #include "TaskBlinkLED.hpp"
 #include "TaskSendHeartBeat.hpp"
 #include "TaskSendNodePortList.hpp"
 #include "TaskSubscribeNodePortList.hpp"
 #include "cyphal_subscriptions.hpp"
-
 #include "nunavut/support/serialization.h"
+#include "HeapAllocation.hpp"
 
 #ifdef __x86_64__
-#include "mock_hal.h" // Include the mock HAL header
+#include "mock_hal.h"  // Include the mock HAL header
 #endif
 
-void *loopardMemoryAllocate(size_t amount) { return static_cast<void *>(malloc(amount)); };
-void loopardMemoryFree(void *pointer) { free(pointer); };
-
-void *canardMemoryAllocate(CanardInstance */*ins*/, size_t amount) { return static_cast<void *>(malloc(amount)); };
-void canardMemoryFree(CanardInstance */*ins*/, void *pointer) { free(pointer); };
+using Heap = HeapAllocation<>;
+using TaskAlloc = SafeAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>,Heap>;
 
 TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList")
 {
@@ -38,12 +34,14 @@ TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList")
     constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
+    Heap::initialize();
+
     // Create adapters
     LoopardAdapter loopard1, loopard2;
-    loopard1.memory_allocate = loopardMemoryAllocate;
-    loopard1.memory_free = loopardMemoryFree;
-    loopard2.memory_allocate = loopardMemoryAllocate;
-    loopard2.memory_free = loopardMemoryFree;
+    loopard1.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard1.memory_free = Heap::loopardMemoryDeallocate;
+    loopard2.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard2.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);
@@ -87,7 +85,7 @@ TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList")
     REQUIRE(received_port_list1.publishers.sparse_list.elements[0].value == uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
     REQUIRE(received_port_list1.publishers.sparse_list.elements[1].value == uavcan_node_port_List_1_0_FIXED_PORT_ID_);
 
-    loopardMemoryFree(transfer1.payload);
+    Heap::loopardMemoryDeallocate(transfer1.payload);
 
     // Verify the content of the published message on the second adapter (similar to first adapter)
     CyphalTransfer transfer2 = loopard2.buffer.pop();
@@ -107,7 +105,7 @@ TEST_CASE("TaskSendNodePortList: handleTask publishes NodePortList")
     // The first publisher should be Heartbeat
     REQUIRE(received_port_list2.publishers.sparse_list.elements[0].value == uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
     REQUIRE(received_port_list2.publishers.sparse_list.elements[1].value == uavcan_node_port_List_1_0_FIXED_PORT_ID_);
-    loopardMemoryFree(transfer2.payload);
+    Heap::loopardMemoryDeallocate(transfer2.payload);
 }
 
 TEST_CASE("TaskSendNodePortList: snippet to registration with std::alloc")
@@ -115,11 +113,13 @@ TEST_CASE("TaskSendNodePortList: snippet to registration with std::alloc")
     constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
+    Heap::initialize();
+    
     LoopardAdapter loopard1, loopard2;
-    loopard1.memory_allocate = loopardMemoryAllocate;
-    loopard1.memory_free = loopardMemoryFree;
-    loopard2.memory_allocate = loopardMemoryAllocate;
-    loopard2.memory_free = loopardMemoryFree;
+    loopard1.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard1.memory_free = Heap::loopardMemoryDeallocate;
+    loopard2.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard2.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);
@@ -145,25 +145,24 @@ TEST_CASE("TaskSendNodePortList: snippet to registration with std::alloc")
     registration_manager.remove(task_sendheartbeat);
 }
 
-TEST_CASE("TaskSendNodePortList: snippet to registration with O1HeapAllocator")
+TEST_CASE("TaskSendNodePortList: snippet to registration with SafeAllocator")
 {
     constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
-    char buffer[4192] __attribute__((aligned(256)));
-    O1HeapInstance *heap = o1heapInit(buffer, 4192);
-    REQUIRE(heap != nullptr);
-    O1HeapDiagnostics diagnostics = o1heapGetDiagnostics(heap);
+    Heap::initialize();
+
+    auto diagnostics = Heap::getDiagnostics();
     size_t allocated = diagnostics.allocated;
 
-    O1HeapAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>> heartbeatAllocator(heap);
-    O1HeapAllocator<TaskSendNodePortList<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>> taskAllocator(heap);
+    SafeAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>, Heap> heartbeatAllocator;
+    SafeAllocator<TaskSendNodePortList<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>, Heap> taskAllocator;
 
     LoopardAdapter loopard1, loopard2;
-    loopard1.memory_allocate = loopardMemoryAllocate;
-    loopard1.memory_free = loopardMemoryFree;
-    loopard2.memory_allocate = loopardMemoryAllocate;
-    loopard2.memory_free = loopardMemoryFree;
+    loopard1.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard1.memory_free = Heap::loopardMemoryDeallocate;
+    loopard2.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard2.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);
@@ -171,13 +170,13 @@ TEST_CASE("TaskSendNodePortList: snippet to registration with O1HeapAllocator")
     std::tuple<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>> adapters(loopard_cyphal1, loopard_cyphal2);
 
     RegistrationManager registration_manager;
-    auto heartbeat_task = allocate_shared_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>>(
+    auto heartbeat_task = alloc_shared_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>>(
         heartbeatAllocator, 1000, 0, 0, adapters);
     registration_manager.add(heartbeat_task);
 
-    auto task_sendnodeportlist = allocate_shared_custom<TaskSendNodePortList<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>>(
+    auto task_sendnodeportlist = alloc_shared_custom<TaskSendNodePortList<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>>(
         taskAllocator, &registration_manager, 1000, 0, 0, adapters);
-    diagnostics = o1heapGetDiagnostics(heap);
+    diagnostics = Heap::getDiagnostics();
     CHECK(diagnostics.allocated > allocated);
     REQUIRE(task_sendnodeportlist.use_count() == 1);
 
@@ -193,7 +192,7 @@ TEST_CASE("TaskSendNodePortList: snippet to registration with O1HeapAllocator")
     registration_manager.remove(heartbeat_task);
     heartbeat_task.reset();
 
-    diagnostics = o1heapGetDiagnostics(heap);
+    diagnostics = Heap::getDiagnostics();
     CHECK(diagnostics.allocated == allocated);
 }
 
@@ -203,10 +202,7 @@ TEST_CASE("TaskSendNodePortList: main loop snippet")
     GPIO_TypeDef GPIOC;
     uint16_t LED1_Pin = 1;
 
-    char buffer[4192] __attribute__((aligned(256)));
-    O1HeapInstance *heap = o1heapInit(buffer, 4192);
-    REQUIRE(heap != nullptr);
-    O1HeapAllocator<CanardRxTransfer> alloc(heap);
+    Heap::initialize();
     
     LoopardAdapter loopard_adapter;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
@@ -223,20 +219,20 @@ TEST_CASE("TaskSendNodePortList: main loop snippet")
     registration_manager.publish(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
     registration_manager.publish(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
 
-    O1HeapAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>>> alloc_TaskSendHeartBeat(heap);
-    registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>>>(alloc_TaskSendHeartBeat, 1000U, 100U, static_cast<CyphalTransferID>(0), adapters));
+    SafeAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>>, Heap> alloc_TaskSendHeartBeat;
+    registration_manager.add(alloc_unique_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>>>(alloc_TaskSendHeartBeat, 1000U, 100U, static_cast<CyphalTransferID>(0), adapters));
 
-    O1HeapAllocator<TaskSendNodePortList<Cyphal<LoopardAdapter>>> alloc_TaskSendNodePortList(heap);
-    registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000U, 100U, static_cast<CyphalTransferID>(0), adapters));
+    SafeAllocator<TaskSendNodePortList<Cyphal<LoopardAdapter>>, Heap> alloc_TaskSendNodePortList;
+    registration_manager.add(alloc_unique_custom<TaskSendNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000U, 100U, static_cast<CyphalTransferID>(0), adapters));
 
-    O1HeapAllocator<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>> alloc_TaskSubscribeNodePortList(heap);
-    registration_manager.add(allocate_unique_custom<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000U, 100U, adapters));
+    SafeAllocator<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>, Heap> alloc_TaskSubscribeNodePortList;
+    registration_manager.add(alloc_unique_custom<TaskSubscribeNodePortList<Cyphal<LoopardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000U, 100U, adapters));
 
-    O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(heap);
-    registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, &GPIOC, LED1_Pin, 1000U, 100U));
+    SafeAllocator<TaskBlinkLED, Heap> alloc_TaskBlinkLED;
+    registration_manager.add(alloc_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, &GPIOC, LED1_Pin, 1000U, 100U));
 
-    O1HeapAllocator<TaskCheckMemory> alloc_TaskCheckMemory(heap);
-    registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, heap, 2000U, 100U));
+    SafeAllocator<TaskCheckMemory, Heap> alloc_TaskCheckMemory;
+    registration_manager.add(alloc_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, Heap::getO1Heap(), 100U, 50U));
 
     auto subscriptions = registration_manager.getSubscriptions();
     REQUIRE(subscriptions.size() == 3);
@@ -261,14 +257,11 @@ TEST_CASE("TaskSendNodePortList: serialize deserialize Loopard")
 {
     constexpr CyphalNodeID cyphal_node_id = 11;
 
-    char buffer[4192] __attribute__((aligned(256)));
-    O1HeapInstance *heap = o1heapInit(buffer, 4192);
-    REQUIRE(heap != nullptr);
-    O1HeapAllocator<CanardRxTransfer> alloc(heap);
+    Heap::initialize();
 
     LoopardAdapter loopard_adapter;
-    loopard_adapter.memory_allocate = loopardMemoryAllocate;
-    loopard_adapter.memory_free = loopardMemoryFree;
+    loopard_adapter.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard_adapter.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
     loopard_cyphal.setNodeID(cyphal_node_id);
 

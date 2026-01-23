@@ -21,10 +21,12 @@ public:
     AccessorError write(size_t address, const uint8_t *data, size_t size);
     AccessorError read(size_t address, uint8_t *data, size_t size);
     AccessorError erase(size_t address);
+    void format(); 
 
     size_t getAlignment() const { return 1; };
     size_t getFlashMemorySize() const { return TOTAL_BUFFER_SIZE; };
     size_t getFlashStartAddress() const { return FLASH_START_ADDRESS; };
+    size_t getEraseBlockSize() const { return 1; } 
 
     std::vector<uint8_t> &getFlashMemory() { return flash_memory; }
 
@@ -66,23 +68,40 @@ AccessorError DirectMemoryAccessor::read(size_t address, uint8_t *data, size_t s
     return AccessorError::NO_ERROR; // Return success
 }
 
-AccessorError DirectMemoryAccessor::erase(size_t /*address*/)
+AccessorError DirectMemoryAccessor::erase(size_t address)
 {
-    // Simulate erasing a sector (e.g., by setting all bytes in the sector to 0xFF)
-    // Implement sector size and erase logic here
-    std::fill(flash_memory.begin(), flash_memory.end(), 0xFF); // Simulate erasing by filling with 0xFF
-    return AccessorError::NO_ERROR;                              // Success
+    const size_t block_size = getEraseBlockSize();
+    const size_t offset = address - FLASH_START_ADDRESS;
+
+    if (offset >= TOTAL_BUFFER_SIZE)
+        return AccessorError::OUT_OF_BOUNDS;
+
+    const size_t end = std::min(offset + block_size, TOTAL_BUFFER_SIZE);
+
+    using diff_t = std::vector<uint8_t>::iterator::difference_type;
+
+    auto begin_it = flash_memory.begin() + static_cast<diff_t>(offset);
+    auto end_it   = flash_memory.begin() + static_cast<diff_t>(end);
+
+    std::fill(begin_it, end_it, 0xFF);
+
+    return AccessorError::NO_ERROR;
+}
+
+void DirectMemoryAccessor::format() {
+    std::fill(flash_memory.begin(), flash_memory.end(), 0xFF);
 }
 
 AccessorError DirectMemoryAccessor::checkBounds(size_t address, size_t size)
 {
-    if (address < FLASH_START_ADDRESS || address + size > FLASH_START_ADDRESS + TOTAL_BUFFER_SIZE)
+    const size_t start = FLASH_START_ADDRESS;
+    const size_t end   = FLASH_START_ADDRESS + TOTAL_BUFFER_SIZE;
+
+    if (address < start || address + size > end)
     {
-        std::cerr << "Error: Access out of bounds. Address: 0x" << std::hex << address
-                  << ", Size: " << size << std::dec << std::endl; // Added address and size for debugging
         return AccessorError::OUT_OF_BOUNDS;
     }
-    return AccessorError::NO_ERROR; // Return success
+    return AccessorError::NO_ERROR;
 }
 
 static_assert(Accessor<DirectMemoryAccessor>, "DirectMemoryAccessor does not satisfy the Accessor concept!");

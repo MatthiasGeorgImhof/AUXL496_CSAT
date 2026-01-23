@@ -6,8 +6,10 @@
 #include <tuple>
 
 #include "cyphal.hpp"
+#include <BufferLikeConcept.hpp>
 #include <CircularBuffer.hpp>
-#include <Logger.hpp>
+#include <SingleSlotBuffer.hpp>
+#include "Logger.hpp"
 
 #ifdef __arm__
 #include "stm32l4xx_hal.h"
@@ -30,7 +32,7 @@ class Task
 public:
 	Task() = delete;
 	Task(uint32_t interval, uint32_t tick) : interval_(interval), last_tick_(0), shift_(tick) {}
-	virtual ~Task() {};
+	virtual ~Task() = default;
 
 	uint32_t getInterval() const { return interval_; }
 	uint32_t getShift() const { return shift_; }
@@ -92,8 +94,13 @@ protected:
 	{
 		int8_t result = serialize(data, payload, &payload_size);
 		if (result < 0)
-			log(LOG_LEVEL_ERROR, "ERROR Task.publish serialization %d\r\n", result);
-
+		{
+			log(LOG_LEVEL_ERROR, "ERROR Task.publish serialization result %d with size %d \r\n", result, payload_size);
+		}
+		else
+		{
+			log(LOG_LEVEL_DEBUG, "Task.publish serialization result %d with size %d \r\n", result, payload_size);
+		}
 		CyphalTransferMetadata metadata =
 			{
 				CyphalPriorityNominal,
@@ -117,11 +124,19 @@ protected:
 	std::tuple<Adapters...> &adapters_;
 };
 
-constexpr size_t CIRC_BUF_SIZE = 64;
-typedef CircularBuffer<std::shared_ptr<CyphalTransfer>, CIRC_BUF_SIZE> CyphalBuffer;
+typedef SingleSlotBuffer<std::shared_ptr<CyphalTransfer>> CyphalBuffer1;
+typedef CircularBuffer<std::shared_ptr<CyphalTransfer>, 2> CyphalBuffer2;
+typedef CircularBuffer<std::shared_ptr<CyphalTransfer>, 4> CyphalBuffer4;
+typedef CircularBuffer<std::shared_ptr<CyphalTransfer>, 8> CyphalBuffer8;
+typedef CircularBuffer<std::shared_ptr<CyphalTransfer>, 16> CyphalBuffer16;
+typedef CircularBuffer<std::shared_ptr<CyphalTransfer>, 32> CyphalBuffer32;
+typedef CircularBuffer<std::shared_ptr<CyphalTransfer>, 64> CyphalBuffer64;
 
+template <typename Buffer>
 class Receiver
 {
+	static_assert(BufferLike<Buffer, std::shared_ptr<CyphalTransfer>>, "Buffer must satisfy BufferLike");
+
 public:
 	Receiver() {}
 	virtual ~Receiver() {}
@@ -132,7 +147,7 @@ public:
 	}
 
 protected:
-	CyphalBuffer buffer_;
+	Buffer buffer_;
 };
 
 //
@@ -172,7 +187,8 @@ private:
 // Message Reception
 //
 
-class TaskFromBuffer : public Task, public Receiver
+template <typename Buffer>
+class TaskFromBuffer : public Task, public Receiver<Buffer>
 {
 public:
 	TaskFromBuffer() = delete;
@@ -181,7 +197,7 @@ public:
 
 	void handleMessage(std::shared_ptr<CyphalTransfer> transfer) override
 	{
-		handleMessageImpl(transfer);
+		this->handleMessageImpl(transfer);
 	}
 };
 
@@ -189,8 +205,8 @@ public:
 // Message Publish and Receive
 //
 
-template <typename... Adapters>
-class TaskPublishReceive : public Task, public Publisher<Adapters...>, public Receiver
+template <typename Buffer, typename... Adapters>
+class TaskPublishReceive : public Task, public Publisher<Adapters...>, public Receiver<Buffer>
 {
 public:
 	TaskPublishReceive() = delete;
@@ -200,7 +216,7 @@ public:
 
 	void handleMessage(std::shared_ptr<CyphalTransfer> transfer) override
 	{
-		handleMessageImpl(transfer);
+		this->handleMessageImpl(transfer);
 	}
 
 protected:
@@ -224,8 +240,8 @@ private:
 // Server Respond: Receive and Publish
 //
 
-template <typename... Adapters>
-class TaskForServer : public Task, public Receiver, public Publisher<Adapters...>
+template <typename Buffer, typename... Adapters>
+class TaskForServer : public Task, public Receiver<Buffer>, public Publisher<Adapters...>
 {
 public:
 	TaskForServer() = delete;
@@ -235,7 +251,7 @@ public:
 
 	void handleMessage(std::shared_ptr<CyphalTransfer> transfer) override
 	{
-		handleMessageImpl(transfer);
+		this->handleMessageImpl(transfer);
 	}
 
 protected:
@@ -251,8 +267,8 @@ protected:
 // Client Request: Publish and Receive
 //
 
-template <typename... Adapters>
-class TaskForClient : public Task, public Receiver, public Publisher<Adapters...>
+template <typename Buffer, typename... Adapters>
+class TaskForClient : public Task, public Receiver<Buffer>, public Publisher<Adapters...>
 {
 public:
 	TaskForClient() = delete;
@@ -262,7 +278,7 @@ public:
 
 	void handleMessage(std::shared_ptr<CyphalTransfer> transfer) override
 	{
-		handleMessageImpl(transfer);
+		this->handleMessageImpl(transfer);
 	}
 
 

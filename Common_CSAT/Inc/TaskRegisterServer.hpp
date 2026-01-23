@@ -13,7 +13,7 @@
 #include "uavcan/_register/Value_1_0.h"
 
 template <typename Accessor, typename Dictionary, size_t MapSize, typename... Adapters>
-class TaskRegisterServer : public TaskForServer<Adapters...> {
+class TaskRegisterServer : public TaskForServer<CyphalBuffer8, Adapters...> {
 public:
     using MapEntry = BlobMemberInfo;
 
@@ -24,7 +24,7 @@ public:
                        uint32_t interval,
                        uint32_t tick,
                        std::tuple<Adapters...>& adapters)
-        : TaskForServer<Adapters...>(interval, tick, adapters),
+        : TaskForServer<CyphalBuffer8, Adapters...>(interval, tick, adapters),
           accessor_(accessor),
           named_store_(store) {}
 
@@ -47,9 +47,9 @@ private:
 template <typename Accessor, typename Dictionary, size_t MapSize, typename... Adapters>
 std::shared_ptr<CyphalTransfer>
 TaskRegisterServer<Accessor, Dictionary, MapSize, Adapters...>::receiveRequest(uavcan_register_Access_Request_1_0& request_data) {
-    if (TaskForServer<Adapters...>::buffer_.is_empty()) return nullptr;
+    if (TaskForServer<CyphalBuffer8, Adapters...>::buffer_.is_empty()) return nullptr;
 
-    auto transfer = TaskForServer<Adapters...>::buffer_.pop();
+    auto transfer = TaskForServer<CyphalBuffer8, Adapters...>::buffer_.pop();
     if (transfer->metadata.transfer_kind != CyphalTransferKindRequest) return nullptr;
 
     size_t payload_size = transfer->payload_size;
@@ -97,7 +97,7 @@ void TaskRegisterServer<Accessor, Dictionary, MapSize, Adapters...>::answerReque
     constexpr size_t PAYLOAD_SIZE = uavcan_register_Access_Response_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_;
     uint8_t payload[PAYLOAD_SIZE];
 
-    TaskForServer<Adapters...>::publish(PAYLOAD_SIZE,
+    TaskForServer<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE,
                                         payload,
                                         &response_data,
                                         reinterpret_cast<int8_t (*)(const void*, uint8_t*, size_t*)>(

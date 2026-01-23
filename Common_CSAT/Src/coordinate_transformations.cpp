@@ -3,6 +3,7 @@
 #include <limits>
 #include <iostream>
 #include "coordinate_transformations.hpp"
+#include <numbers>
 
 #include "TimeUtils.hpp"
 
@@ -210,9 +211,9 @@ namespace coordinate_transformations
         constexpr float SHIFT = MJD2000 - MJDBULLETIN;
         float days = jd2000 + SHIFT; // Adjusted MJD for J2000 epoch
 
-        constexpr float M_2PIf = 2.0f * M_PIf;
-        float A = M_2PIf * days / 365.25f;
-        float C = M_2PIf * days / 435.f;
+        constexpr float m_2pif = 2.0f * m_pif;
+        float A = m_2pif * days / 365.25f;
+        float C = m_2pif * days / 435.f;
 
         // 24 July 2025                                      Vol. XXXVIII No. 030
         float x = 0.1376f + 0.0836f * cosf(A) + 0.1286f * sinf(A) - 0.0263f * cosf(C) - 0.0762f * sinf(C);
@@ -238,7 +239,7 @@ namespace coordinate_transformations
     {
         // Predict polar motion coefficients using IERS Bulletin - A (Vol. XXVIII No. 030)
         float MJD = jdut1 - 2400000.5f; // Julian Date - 2,400,000.5 days
-        constexpr float pi = 3.14159265358979323846f;
+        constexpr float pi = static_cast<float>(std::numbers::pi);
         float A = 2.f * pi * (MJD - 57226.f) / 365.25f;
         float C = 2.f * pi * (MJD - 57226.f) / 435.f;
 
@@ -259,7 +260,7 @@ namespace coordinate_transformations
 
     float gsTimeJD(float jdut1)
     {
-        constexpr float pi = 3.14159265358979323846f;
+        constexpr float pi = static_cast<float>(std::numbers::pi);
         constexpr float twopi = 2.0f * pi;
         constexpr float deg2rad = pi / 180.0f;
 

@@ -5,10 +5,10 @@
 #include <iostream>
 #include <cmath>
 
-#include "OrientationTracker.hpp"
+#include "OrientationService.hpp"
 
 
-constexpr float M_PIf = static_cast<float>(std::numbers::pi);
+constexpr float m_mpif = static_cast<float>(std::numbers::pi);
 const float kTolerance = 1e-6f; // Consistent tolerance
 const float kNumericalEpsilon = 1e-2f; // Epsilon value for numerical derivatives
 const float kAlignmentThreshold = 0.999f; //Threshold for the dot product
@@ -83,7 +83,7 @@ TEST_CASE("Analytical Jacobian matches Numerical Jacobian")
     SUBCASE("Jacobian match for 90deg Z rotation and generic vector")
     {
         Eigen::Vector3f v_ned(1.0f, 0.5f, -0.2f);
-        Eigen::Quaternionf q(Eigen::AngleAxisf(0.5f * M_PIf, Eigen::Vector3f::UnitZ()));
+        Eigen::Quaternionf q(Eigen::AngleAxisf(0.5f * m_mpif, Eigen::Vector3f::UnitZ()));
 
         Eigen::Vector3f v_rotated = q * v_ned;
         Eigen::Vector3f v_expected(-0.5f, 1.0f, -0.2f); // 90° rotation around Z
@@ -103,7 +103,7 @@ TEST_CASE("Analytical Jacobian matches Numerical Jacobian")
     SUBCASE("Jacobian match for 90deg Z rotation and special vector")
     {
         Eigen::Vector3f v_ned(Eigen::Vector3f::UnitZ());
-        Eigen::Quaternionf q(Eigen::AngleAxisf(0.5f * M_PIf, Eigen::Vector3f::UnitZ()));
+        Eigen::Quaternionf q(Eigen::AngleAxisf(0.5f * m_mpif, Eigen::Vector3f::UnitZ()));
 
         Eigen::Vector3f v_rotated = q * v_ned;
         Eigen::Vector3f v_expected(Eigen::Vector3f::UnitZ());
@@ -125,7 +125,7 @@ TEST_CASE("Analytical Jacobian matches Numerical Jacobian")
     SUBCASE("Analytical Jacobian matches Numerical Jacobian of unitx for rotated vector")
     {
         Eigen::Vector3f v_ned(1.0f, 0.5f, -0.2f); // arbitrary test vector
-        Eigen::Quaternionf q(Eigen::AngleAxisf(0.25f * M_PIf, Eigen::Vector3f::UnitX()));
+        Eigen::Quaternionf q(Eigen::AngleAxisf(0.25f * m_mpif, Eigen::Vector3f::UnitX()));
 
         Eigen::Matrix<float, 3, 4> J_analytical = computeAnalyticalJacobian(q, v_ned);
         Eigen::Matrix<float, 3, 4> J_normalized = normalizeAnalyticalJacobian(J_analytical, q, v_ned);
@@ -138,7 +138,7 @@ TEST_CASE("Analytical Jacobian matches Numerical Jacobian")
     SUBCASE("Analytical Jacobian matches Numerical Jacobian of unity for rotated vector")
     {
         Eigen::Vector3f v_ned(1.0f, 0.5f, -0.2f); // arbitrary test vector
-        Eigen::Quaternionf q(Eigen::AngleAxisf(0.25f * M_PIf, Eigen::Vector3f::UnitY()));
+        Eigen::Quaternionf q(Eigen::AngleAxisf(0.25f * m_mpif, Eigen::Vector3f::UnitY()));
 
         Eigen::Matrix<float, 3, 4> J_analytical = computeAnalyticalJacobian(q, v_ned);
         Eigen::Matrix<float, 3, 4> J_normalized = normalizeAnalyticalJacobian(J_analytical, q, v_ned);
@@ -151,7 +151,7 @@ TEST_CASE("Analytical Jacobian matches Numerical Jacobian")
     SUBCASE("Analytical Jacobian matches Numerical Jacobian of unitz for rotated vector")
     {
         Eigen::Vector3f v_ned(1.0f, 0.5f, -0.2f); // arbitrary test vector
-        Eigen::Quaternionf q(Eigen::AngleAxisf(0.25f * M_PIf, Eigen::Vector3f::UnitZ()));
+        Eigen::Quaternionf q(Eigen::AngleAxisf(0.25f * m_mpif, Eigen::Vector3f::UnitZ()));
 
         Eigen::Matrix<float, 3, 4> J_analytical = computeAnalyticalJacobian(q, v_ned);
         Eigen::Matrix<float, 3, 4> J_normalized = normalizeAnalyticalJacobian(J_analytical, q, v_ned);
@@ -193,14 +193,14 @@ TEST_CASE("CHECK that Rotations by Quaternions work as expected")
     }
     SUBCASE("90 degree rotation around z")
     {
-        Eigen::Quaternionf q(Eigen::AngleAxisf(M_PIf / 2.0f, Eigen::Vector3f::UnitZ())); // 90° yaw
+        Eigen::Quaternionf q(Eigen::AngleAxisf(m_mpif / 2.0f, Eigen::Vector3f::UnitZ())); // 90° yaw
         Eigen::Vector3f rotated_v = q.toRotationMatrix() * v_ned;
         Eigen::Vector3f expected_v(0.f, 1.f, 0.f);
         CHECK(rotated_v.isApprox(expected_v, kTolerance));
     }
     SUBCASE("180 degree rotation around x")
     {
-        Eigen::Quaternionf q(Eigen::AngleAxisf(M_PIf, Eigen::Vector3f::UnitX())); // 180° roll
+        Eigen::Quaternionf q(Eigen::AngleAxisf(m_mpif, Eigen::Vector3f::UnitX())); // 180° roll
         Eigen::Vector3f rotated_v = q.toRotationMatrix() * v_ned;
         Eigen::Vector3f expected_v(1.f, 0.f, 0.f);
         CHECK(rotated_v.isApprox(expected_v, kTolerance));
@@ -314,7 +314,7 @@ TEST_CASE("Quaternion Jacobian: Identities, Rotations, Projections")
         {Quaternionf(1, 0, 0, 0).normalized(), "Identity"},
         {Quaternionf(sqrtf(0.5f), sqrtf(0.5f), 0, 0).normalized(), "90deg_X"},
         {Quaternionf(0, sqrtf(0.5f), sqrtf(0.5f), 0).normalized(), "90deg_YZ"},
-        {Quaternionf(cosf(M_PIf / 4.0f), 0, 0, sinf(M_PIf / 4.0f)).normalized(), "45deg_Z"},
+        {Quaternionf(cosf(m_mpif / 4.0f), 0, 0, sinf(m_mpif / 4.0f)).normalized(), "45deg_Z"},
         {Quaternionf(0.5f, 0.5f, 0.5f, 0.5f).normalized(), "Generic"}};
 
     const std::vector<Vector3f> testVectors = {

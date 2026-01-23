@@ -143,8 +143,8 @@ template <typename ImageInputStream, typename... Adapters>
 class MockTaskRequestWrite : public TaskRequestWrite<ImageInputStream, Adapters...>
 {
 public:
-    MockTaskRequestWrite(ImageInputStream &source, uint32_t interval, uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters)
-        : TaskRequestWrite<ImageInputStream, Adapters...>(source, interval, tick, node_id, transfer_id, adapters)
+    MockTaskRequestWrite(ImageInputStream &metadata_producer, uint32_t interval, uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters)
+        : TaskRequestWrite<ImageInputStream, Adapters...>(metadata_producer, interval, tick, node_id, transfer_id, adapters)
     {
     }
 
@@ -205,10 +205,10 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     // Prepare test data and metadata
     std::vector<uint8_t> test_data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
     ImageMetadata metadata;
-    metadata.camera_index = 10;
+    metadata.producer = METADATA_PRODUCER::THERMAL;
     metadata.timestamp = 0x12345678;
-    metadata.image_size = test_data.size();
-    metadata.checksum = 0xff0000ff;
+    metadata.payload_size = static_cast<uint>(test_data.size());
+    metadata.meta_crc = 0xff0000ff;
     mock_buffer.push_image(test_data, metadata);
 
     // Initial state
@@ -225,7 +225,6 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(strncmp(&static_cast<char *>(transfer.payload)[19], "ATMI", 4) == 0);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -244,7 +243,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(strncmp(&static_cast<char *>(transfer.payload)[19], reinterpret_cast<char *>(test_data.data()), 24) == 0);
+    CHECK(strncmp(&static_cast<char *>(transfer.payload)[27], reinterpret_cast<char *>(test_data.data()), 24) == 0);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -263,7 +262,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(transfer.payload_size == 19);
+    CHECK(transfer.payload_size == 27);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -309,10 +308,10 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     // Prepare test data and metadata
     std::vector<uint8_t> test_data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
     ImageMetadata metadata;
-    metadata.camera_index = 10;
+    metadata.producer = METADATA_PRODUCER::THERMAL;
     metadata.timestamp = 0x12345678;
-    metadata.image_size = test_data.size();
-    metadata.checksum = 0xff0000ff;
+    metadata.payload_size = static_cast<uint32_t>(test_data.size());
+    metadata.meta_crc = 0xff0000ff;
     mock_buffer.push_image(test_data, metadata);
 
     // Initial state
@@ -329,7 +328,6 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(strncmp(&static_cast<char *>(transfer.payload)[19], "ATMI", 4) == 0);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -345,7 +343,6 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(strncmp(&static_cast<char *>(transfer.payload)[19], "ATMI", 4) == 0);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -363,7 +360,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(strncmp(&static_cast<char *>(transfer.payload)[19], reinterpret_cast<char *>(test_data.data()), 24) == 0);
+    CHECK(strncmp(&static_cast<char *>(transfer.payload)[27], reinterpret_cast<char *>(test_data.data()), 24) == 0);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -379,7 +376,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(strncmp(&static_cast<char *>(transfer.payload)[19], reinterpret_cast<char *>(test_data.data()), 24) == 0);
+    CHECK(strncmp(&static_cast<char *>(transfer.payload)[27], reinterpret_cast<char *>(test_data.data()), 24) == 0);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -397,7 +394,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(transfer.payload_size == 19);
+    CHECK(transfer.payload_size == 27);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -413,7 +410,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(transfer.payload_size == 19);
+    CHECK(transfer.payload_size == 27);
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();

@@ -1,0 +1,35 @@
+# Makefile for conditional Nunavut header generation
+
+MAKEFLAGS += --no-builtin-rules --no-builtin-variables -R -s
+
+FOLDER := reg
+SRC := source
+TRG := target
+SRC_DIR := $(SRC)/public_regulated_data_types/$(FOLDER)
+OUT_DIR := $(TRG)/$(FOLDER)
+NNVG := python3 $(HOME)/.local/bin/nnvg
+LOOKUP_DIRS := --lookup-dir source/public_regulated_data_types/uavcan
+
+# Find all .dsdl source files
+SRC_FILES := $(shell find $(SRC_DIR) -name '*.dsdl')
+
+# Stamp file to track last generation
+STAMP := $(OUT_DIR)/.nunavut_generated.stamp
+
+# Default target
+all: $(STAMP)
+
+# Generate headers if any source is newer than the stamp
+$(STAMP): $(SRC_FILES)
+	@echo "Ensuring output directory exists..."
+	@mkdir -p $(TRG)
+	@mkdir -p $(OUT_DIR)
+	@echo "Generating Nunavut headers..."
+	$(NNVG) --outdir $(TRG) $(SRC_DIR) $(LOOKUP_DIRS)
+	@touch $(STAMP)
+
+# Clean target
+clean:
+	rm -rf $(OUT_DIR)
+
+.PHONY: all clean

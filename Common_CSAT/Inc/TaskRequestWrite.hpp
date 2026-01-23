@@ -12,7 +12,7 @@
 #include <cstring>
 
 template <InputStreamConcept InputStream, typename... Adapters>
-class TaskRequestWrite : public TaskForClient<Adapters...>
+class TaskRequestWrite : public TaskForClient<CyphalBuffer8, Adapters...>
 {
 public:
     enum State
@@ -32,7 +32,7 @@ public:
 public:
     TaskRequestWrite() = delete;
     TaskRequestWrite(InputStream &stream, uint32_t interval, uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters)
-        : TaskForClient<Adapters...>(interval, tick, node_id, transfer_id, adapters),
+        : TaskForClient<CyphalBuffer8, Adapters...>(interval, tick, node_id, transfer_id, adapters),
           stream_(stream), state_(IDLE), size_(0), offset_(0), name_{}, data_(nullptr)
     {
     }
@@ -75,10 +75,10 @@ void TaskRequestWrite<InputStream, Adapters...>::handleTaskImpl()
 template <InputStreamConcept InputStream, typename... Adapters>
 bool TaskRequestWrite<InputStream, Adapters...>::respond()
 {
-    if (TaskForClient<Adapters...>::buffer_.is_empty())
+    if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
         return false;
 
-    std::shared_ptr<CyphalTransfer> transfer = TaskForClient<Adapters...>::buffer_.pop();
+    std::shared_ptr<CyphalTransfer> transfer = TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
     if (transfer->metadata.transfer_kind != CyphalTransferKindResponse)
     {
         log(LOG_LEVEL_ERROR, "TaskRequestGetInfo: Expected Response transfer kind\r\n");
@@ -137,7 +137,7 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
     if (state_ == WAIT_INIT || state_ == WAIT_TRANSFER || state_ == WAIT_DONE)
         return false;
 
-    if (!TaskForClient<Adapters...>::buffer_.is_empty()) // Should have been emtpied by respond
+    if (!TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty()) // Should have been emtpied by respond
         return false;
 
     if (!stream_.is_empty() && state_ == IDLE)
@@ -189,9 +189,9 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
 
     constexpr size_t PAYLOAD_SIZE = uavcan_file_Write_Request_1_1_SERIALIZATION_BUFFER_SIZE_BYTES_;
     uint8_t payload[PAYLOAD_SIZE];
-    TaskForClient<Adapters...>::publish(PAYLOAD_SIZE, payload, data_.get(),
+    TaskForClient<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE, payload, data_.get(),
                                         reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_file_Write_Request_1_1_serialize_),
-                                        uavcan_file_Write_1_1_FIXED_PORT_ID_, TaskForClient<Adapters...>::node_id_);
+                                        uavcan_file_Write_1_1_FIXED_PORT_ID_, TaskForClient<CyphalBuffer8, Adapters...>::node_id_);
     log(LOG_LEVEL_DEBUG, "TaskRequestWrite: sent request\r\n");
     return true;
 }

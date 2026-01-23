@@ -10,24 +10,25 @@
 #include <fstream>
 
 #include "imagebuffer/image.hpp"
-#include "imagebuffer/imagebuffer.hpp"
+#include "imagebuffer/buffer_state.hpp"
+#include "ImageBuffer.hpp"
 
 //
 //
 //
 
-constexpr size_t NAME_LENGTH = 11;
+constexpr size_t NAME_LENGTH = 19;
 
-std::array<char, NAME_LENGTH> formatValues(uint32_t u32, uint8_t u8)
+std::array<char, NAME_LENGTH> formatValues(uint64_t u64, uint8_t u8)
 {
-    std::array<char, NAME_LENGTH> result = {'0', '0', '0', '0', '0', '0', '0', '0', '_', '0', '0'};
+    std::array<char, NAME_LENGTH> result = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '_', '0', '0'};
     static constexpr char hex_digits[] = "0123456789abcdef";
 
-    // Convert uint32_t to 8-character hexadecimal
-    for (size_t i = 0; i < 8; ++i)
+    // Convert uint64_t to 16-character hexadecimal
+    for (size_t i = 0; i < 16; ++i)
     {
-        result[i] = hex_digits[u32 & 0x0f];
-        u32 >>= 4;
+        result[i] = hex_digits[u64 & 0x0f];
+        u64 >>= 4;
     }
 
     // Convert uint8_t to 2-character hexadecimal
@@ -37,8 +38,8 @@ std::array<char, NAME_LENGTH> formatValues(uint32_t u32, uint8_t u8)
         u8 >>= 4;
     }
 
-    static_assert((2 * sizeof(u32) + 2 * sizeof(u8) + 1) == NAME_LENGTH, "formatValues, invalid NAME_LENGTH");
-    static_assert((2 * sizeof(u32) + 2 * sizeof(u8) + 1) == sizeof(result), "formatValues, invalid result length");
+    static_assert((2 * sizeof(u64) + 2 * sizeof(u8) + 1) == NAME_LENGTH, "formatValues, invalid NAME_LENGTH");
+    static_assert((2 * sizeof(u64) + 2 * sizeof(u8) + 1) == sizeof(result), "formatValues, invalid result length");
     return result;
 }
 
@@ -88,8 +89,8 @@ public:
     {
         ImageMetadata metadata;
         (void)buffer_.get_image(metadata);
-        size_ = metadata.image_size + sizeof(ImageMetadata);
-        name_ = formatValues(metadata.timestamp, metadata.camera_index);
+        size_ = metadata.payload_size + sizeof(ImageMetadata);
+        name_ = formatValues(metadata.timestamp, static_cast<uint8_t>(metadata.producer));
         size = sizeof(metadata);
         std::memcpy(data, reinterpret_cast<uint8_t *>(&metadata), sizeof(ImageMetadata));
         return true;

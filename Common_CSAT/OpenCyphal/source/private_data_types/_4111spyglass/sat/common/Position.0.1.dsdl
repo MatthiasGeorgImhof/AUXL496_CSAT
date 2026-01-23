@@ -1,0 +1,7 @@
+int32 lon
+int32 lat
+int32 height
+int32 hMSL
+uint32 hAcc
+uint32 vAcc
+@sealed

@@ -12,6 +12,8 @@ extern "C" {
 // Include core definitions
 #include "mock_hal/mock_hal_core.h"
 
+#define MOCK_HAL_UART_ENABLED
+
 //--- UARTEx Defines ---
 #define HAL_UART_RXEVENT_HT   0  // UART Rx Event: Half Transfer
 #define HAL_UART_RXEVENT_IDLE 1  // UART Rx Event: Idle Line

@@ -136,7 +136,7 @@ public:
     int data;
 };
 
-class TaskFromBufferExpanded : public TaskFromBuffer {
+class TaskFromBufferExpanded : public TaskFromBuffer<CyphalBuffer8> {
 public:
     TaskFromBufferExpanded(uint32_t interval, uint32_t tick) : TaskFromBuffer(interval, tick) {}
 
@@ -153,10 +153,12 @@ public:
 
     size_t getBufferSize() const { return buffer_.size(); } // Expose buffer size
 
-    std::shared_ptr<CyphalTransfer> popExpanded() { return buffer_.pop(); } // Expose pop
+    size_t getBufferCapacity() const { return buffer_.capacity(); } // Expose buffer capacity
+
+     std::shared_ptr<CyphalTransfer> popExpanded() { return buffer_.pop(); } // Expose pop
 };
 
-class ConcreteTaskForServer : public TaskForServer<MockAdapter> {
+class ConcreteTaskForServer : public TaskForServer<CyphalBuffer8, MockAdapter> {
 public:
     ConcreteTaskForServer(uint32_t interval, uint32_t tick, std::tuple<MockAdapter>& adapters) :
         TaskForServer(interval, tick, adapters), handleTaskImplCalled(false), data(0) {}
@@ -188,7 +190,7 @@ public:
     bool handleTaskImplCalled;
     bool handleMessageCalled;
     int data;
-    CyphalBuffer buffer; // Need to declare the buffer here
+    CyphalBuffer8 buffer; // Need to declare the buffer here
 };
 
 
@@ -371,6 +373,7 @@ TEST_CASE("TaskFromBuffer") {
 
 TEST_CASE("TaskFromBuffer - Buffer Overflow") {
     TaskFromBufferExpanded task(100, 50);
+    const size_t CIRC_BUF_SIZE = task.getBufferCapacity();
 
     // Fill the buffer to capacity, allocating unique memory for each payload
     std::vector<std::shared_ptr<uint8_t>> payload_data; // Store payload data to keep it alive

@@ -3,6 +3,7 @@
 #include "Kalman.hpp"
 #include "au.hpp"
 
+#include "PositionService.hpp"
 #include "TimeUtils.hpp"
 #ifdef __arm__
 #include "usbd_cdc_if.h"
@@ -63,6 +64,7 @@ public:
     SGP4andGNSSandPosition(RTC_HandleTypeDef *hrtc, Tracker &tracker, SGP4 &sgp4, GNSS &gnss, uint16_t sgp4_rate = 1, uint16_t gnss_rate = 1) : hrtc_(hrtc), tracker_(tracker), sgp4_(sgp4), gnss_(gnss), sgp4_rate_(sgp4_rate), gnss_rate_(gnss_rate), sgp4_counter_(0), gnss_counter_(0U) {}
 
     bool predict(std::array<au::QuantityF<au::MetersInEcefFrame>, 3> &r, std::array<au::QuantityF<au::MetersPerSecondInEcefFrame>, 3> &v, au::QuantityU64<au::Milli<au::Seconds>> &timestamp);
+    PositionSolution predict();
 
 private:
     RTC_HandleTypeDef *hrtc_;
@@ -94,7 +96,7 @@ bool SGP4andGNSSandPosition<Tracker, SGP4, GNSS>::predict(std::array<au::Quantit
 
     if (gnss_counter_ % gnss_rate_ == 0)
     {
-        auto optional_pos_ecef = gnss_.GetNavPosECEF();
+        auto optional_pos_ecef = gnss_.getNavPosECEF();
         if (optional_pos_ecef.has_value())
         {
             auto pos_ecef = ConvertPositionECEF(optional_pos_ecef.value());
@@ -111,4 +113,66 @@ bool SGP4andGNSSandPosition<Tracker, SGP4, GNSS>::predict(std::array<au::Quantit
     ++sgp4_counter_;
     ++gnss_counter_;
     return true;
+}
+
+template <typename Tracker, typename SGP4, typename GNSS>
+PositionSolution SGP4andGNSSandPosition<Tracker, SGP4, GNSS>::predict()
+{
+    au::QuantityU64<au::Milli<au::Seconds>> timestamp;
+    std::array<au::QuantityF<au::MetersInEcefFrame>, 3> r;
+    std::array<au::QuantityF<au::MetersPerSecondInEcefFrame>, 3> v;
+
+    predict(r, v, timestamp);
+
+    return PositionSolution{
+        .timestamp = timestamp,
+        .position = r,
+        .velocity = v,
+        .acceleration = {},
+        .validity_flags = static_cast<uint8_t>(PositionSolution::Validity::POSITION) | static_cast<uint8_t>(PositionSolution::Validity::VELOCITY)};
+}
+
+template <typename SGP4>
+class SGP4Position
+{
+public:
+    SGP4Position() = delete;
+
+    SGP4Position(RTC_HandleTypeDef *hrtc, SGP4 &sgp4) : hrtc_(hrtc), sgp4_(sgp4) {}
+
+    bool predict(std::array<au::QuantityF<au::MetersInEcefFrame>, 3> &r, std::array<au::QuantityF<au::MetersPerSecondInEcefFrame>, 3> &v, au::QuantityU64<au::Milli<au::Seconds>> &timestamp);
+    PositionSolution predict();
+
+private:
+    RTC_HandleTypeDef *hrtc_;
+    SGP4 &sgp4_;
+};
+
+template <typename SGP4>
+bool SGP4Position<SGP4>::predict(std::array<au::QuantityF<au::MetersInEcefFrame>, 3> &r, std::array<au::QuantityF<au::MetersPerSecondInEcefFrame>, 3> &v, au::QuantityU64<au::Milli<au::Seconds>> &timestamp)
+{
+    TimeUtils::RTCDateTimeSubseconds rtc;
+    HAL_RTC_GetTime(hrtc_, &rtc.time, RTC_FORMAT_BIN);
+    HAL_RTC_GetDate(hrtc_, &rtc.date, RTC_FORMAT_BIN);
+    timestamp = TimeUtils::from_rtc(rtc, hrtc_->Init.SynchPrediv);
+
+    sgp4_.predict(r, v, timestamp);
+    return true;
+}
+
+template <typename SGP4>
+PositionSolution SGP4Position<SGP4>::predict()
+{
+    au::QuantityU64<au::Milli<au::Seconds>> timestamp;
+    std::array<au::QuantityF<au::MetersInEcefFrame>, 3> r;
+    std::array<au::QuantityF<au::MetersPerSecondInEcefFrame>, 3> v;
+
+    predict(r, v, timestamp);
+
+    return PositionSolution{
+        .timestamp = timestamp,
+        .position = r,
+        .velocity = v,
+        .acceleration = {},
+        .validity_flags = static_cast<uint8_t>(PositionSolution::Validity::POSITION) | static_cast<uint8_t>(PositionSolution::Validity::VELOCITY)};
 }

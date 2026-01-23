@@ -41,7 +41,7 @@ void HAL_GPIO_WritePin(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin, GPIO_PinState
         gpio_port_state.pin_state[pin_number] = PinState;
     } else {
         // Handle invalid pin number (e.g., print an error message).
-        printf("ERROR: Invalid GPIO_Pin in HAL_GPIO_WritePin\n");
+        printf("ERROR: Invalid GPIO_Pin in HAL_GPIO_WritePin %d\n", pin_number);
     }
 }
 
@@ -55,7 +55,7 @@ void HAL_GPIO_TogglePin(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin) {
        gpio_port_state.pin_state[pin_number] = (gpio_port_state.pin_state[pin_number] == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET;
     } else {
         // Handle invalid pin number
-        printf("ERROR: Invalid GPIO_Pin in HAL_GPIO_TogglePin\n");
+        printf("ERROR: Invalid GPIO_Pin in HAL_GPIO_TogglePin %d\n", pin_number);
     }
 }
 
@@ -85,7 +85,7 @@ void set_gpio_pin_state(GPIO_TypeDef */*GPIOx*/, uint16_t GPIO_Pin, GPIO_PinStat
         gpio_port_state.pin_state[pin_number] = PinState;
     } else {
         // Handle invalid pin number (e.g., print an error message).
-        printf("ERROR: Invalid GPIO_Pin in HAL_GPIO_WritePin\n");
+        printf("ERROR: Invalid GPIO_Pin in HAL_GPIO_WritePin %d\n", pin_number);
     }
 }
 

@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include "TaskSGP4.hpp"
+#include "SGP4PositionTracker.hpp"
 #include "TaskPositionService.hpp"
 #include "cyphal.hpp"
 
@@ -16,7 +17,9 @@
 #include "loopard_adapter.hpp"
 #include "RegistrationManager.hpp"
 #include "ServiceManager.hpp"
-#include "Allocator.hpp"
+#include "HeapAllocation.hpp"
+
+using Heap = HeapAllocation<>;
 
 TEST_CASE("duration_in_fractional_days - Basic")
 {
@@ -108,9 +111,6 @@ TEST_CASE("duration_in_fractional_days - Millisecond Precision")
     CHECK(TimeUtils::to_fractional_days(tp_start, tp_end) == doctest::Approx(500.0f / (24.0f * 3600.0f * 1000.0f)));
 }
 
-void *loopardMemoryAllocate(size_t amount) { return static_cast<void *>(malloc(amount)); };
-void loopardMemoryFree(void *pointer) { free(pointer); };
-
 TEST_CASE("receive one TLE")
 {
     RTC_HandleTypeDef hrtc;
@@ -118,10 +118,12 @@ TEST_CASE("receive one TLE")
 
     constexpr CyphalNodeID id = 11;
 
+    Heap::initialize();
+
     // Create adapters
     LoopardAdapter loopard;
-    loopard.memory_allocate = loopardMemoryAllocate;
-    loopard.memory_free = loopardMemoryFree;
+    loopard.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard);
     loopard_cyphal.setNodeID(id);
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
@@ -185,10 +187,12 @@ TEST_CASE("receive two TLE")
 
     constexpr CyphalNodeID id = 11;
 
+    Heap::initialize();
+
     // Create adapters
     LoopardAdapter loopard;
-    loopard.memory_allocate = loopardMemoryAllocate;
-    loopard.memory_free = loopardMemoryFree;
+    loopard.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard);
     loopard_cyphal.setNodeID(id);
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
@@ -290,16 +294,19 @@ TEST_CASE("send position 2025 6 25 18 0 0")
 
     constexpr CyphalNodeID id = 11;
 
+    Heap::initialize();
+
     // Create adapters
     LoopardAdapter loopard;
-    loopard.memory_allocate = loopardMemoryAllocate;
-    loopard.memory_free = loopardMemoryFree;
+    loopard.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard);
     loopard_cyphal.setNodeID(id);
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
         
     SGP4 sgp4(&hrtc);
-    auto task = std::make_shared<TaskPositionService<SGP4, Cyphal<LoopardAdapter>>>(sgp4, 1000, 0, 0, adapters);
+    SGP4Position<SGP4> sgp4_position(&hrtc, sgp4);
+    auto task = std::make_shared<TaskPositionService<SGP4Position<SGP4>, Cyphal<LoopardAdapter>>>(sgp4_position, 1000, 0, 0, adapters);
 
     // ISS (ZARYA)
     char longstr1[] = "1 25544U 98067A   25176.73245655  .00008102  00000-0  14854-3 0  9994";
@@ -331,28 +338,28 @@ TEST_CASE("send position 2025 6 25 18 0 0")
     REQUIRE(loopard.buffer.size() == 1);
 
     auto transfer = loopard.buffer.pop();
-    CHECK(transfer.metadata.port_id == _4111spyglass_sat_model_PositionVelocity_0_1_PORT_ID_);
+    CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_PositionSolution_0_1_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
     CHECK(transfer.metadata.remote_node_id == id);
-    CHECK(transfer.payload_size == _4111spyglass_sat_model_PositionVelocity_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
+    CHECK(transfer.payload_size == _4111spyglass_sat_solution_PositionSolution_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
     // Deserialize the payload and verify the values
-    _4111spyglass_sat_model_PositionVelocity_0_1 received_data;
+    _4111spyglass_sat_solution_PositionSolution_0_1 received_data;
     size_t deserialized_size = transfer.payload_size;
-    int8_t deserialization_result = _4111spyglass_sat_model_PositionVelocity_0_1_deserialize_(&received_data, static_cast<const uint8_t*>(transfer.payload), &deserialized_size);
+    int8_t deserialization_result = _4111spyglass_sat_solution_PositionSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t*>(transfer.payload), &deserialized_size);
     REQUIRE(deserialization_result >= 0);
     CHECK(received_data.timestamp.microsecond == 804189600000000);
 
     std::array<float,3> expected_r {2715.4f, -4518.34f, -4291.31f};
     std::array<float,3> expected_v {3.75928f, 5.63901f, -3.55967f};
     
-    CHECK(received_data.position_m[0] == doctest::Approx(expected_r[0]*1000.0f).epsilon(0.01));
-    CHECK(received_data.position_m[1] == doctest::Approx(expected_r[1]*1000.0f).epsilon(0.01));
-    CHECK(received_data.position_m[2] == doctest::Approx(expected_r[2]*1000.0f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[0] == doctest::Approx(expected_v[0]*1000.0f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[1] == doctest::Approx(expected_v[1]*1000.0f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[2] == doctest::Approx(expected_v[2]*1000.0f).epsilon(0.01));
-    loopardMemoryFree(transfer.payload);
+    CHECK(received_data.position_ecef.meter[0] == doctest::Approx(expected_r[0]*1000.0f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[1] == doctest::Approx(expected_r[1]*1000.0f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[2] == doctest::Approx(expected_r[2]*1000.0f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[0] == doctest::Approx(expected_v[0]*1000.0f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[1] == doctest::Approx(expected_v[1]*1000.0f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[2] == doctest::Approx(expected_v[2]*1000.0f).epsilon(0.01));
+    Heap::loopardMemoryDeallocate(transfer.payload);
 }
 
 TEST_CASE("send position 2025 7 6 20 43 13")
@@ -376,16 +383,19 @@ TEST_CASE("send position 2025 7 6 20 43 13")
 
     constexpr CyphalNodeID id = 11;
 
+    Heap::initialize();
+
     // Create adapters
     LoopardAdapter loopard;
-    loopard.memory_allocate = loopardMemoryAllocate;
-    loopard.memory_free = loopardMemoryFree;
+    loopard.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard);
     loopard_cyphal.setNodeID(id);
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
 
     SGP4 sgp4(&hrtc);
-    auto task = std::make_shared<TaskPositionService<SGP4, Cyphal<LoopardAdapter>>>(sgp4, 1000, 0, 0, adapters);
+    SGP4Position<SGP4> sgp4_position(&hrtc, sgp4);
+    auto task = std::make_shared<TaskPositionService<SGP4Position<SGP4>, Cyphal<LoopardAdapter>>>(sgp4_position, 1000, 0, 0, adapters);
 
     // ISS (ZARYA)
     char longstr1[] = "1 25544U 98067A   25176.73245655  .00008102  00000-0  14854-3 0  9994";
@@ -417,26 +427,26 @@ TEST_CASE("send position 2025 7 6 20 43 13")
     REQUIRE(loopard.buffer.size() == 1);
 
     auto transfer = loopard.buffer.pop();
-    CHECK(transfer.metadata.port_id == _4111spyglass_sat_model_PositionVelocity_0_1_PORT_ID_);
+    CHECK(transfer.metadata.port_id == _4111spyglass_sat_solution_PositionSolution_0_1_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindMessage);
     CHECK(transfer.metadata.remote_node_id == id);
-    CHECK(transfer.payload_size == _4111spyglass_sat_model_PositionVelocity_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
+    CHECK(transfer.payload_size == _4111spyglass_sat_solution_PositionSolution_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_);
 
     // Deserialize the payload and verify the values
-    _4111spyglass_sat_model_PositionVelocity_0_1 received_data;
+    _4111spyglass_sat_solution_PositionSolution_0_1 received_data;
     size_t deserialized_size = transfer.payload_size;
-    int8_t deserialization_result = _4111spyglass_sat_model_PositionVelocity_0_1_deserialize_(&received_data, static_cast<const uint8_t*>(transfer.payload), &deserialized_size);
+    int8_t deserialization_result = _4111spyglass_sat_solution_PositionSolution_0_1_deserialize_(&received_data, static_cast<const uint8_t*>(transfer.payload), &deserialized_size);
     REQUIRE(deserialization_result >= 0);
     CHECK(received_data.timestamp.microsecond == 805149793000000);
 
     std::array<float,3> expected_r {6356.42f, -1504.07f, 1859.27f};
     std::array<float,3> expected_v {-0.42784f, 5.18216f, 5.63173f};
     
-    CHECK(received_data.position_m[0] == doctest::Approx(expected_r[0] * 1000.f).epsilon(0.01));
-    CHECK(received_data.position_m[1] == doctest::Approx(expected_r[1] * 1000.f).epsilon(0.01));
-    CHECK(received_data.position_m[2] == doctest::Approx(expected_r[2] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[0] == doctest::Approx(expected_v[0] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[1] == doctest::Approx(expected_v[1] * 1000.f).epsilon(0.01));
-    CHECK(received_data.velocity_ms[2] == doctest::Approx(expected_v[2] * 1000.f).epsilon(0.01));
-    loopardMemoryFree(transfer.payload);
+    CHECK(received_data.position_ecef.meter[0] == doctest::Approx(expected_r[0] * 1000.f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[1] == doctest::Approx(expected_r[1] * 1000.f).epsilon(0.01));
+    CHECK(received_data.position_ecef.meter[2] == doctest::Approx(expected_r[2] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[0] == doctest::Approx(expected_v[0] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[1] == doctest::Approx(expected_v[1] * 1000.f).epsilon(0.01));
+    CHECK(received_data.velocity_ecef.meter_per_second[2] == doctest::Approx(expected_v[2] * 1000.f).epsilon(0.01));
+    Heap::loopardMemoryDeallocate(transfer.payload);
 }

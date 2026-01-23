@@ -9,7 +9,7 @@ TEST_CASE("SimpleFileSource Functionality") {
     SimpleFileSource source;
 
     SUBCASE("Default Initialization") {
-        std::array<char, NAME_LENGTH> default_path;
+        std::array<char, NAME_LENGTH> default_path{};
         const char* src = "default.txt";
         std::copy(src, src + std::min(std::strlen(src), (size_t)NAME_LENGTH - 1), default_path.begin());
         default_path[NAME_LENGTH - 1] = '\0'; // Ensure null termination
@@ -21,7 +21,7 @@ TEST_CASE("SimpleFileSource Functionality") {
 
     SUBCASE("Custom Initialization") {
         SimpleFileSource custom_source("my_file.bin");
-        std::array<char, NAME_LENGTH> custom_path;
+        std::array<char, NAME_LENGTH> custom_path{};
         const char* src = "my_file.bin";
         std::copy(src, src + std::min(std::strlen(src), (size_t)NAME_LENGTH - 1), custom_path.begin());
         custom_path[NAME_LENGTH - 1] = '\0'; // Ensure null termination
@@ -31,7 +31,7 @@ TEST_CASE("SimpleFileSource Functionality") {
     }
 
     SUBCASE("Set and Get Path") {
-        std::array<char, NAME_LENGTH> new_path;
+        std::array<char, NAME_LENGTH> new_path{};
         const char* src = "another_file.txt";
         std::copy(src, src + std::min(std::strlen(src), (size_t)NAME_LENGTH - 1), new_path.begin());
         new_path[NAME_LENGTH - 1] = '\0'; // Ensure null termination

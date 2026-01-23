@@ -3,7 +3,7 @@
 #include "mock_hal.h"
 
 #include "o1heap.h"
-#include "Allocator.hpp"
+#include "HeapAllocation.hpp"
 #include "Logger.hpp"
 #include "cyphal.hpp"
 #include "canard_adapter.hpp"
@@ -18,9 +18,36 @@
 #include "TaskBlinkLED.hpp"
 #include "TaskSendHeartBeat.hpp"
 
+CanardAdapter canard_adapter;
+LoopardAdapter loopard_adapter;
+SerardAdapter serard_adapter;
+
 constexpr size_t O1HEAP_SIZE = 16384;
-uint8_t o1heap_buffer[O1HEAP_SIZE] __attribute__ ((aligned (O1HEAP_ALIGNMENT)));
+uint8_t o1heap_buffer[O1HEAP_SIZE] __attribute__((aligned(O1HEAP_ALIGNMENT)));
 O1HeapInstance *o1heap;
+
+// Add this small heap adapter for SafeAllocator
+struct LocalHeap
+{
+    static void *heapAllocate(void * /*handle*/, const size_t amount)
+    {
+        return o1heapAllocate(o1heap, amount);
+    }
+
+    static void heapFree(void * /*handle*/, void *pointer)
+    {
+        o1heapFree(o1heap, pointer);
+    }
+};
+
+template <typename T, typename... Args>
+static void register_task_with_heap(RegistrationManager &rm, Args &&...args)
+{
+    static SafeAllocator<T, LocalHeap> alloc;
+    rm.add(alloc_unique_custom<T>(alloc, std::forward<Args>(args)...));
+}
+using CanardCyphal = Cyphal<CanardAdapter>;
+using SerardCyphal = Cyphal<SerardAdapter>;
 
 constexpr CyphalNodeID cyphal_node_id = 11;
 UART_HandleTypeDef *huart2_;
@@ -31,46 +58,48 @@ constexpr size_t SERIAL_BUFFER_SIZE = 4;
 using SerialCircularBuffer = CircularBuffer<SerialFrame, SERIAL_BUFFER_SIZE>;
 SerialCircularBuffer serial_buffer;
 
-void* canardMemoryAllocate(CanardInstance *const /*canard*/, const size_t size)
+void *canardMemoryAllocate(CanardInstance *const /*canard*/, const size_t size)
 {
-	return o1heapAllocate(o1heap, size);
+    return o1heapAllocate(o1heap, size);
 }
 
 void canardMemoryDeallocate(CanardInstance *const /*canard*/, void *const pointer)
 {
-	o1heapFree(o1heap, pointer);
+    o1heapFree(o1heap, pointer);
 }
 
-void* serardMemoryAllocate(void *const /*user_reference*/, const size_t size)
+void *serardMemoryAllocate(void *const /*user_reference*/, const size_t size)
 {
-	return o1heapAllocate(o1heap, size);
+    return o1heapAllocate(o1heap, size);
 }
 
 void serardMemoryDeallocate(void *const /*user_reference*/, const size_t /*size*/, void *const pointer)
 {
-	o1heapFree(o1heap, pointer);
+    o1heapFree(o1heap, pointer);
 };
 
-bool serialSendHuart2(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
+bool serialSendHuart2(void * /*user_reference*/, uint8_t data_size, const uint8_t *data)
 {
-	return (HAL_UART_Transmit(huart2_, const_cast<uint8_t*>(data), data_size, 1000) == HAL_OK);
+    return (HAL_UART_Transmit(huart2_, const_cast<uint8_t *>(data), data_size, 1000) == HAL_OK);
 }
 
-bool serialSendHuart3(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
+bool serialSendHuart3(void * /*user_reference*/, uint8_t data_size, const uint8_t *data)
 {
-	return (HAL_UART_Transmit(huart3_, const_cast<uint8_t*>(data), data_size, 1000) == HAL_OK);
+    return (HAL_UART_Transmit(huart3_, const_cast<uint8_t *>(data), data_size, 1000) == HAL_OK);
 }
 
 #ifdef __cplusplus
-extern "C" {
-#endif
-bool serial_send(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
+extern "C"
 {
-	HAL_StatusTypeDef status = HAL_UART_Transmit(huart2_, const_cast<uint8_t*>(data), data_size, 1000);
-// 	HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(&huart2_, const_cast<uint8_t*>(data), data_size);
+#endif
+    bool serial_send(void * /*user_reference*/, uint8_t data_size, const uint8_t *data)
+    {
+        HAL_StatusTypeDef status = HAL_UART_Transmit(huart2_, const_cast<uint8_t *>(data), data_size, 1000);
+        // 	HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(&huart2_, const_cast<uint8_t*>(data), data_size);
 
- 	return status == HAL_OK;;
-}
+        return status == HAL_OK;
+        ;
+    }
 #ifdef __cplusplus
 }
 #endif
@@ -116,44 +145,44 @@ TEST_CASE("TaskMainLoop: TaskSendHeartBeat TaskBlinkLED TaskCheckMemory")
     Cyphal<SerardAdapter> serard_cyphal(&serard_adapter);
     serard_cyphal.setNodeID(cyphal_node_id);
 
-	std::tuple<Cyphal<SerardAdapter>> adapters = { serard_cyphal };
+    std::tuple<Cyphal<SerardAdapter>> adapters = {serard_cyphal};
 
     RegistrationManager registration_manager;
 
-	O1HeapAllocator<TaskSendHeartBeat<Cyphal<SerardAdapter>>> alloc_TaskSendHeartBeat(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<SerardAdapter>>>(alloc_TaskSendHeartBeat, 1000U, 100U, static_cast<CyphalTransferID>(0), adapters));
+    using TSHeartSerard = TaskSendHeartBeat<SerardCyphal>;
+    register_task_with_heap<TSHeartSerard>(registration_manager, 1000U, 100U, static_cast<CyphalTransferID>(0), adapters);
 
-	O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, GPIOC, LED1_Pin, 1000U, 100U));
+    using TBlink = TaskBlinkLED;
+    register_task_with_heap<TBlink>(registration_manager, GPIOC, LED1_Pin, 1000U, 100U);
 
-	O1HeapAllocator<TaskCheckMemory> alloc_TaskCheckMemory(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, o1heap, 2000U, 100U));
+    using TCheckMem = TaskCheckMemory;
+    register_task_with_heap<TCheckMem>(registration_manager, o1heap, 2000U, 100U);
 
     REQUIRE(registration_manager.getHandlers().size() == 3);
 
-	ServiceManager service_manager(registration_manager.getHandlers());
-	SubscriptionManager subscription_manager;
+    ServiceManager service_manager(registration_manager.getHandlers());
+    SubscriptionManager subscription_manager;
     subscription_manager.subscribe<SubscriptionManager::MessageTag>(registration_manager.getSubscriptions(), adapters);
     subscription_manager.subscribe<SubscriptionManager::RequestTag>(registration_manager.getServers(), adapters);
     subscription_manager.subscribe<SubscriptionManager::ResponseTag>(registration_manager.getClients(), adapters);
 
-	O1HeapAllocator<CyphalTransfer> allocator(o1heap);
+    SafeAllocator<CyphalTransfer, LocalHeap> allocator;
     LoopManager loop_manager(allocator);
-	
+
     O1HeapDiagnostics diagnostic_before = o1heapGetDiagnostics(o1heap);
     clear_uart_tx_buffer();
 
     REQUIRE(service_manager.getHandlers().size() == 3);
     REQUIRE(subscription_manager.getSubscriptions().size() == 0);
 
-    for(uint32_t tick=3000; tick<=90000; tick+=3000)
-	{
-		HAL_SetTick(tick);
+    for (uint32_t tick = 3000; tick <= 90000; tick += 3000)
+    {
+        HAL_SetTick(tick);
         log(LOG_LEVEL_TRACE, "while loop: %d\r\n", HAL_GetTick());
-		loop_manager.SerialProcessRxQueue(&serard_cyphal, &service_manager, adapters, serial_buffer);
-		loop_manager.LoopProcessRxQueue(&loopard_cyphal, &service_manager, adapters);
-		service_manager.handleServices();
-	
+        loop_manager.SerialProcessRxQueue(&serard_cyphal, &service_manager, adapters, serial_buffer);
+        loop_manager.LoopProcessRxQueue(&loopard_cyphal, &service_manager, adapters);
+        service_manager.handleServices();
+
         CHECK(get_uart_tx_buffer_count() != 0);
         clear_uart_tx_buffer();
     }

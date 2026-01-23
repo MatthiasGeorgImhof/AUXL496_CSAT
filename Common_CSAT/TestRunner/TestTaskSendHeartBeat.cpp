@@ -9,14 +9,14 @@
 #include "loopard_adapter.hpp"
 #include "RegistrationManager.hpp"
 #include "ServiceManager.hpp"
-#include "Allocator.hpp"
+#include "HeapAllocation.hpp"
 
 #ifdef __x86_64__
 #include "mock_hal.h"  // Include the mock HAL header
 #endif
 
-void *loopardMemoryAllocate(size_t amount) { return static_cast<void *>(malloc(amount)); };
-void loopardMemoryFree(void *pointer) { free(pointer); };
+using Heap = HeapAllocation<>;
+using TaskAlloc = SafeAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>,Heap>;
 
 TEST_CASE("TaskSendHeartBeat: handleTask publishes Heartbeat") {
     // Set up mock environment
@@ -25,12 +25,14 @@ TEST_CASE("TaskSendHeartBeat: handleTask publishes Heartbeat") {
     constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
+    Heap::initialize();
+
     // Create adapters
     LoopardAdapter loopard1, loopard2;
-    loopard1.memory_allocate = loopardMemoryAllocate;
-    loopard1.memory_free = loopardMemoryFree;
-    loopard2.memory_allocate = loopardMemoryAllocate;
-    loopard2.memory_free = loopardMemoryFree;
+    loopard1.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard1.memory_free = Heap::loopardMemoryDeallocate;
+    loopard2.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard2.memory_free = Heap::loopardMemoryDeallocate;
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);
@@ -62,7 +64,7 @@ TEST_CASE("TaskSendHeartBeat: handleTask publishes Heartbeat") {
     REQUIRE(received_heartbeat1.uptime == 10); // HAL_GetTick() / 1024 = 10240 / 1024 = 10
     REQUIRE(received_heartbeat1.health.value == uavcan_node_Health_1_0_NOMINAL);
     REQUIRE(received_heartbeat1.mode.value == uavcan_node_Mode_1_0_OPERATIONAL);
-    loopardMemoryFree(transfer1.payload);
+    Heap::loopardMemoryDeallocate(transfer1.payload);
 
     // Verify the content of the published message on the second adapter
     CyphalTransfer transfer2 = loopard2.buffer.pop();
@@ -79,7 +81,7 @@ TEST_CASE("TaskSendHeartBeat: handleTask publishes Heartbeat") {
     REQUIRE(received_heartbeat2.uptime == 10); // HAL_GetTick() / 1024 = 10240 / 1024 = 10
     REQUIRE(received_heartbeat2.health.value == uavcan_node_Health_1_0_NOMINAL);
     REQUIRE(received_heartbeat2.mode.value == uavcan_node_Mode_1_0_OPERATIONAL);
-    loopardMemoryFree(transfer2.payload);
+    Heap::loopardMemoryDeallocate(transfer2.payload);
 }
 
 
@@ -108,28 +110,33 @@ TEST_CASE("TaskSendHeartBeat: snippet to registration with std::alloc") {
 }
 
 
-TEST_CASE("TaskSendHeartBeat: snippet to registration with O1HeapAllocator") {
+TEST_CASE("TaskSendHeartBeat: snippet to registration with SafeAllocator") {
     constexpr CyphalNodeID id1 = 11;
     constexpr CyphalNodeID id2 = 12;
 
-    char buffer[4192] __attribute__ ((aligned (256)));
-    O1HeapInstance* heap = o1heapInit(buffer, 4192);
-    REQUIRE(heap != nullptr);
-    O1HeapDiagnostics diagnostics = o1heapGetDiagnostics(heap);
+    Heap::initialize();
+    auto diagnostics = Heap::getDiagnostics();
     size_t allocated = diagnostics.allocated;
 
-    O1HeapAllocator<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>> taskAllocator(heap);
+    TaskAlloc taskAllocator;  // no 'heap' variable; allocator uses Heap statically
 
     LoopardAdapter loopard1, loopard2;
+    loopard1.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard1.memory_free     = Heap::loopardMemoryDeallocate;
+    loopard2.memory_allocate = Heap::loopardMemoryAllocate;
+    loopard2.memory_free     = Heap::loopardMemoryDeallocate;
+
     Cyphal<LoopardAdapter> loopard_cyphal1(&loopard1), loopard_cyphal2(&loopard2);
     loopard_cyphal1.setNodeID(id1);
     loopard_cyphal2.setNodeID(id2);
 
     std::tuple<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>> adapters(loopard_cyphal1, loopard_cyphal2);
 
-    auto task_sendheartbeat = allocate_shared_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>>(
-        taskAllocator, 1000, 0, 0, adapters);
-    diagnostics = o1heapGetDiagnostics(heap);
+    auto task_sendheartbeat =
+        alloc_shared_custom<TaskSendHeartBeat<Cyphal<LoopardAdapter>, Cyphal<LoopardAdapter>>>(
+            taskAllocator, 1000, 0, 0, adapters);
+
+    diagnostics = Heap::getDiagnostics();
     CHECK(diagnostics.allocated > allocated);
     CHECK(task_sendheartbeat.use_count() == 1);
 
@@ -139,10 +146,10 @@ TEST_CASE("TaskSendHeartBeat: snippet to registration with O1HeapAllocator") {
     CHECK(task_sendheartbeat.use_count() == 2);
 
     registration_manager.remove(task_sendheartbeat);
-    CHECK(! registration_manager.containsTask(task_sendheartbeat));
-    
+    CHECK(!registration_manager.containsTask(task_sendheartbeat));
     CHECK(task_sendheartbeat.use_count() == 1);
+
     task_sendheartbeat.reset();
-    diagnostics = o1heapGetDiagnostics(heap);
+    diagnostics = Heap::getDiagnostics();
     CHECK(diagnostics.allocated == allocated);
 }

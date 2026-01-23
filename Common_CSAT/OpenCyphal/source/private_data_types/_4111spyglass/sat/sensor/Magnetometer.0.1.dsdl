@@ -1,0 +1,4 @@
+_4111spyglass.sat.sensor.SensorHeader.0.1 sensor
+uavcan.si.sample.magnetic_field_strength.Vector3.1.1 magnetic_field_strength
+uavcan.si.sample.temperature.Scalar.1.0 temperature
+@sealed
