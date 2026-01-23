@@ -1,4 +1,5 @@
-#include "main.h"
+#include <cppmain.h>
+#include <cpphal.h>
 #include "usb_device.h"
 
 #include <memory>
@@ -24,7 +25,7 @@
 #include "cyphal_subscriptions.hpp"
 #include <CircularBuffer.hpp>
 #include <ArrayList.hpp>
-#include "Allocator.hpp"
+#include "HeapAllocation.hpp"
 #include "RegistrationManager.hpp"
 #include "SubscriptionManager.hpp"
 #include "ServiceManager.hpp"
@@ -41,48 +42,12 @@
 #include <cppmain.h>
 #include "Logger.hpp"
 
-UART_HandleTypeDef *huart2_;
-DMA_HandleTypeDef *hdma_usart2_rx_;
-DMA_HandleTypeDef *hdma_usart2_tx_;
-UART_HandleTypeDef *huart3_;
-DMA_HandleTypeDef *hdma_usart3_rx_;
-DMA_HandleTypeDef *hdma_usart3_tx_;
-CAN_HandleTypeDef *hcan1_;
-CAN_HandleTypeDef *hcan2_;
-
 constexpr size_t O1HEAP_SIZE = 65536;
-uint8_t o1heap_buffer[O1HEAP_SIZE] __attribute__ ((aligned (O1HEAP_ALIGNMENT)));
-O1HeapInstance *o1heap;
+using LocalHeap = HeapAllocation<O1HEAP_SIZE>;
 
-void* canardMemoryAllocate(CanardInstance *const /*canard*/, const size_t size)
-{
-	return o1heapAllocate(o1heap, size);
-}
-
-void canardMemoryDeallocate(CanardInstance *const /*canard*/, void *const pointer)
-{
-	o1heapFree(o1heap, pointer);
-}
-
-void* serardMemoryAllocate(void *const /*user_reference*/, const size_t size)
-{
-	return o1heapAllocate(o1heap, size);
-}
-
-void serardMemoryDeallocate(void *const /*user_reference*/, const size_t /*size*/, void *const pointer)
-{
-	o1heapFree(o1heap, pointer);
-};
-
-bool serialSendHuart2(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
-{
-	return (HAL_UART_Transmit(huart2_, data, data_size, 1000) == HAL_OK);
-}
-
-bool serialSendHuart3(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
-{
-	return (HAL_UART_Transmit(huart3_, data, data_size, 1000) == HAL_OK);
-}
+CanardAdapter canard_adapter;
+SerardAdapter serard_adapter;
+LoopardAdapter loopard_adapter;
 
 #ifndef CYPHAL_NODE_ID
 #define CYPHAL_NODE_ID 11
@@ -153,7 +118,7 @@ bool serial_send(void* /*user_reference*/, uint8_t data_size, const uint8_t* dat
 //	uchar_buffer_to_hex(data, data_size, hex_string_buffer, BUFFER_SIZE);
 //	log(LOG_LEVEL_INFO, "serial send %d: %s \r\n", data_size, hex_string_buffer);
 
-	HAL_StatusTypeDef status = HAL_UART_Transmit(huart2_, data, data_size, 1000);
+	HAL_StatusTypeDef status = HAL_UART_Transmit(&huart2, data, data_size, 1000);
 	// 	HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(&huart2_, data, data_size);
 
 	return status == HAL_OK;;
@@ -162,18 +127,22 @@ bool serial_send(void* /*user_reference*/, uint8_t data_size, const uint8_t* dat
 }
 #endif
 
+constexpr uint16_t endian_swap(uint16_t num) {return (num>>8) | (num<<8); };
+constexpr int16_t endian_swap(int16_t num) {return (num>>8) | (num<<8); };
 
-void cppmain(HAL_Handles handles)
+template<typename T, typename... Args>
+static void register_task_with_heap(RegistrationManager& rm, Args&&... args)
 {
-	huart2_ = handles.huart2;
-	huart3_ = handles.huart3;
-	hcan1_ = handles.hcan1;
-	hcan2_ = handles.hcan2;
+    static SafeAllocator<T, LocalHeap> alloc;
+    rm.add(alloc_unique_custom<T>(alloc, std::forward<Args>(args)...));
+}
 
-	if (HAL_CAN_Start(hcan1_) != HAL_OK) {
+void cppmain()
+{
+	if (HAL_CAN_Start(&hcan1) != HAL_OK) {
 		Error_Handler();
 	}
-	if (HAL_CAN_ActivateNotification(hcan1_, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+	if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
 	{
 		Error_Handler();
 	}
@@ -189,26 +158,28 @@ void cppmain(HAL_Handles handles)
 	filter.FilterScale = CAN_FILTERSCALE_16BIT;
 	filter.FilterActivation = ENABLE;
 	filter.SlaveStartFilterBank = 0;
-	HAL_CAN_ConfigFilter(hcan1_, &filter);
+	HAL_CAN_ConfigFilter(&hcan1, &filter);
 
-	o1heap = o1heapInit(o1heap_buffer, O1HEAP_SIZE);
-	O1HeapAllocator<CanardRxTransfer> alloc(o1heap);
+	LocalHeap::initialize();
+	O1HeapInstance *o1heap = LocalHeap::getO1Heap();
 
-	LoopardAdapter loopard_adapter;
-	Cyphal<LoopardAdapter> loopard_cyphal(&loopard_adapter);
+	using LoopardCyphal = Cyphal<LoopardAdapter>;
+	loopard_adapter.memory_allocate = LocalHeap::loopardMemoryAllocate;
+	loopard_adapter.memory_free = LocalHeap::loopardMemoryDeallocate;
+	LoopardCyphal loopard_cyphal(&loopard_adapter);
 	loopard_cyphal.setNodeID(cyphal_node_id);
 
-	CanardAdapter canard_adapter;
-	canard_adapter.ins = canardInit(&canardMemoryAllocate, &canardMemoryDeallocate);
+	using CanardCyphal = Cyphal<CanardAdapter>;
+	canard_adapter.ins = canardInit(LocalHeap::canardMemoryAllocate, LocalHeap::canardMemoryDeallocate);
 	canard_adapter.que = canardTxInit(512, CANARD_MTU_CAN_CLASSIC);
-	Cyphal<CanardAdapter> canard_cyphal(&canard_adapter);
+	CanardCyphal canard_cyphal(&canard_adapter);
 	canard_cyphal.setNodeID(cyphal_node_id);
 
-	SerardAdapter serard_adapter;
-	struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
+	struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, LocalHeap::serardMemoryDeallocate, LocalHeap::serardMemoryAllocate};
+	using SerardCyphal = Cyphal<SerardAdapter>;
 	serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
 	serard_adapter.emitter = serial_send;
-	Cyphal<SerardAdapter> serard_cyphal(&serard_adapter);
+	SerardCyphal serard_cyphal(&serard_adapter);
 	serard_cyphal.setNodeID(cyphal_node_id);
 
 	std::tuple<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>> sercan_adapters = { serard_cyphal, canard_cyphal };
@@ -225,31 +196,34 @@ void cppmain(HAL_Handles handles)
 	registration_manager.publish(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
 	registration_manager.publish(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
 
-	O1HeapAllocator<TaskSendHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSendHeartBeat(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskSendHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSendHeartBeat, 1000, 100, 0, sercan_adapters));
+	static SafeAllocator<CyphalTransfer, LocalHeap> allocator;
+	LoopManager loop_manager(allocator);
 
-	O1HeapAllocator<TaskProcessHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskProcessHeartBeat(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskProcessHeartBeat<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskProcessHeartBeat, 1000, 100, sercan_adapters));
+	using TSHeart = TaskSendHeartBeat<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TSHeart>(registration_manager, 2000, 100, 0, sercan_adapters);
 
-	O1HeapAllocator<TaskSendNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSendNodePortList(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskSendNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSendNodePortList, &registration_manager, 10000, 100, 0, sercan_adapters));
+	using TPHeart = TaskProcessHeartBeat<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TPHeart>(registration_manager, 2000, 100, sercan_adapters);
 
-	O1HeapAllocator<TaskSubscribeNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskSubscribeNodePortList(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskSubscribeNodePortList<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskSubscribeNodePortList, &subscription_manager, 10000, 100, sercan_adapters));
+	using TSendNodeList = TaskSendNodePortList<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TSendNodeList>(registration_manager, &registration_manager, 10000, 100, 0, sercan_adapters);
+
+	using TSubscribeNodeList = TaskSubscribeNodePortList<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TSubscribeNodeList>(registration_manager, &subscription_manager, 10000, 100, sercan_adapters);
 
 	constexpr uint8_t uuid[] = {0xc8, 0x03, 0x52, 0xa6, 0x1d, 0x94, 0x40, 0xc9, 0x9b, 0x1d, 0xea, 0xac, 0xfd, 0xdd, 0xb2, 0x85};
 	constexpr char node_name[50] = "AUXL496_CSAT";
-	O1HeapAllocator<TaskRespondGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskRespondGetInfo(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskRespondGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskRespondGetInfo, uuid, node_name, 10000, 100, sercan_adapters));
+	using TRespondInfo = TaskRespondGetInfo<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TRespondInfo>(registration_manager, uuid, node_name, 10000, 100, sercan_adapters);
 
-	O1HeapAllocator<TaskRequestGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>> alloc_TaskRequestGetInfo(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskRequestGetInfo<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>>>(alloc_TaskRequestGetInfo, 10000, 100, 31, 0, sercan_adapters));
+	using TRequestInfo = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TRequestInfo>(registration_manager, 10000, 100, 31, 0, sercan_adapters);
 
-	O1HeapAllocator<TaskBlinkLED> alloc_TaskBlinkLED(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskBlinkLED>(alloc_TaskBlinkLED, GPIOC, LED1_Pin, 1000, 100));
+	using TBlink = TaskBlinkLED;
+	register_task_with_heap<TBlink>(registration_manager, GPIOC, LED1_Pin, 1000, 100);
 
-	O1HeapAllocator<TaskCheckMemory> alloc_TaskCheckMemory(o1heap);
-	registration_manager.add(allocate_unique_custom<TaskCheckMemory>(alloc_TaskCheckMemory, o1heap, 2000, 100));
+	using TCheckMem = TaskCheckMemory;
+	register_task_with_heap<TCheckMem>(registration_manager, o1heap, 2000, 100);
 
     subscription_manager.subscribe<SubscriptionManager::MessageTag>(registration_manager.getSubscriptions(), sercan_adapters);
     subscription_manager.subscribe<SubscriptionManager::ResponseTag>(registration_manager.getServers(), sercan_adapters);
@@ -258,8 +232,6 @@ void cppmain(HAL_Handles handles)
     ServiceManager service_manager(registration_manager.getHandlers());
 	service_manager.initializeServices(HAL_GetTick());
 
-	O1HeapAllocator<CyphalTransfer> allocator(o1heap);
-	LoopManager loop_manager(allocator);
 	while(1)
 	{
 		log(LOG_LEVEL_TRACE, "while loop: %d\r\n", HAL_GetTick());
@@ -272,7 +244,7 @@ void cppmain(HAL_Handles handles)
 				can_rx_buffer.capacity(), can_rx_buffer.size());
 		log(LOG_LEVEL_TRACE, "SerialProcessRxQueue: (%d %d) \r\n",
 				serial_buffer.capacity(), serial_buffer.size());
-		loop_manager.CanProcessTxQueue(&canard_adapter, hcan1_);
+		loop_manager.CanProcessTxQueue(&canard_adapter, &hcan1);
 		loop_manager.SerialProcessRxQueue(&serard_cyphal, &service_manager, canard_adapters, serial_buffer);
 		loop_manager.CanProcessRxQueue(&canard_cyphal, &service_manager, serard_adapters, can_rx_buffer);
 		loop_manager.LoopProcessRxQueue(&loopard_cyphal, &service_manager, empty_adapters);

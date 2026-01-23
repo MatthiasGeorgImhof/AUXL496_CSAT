@@ -116,12 +116,6 @@ int main(void)
   MX_CAN2_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-  struct HAL_Handles handles = {
-      &huart2, &hdma_usart2_rx, &hdma_usart2_tx,
-      &huart3, &hdma_usart3_rx, &hdma_usart3_tx,
-	  &hcan1, &hcan2
-  };
-  cppmain(handles);
   /* USER CODE END 2 */
 
   /* Infinite loop */

@@ -106,6 +106,8 @@ protected:
 				CyphalPriorityNominal,
 				transfer_kind,
 				port_id,
+				CYPHAL_NODE_ID_UNSET,
+				CYPHAL_NODE_ID_UNSET,
 				node_id,
 				transfer_id,
 			};

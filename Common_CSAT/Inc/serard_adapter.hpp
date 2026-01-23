@@ -40,6 +40,8 @@ inline CyphalTransferMetadata serardMetadataToCyphal(const SerardTransferMetadat
         static_cast<CyphalPriority>(metadata.priority),
         static_cast<CyphalTransferKind>(metadata.transfer_kind),
         static_cast<CyphalPortID>(metadata.port_id),
+		CYPHAL_NODE_ID_UNSET,
+		CYPHAL_NODE_ID_UNSET,
         serardNodeIdToCyphal(metadata.remote_node_id),
         serardTransferIdToCyphal(metadata.transfer_id)};
 }

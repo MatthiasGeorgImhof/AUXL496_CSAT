@@ -36,12 +36,20 @@ typedef uint16_t CyphalPortID;
 typedef uint8_t CyphalNodeID;
 typedef uint8_t CyphalTransferID;
 
+struct CyphalForwardRange
+{
+	CyphalNodeID start_id;
+	CyphalNodeID end_id;
+};
+
 typedef struct
 {
     CyphalPriority priority;
     CyphalTransferKind transfer_kind;
     CyphalPortID port_id;
     CyphalNodeID remote_node_id;
+    CyphalNodeID source_node_id;
+    CyphalNodeID destination_node_id;
     CyphalTransferID transfer_id;
 } CyphalTransferMetadata;
 
