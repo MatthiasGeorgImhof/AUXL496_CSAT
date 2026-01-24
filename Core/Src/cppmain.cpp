@@ -198,7 +198,7 @@ void cppmain()
 
 	static SafeAllocator<CyphalTransfer, LocalHeap> allocator;
 	LoopManager loop_manager(allocator);
-
+//
 	using TSHeart = TaskSendHeartBeat<SerardCyphal, CanardCyphal>;
 	register_task_with_heap<TSHeart>(registration_manager, 2000, 100, 0, sercan_adapters);
 
@@ -251,4 +251,21 @@ void cppmain()
 		service_manager.handleServices();
 		HAL_Delay(100);
 	}
+//	  uint32_t last = HAL_GetTick();
+//	  while (1)
+//	  {
+//
+//		  if (HAL_GetTick() < last+1000) continue;
+//		  HAL_GPIO_TogglePin(GPIOC, LED1_Pin);
+//		  HAL_Delay(100);
+//		  HAL_GPIO_TogglePin(GPIOC, LED2_Pin);
+//		  HAL_Delay(100);
+//		  HAL_GPIO_TogglePin(GPIOC, LED3_Pin);
+//		  HAL_Delay(100);
+//		  HAL_GPIO_TogglePin(GPIOC, LED4_Pin);
+//		  HAL_Delay(100);
+//		  HAL_GPIO_TogglePin(LED5_GPIO_Port, LED5_Pin);
+//		  last = HAL_GetTick();
+//	  }
+
 }

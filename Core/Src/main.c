@@ -116,15 +116,18 @@ int main(void)
   MX_CAN2_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+  cppmain();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+	    /* USER CODE END WHILE */
+
+	    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
