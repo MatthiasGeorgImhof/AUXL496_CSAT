@@ -55,6 +55,23 @@ public:
         return data[current];
     }
 
+    T& begin_write()
+    {
+        // If full, drop oldest
+        if (is_full()) {
+            drop_tail();
+        }
+
+        return data[head_];     // caller gives this to DMA
+    }
+
+    void commit_write()
+    {
+        // Move head to write_index_ + 1
+        head_ = (head_ + 1) % capacity_;
+        ++count_;
+    }
+
     bool is_empty() const
     {
         return count_ == 0;

@@ -85,7 +85,7 @@ public:
     	constexpr size_t BUFFER_SIZE = 512;
     	char hex_string_buffer[BUFFER_SIZE];
     	uchar_buffer_to_hex(static_cast<const unsigned char*>(transfer.payload), transfer.payload_size, hex_string_buffer, BUFFER_SIZE);
-        log(LOG_LEVEL_TRACE, "LoopManager::processTransfer: %4d %s\r\n", transfer.metadata.port_id, hex_string_buffer);
+        log(LOG_LEVEL_DEBUG, "LoopManager::processTransfer: %4d %s\r\n", transfer.metadata.port_id, hex_string_buffer);
 
     	std::shared_ptr<CyphalTransfer> transfer_ptr = std::allocate_shared<CyphalTransfer>(allocator_, transfer);
         service_manager->handleMessage(transfer_ptr);
@@ -94,9 +94,7 @@ public:
         std::apply([&](auto &...adapter)
                    { ([&]()
                       {
-            CyphalNodeID remote_node_id = transfer.metadata.remote_node_id;
-            transfer.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;       
-            int32_t res = adapter.cyphalTxForward(static_cast<CyphalMicrosecond>(0), &transfer.metadata, transfer.payload_size, transfer.payload, remote_node_id);
+            int32_t res = adapter.cyphalTxForward(static_cast<CyphalMicrosecond>(0), &transfer.metadata, transfer.payload_size, transfer.payload, CYPHAL_NODE_ID_UNSET);
             all_successful = all_successful && (res > 0); }(), ...); }, adapters);
         return all_successful; // Return success status
     }
@@ -113,7 +111,7 @@ public:
         	constexpr size_t BUFFER_SIZE = 256;
         	char hex_string_buffer[BUFFER_SIZE];
         	uchar_buffer_to_hex(frame.data, frame_size, hex_string_buffer, BUFFER_SIZE);
-            log(LOG_LEVEL_TRACE, "LoopManager::CanProcessRxQueue: %4x %s\r\n", frame.header.ExtId, hex_string_buffer);
+            log(LOG_LEVEL_DEBUG, "LoopManager::CanProcessRxQueue dump: %4x %s\r\n", frame.header.ExtId, hex_string_buffer);
 
             CyphalTransfer transfer;
             int32_t result = cyphal->cyphalRxReceive(frame.header.ExtId, &frame_size, frame.data, &transfer);
@@ -128,11 +126,18 @@ public:
     void SerialProcessRxQueue(Cyphal<SerardAdapter> *cyphal, ServiceManager *service_manager, std::tuple<Adapters...> &adapters, CircularBuffer<SerialFrame, 4> &serial_buffer)
     {
         size_t num_frames = serial_buffer.size();
+        log(LOG_LEVEL_TRACE, "LoopManager::SerialProcessRxQueue size: %d\r\n", num_frames);
         for (uint32_t n = 0; n < num_frames; ++n)
         {
             SerialFrame frame = serial_buffer.pop();
             size_t frame_size = frame.size;
             size_t shift = 0;
+
+        	constexpr size_t BUFFER_SIZE = 256;
+        	char hex_string_buffer[BUFFER_SIZE];
+        	uchar_buffer_to_hex(frame.data + shift, frame_size, hex_string_buffer, BUFFER_SIZE);
+            log(LOG_LEVEL_DEBUG, "LoopManager::SerialProcessRxQueue dump: %s\r\n", hex_string_buffer);
+
             CyphalTransfer transfer;
             for (;;)
             {

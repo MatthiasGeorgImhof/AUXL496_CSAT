@@ -61,7 +61,8 @@ using SerialCircularBuffer = CircularBuffer<SerialFrame, SERIAL_BUFFER_SIZE>;
 SerialCircularBuffer serial_buffer;
 
 constexpr size_t CAN_RX_BUFFER_SIZE = 64;
-CircularBuffer<CanRxFrame, CAN_RX_BUFFER_SIZE> can_rx_buffer;
+using CanCircularBuffer = CircularBuffer<CanRxFrame, CAN_RX_BUFFER_SIZE>;
+CanCircularBuffer can_rx_buffer;
 
 CanardTransferMetadata convert(const SerardTransferMetadata serard)
 {
@@ -86,13 +87,18 @@ CanardRxTransfer convert(const SerardRxTransfer serard)
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t pos)
 {
-	HAL_UART_RxEventTypeTypeDef event_type = HAL_UARTEx_GetRxEventType(huart);
-	if (event_type == HAL_UART_RXEVENT_HT) return;
-	SerialFrame frame = serial_buffer.peek();
-	frame.size = pos;
+    if (huart->Instance == USART2)
+    {
+        // Finalize in-flight slot
+        SerialFrame& slot = serial_buffer.begin_write();
+        slot.size = pos;
+        serial_buffer.commit_write();
 
-	frame = serial_buffer.next();
-	HAL_UARTEx_ReceiveToIdle_DMA(huart, frame.data, SERIAL_MTU);
+        // Reserve next slot for DMA
+        SerialFrame& next_slot = serial_buffer.begin_write();
+        HAL_UARTEx_ReceiveToIdle_DMA(huart, next_slot.data, SERIAL_MTU);
+        HAL_GPIO_TogglePin(GPIOC, LED2_Pin);
+    }
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
@@ -113,14 +119,7 @@ extern "C" {
 #endif
 bool serial_send(void* /*user_reference*/, uint8_t data_size, const uint8_t* data)
 {
-//	constexpr size_t BUFFER_SIZE = 1024;
-//	char hex_string_buffer[BUFFER_SIZE];
-//	uchar_buffer_to_hex(data, data_size, hex_string_buffer, BUFFER_SIZE);
-//	log(LOG_LEVEL_INFO, "serial send %d: %s \r\n", data_size, hex_string_buffer);
-
 	HAL_StatusTypeDef status = HAL_UART_Transmit(&huart2, data, data_size, 1000);
-	// 	HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(&huart2_, data, data_size);
-
 	return status == HAL_OK;;
 }
 #ifdef __cplusplus
@@ -174,6 +173,8 @@ void cppmain()
 	canard_adapter.que = canardTxInit(512, CANARD_MTU_CAN_CLASSIC);
 	CanardCyphal canard_cyphal(&canard_adapter);
 	canard_cyphal.setNodeID(cyphal_node_id);
+//	canard_adapter.ins.forward_range.start_id = 20;
+//	canard_adapter.ins.forward_range.end_id = 39;
 
 	struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, LocalHeap::serardMemoryDeallocate, LocalHeap::serardMemoryAllocate};
 	using SerardCyphal = Cyphal<SerardAdapter>;
@@ -182,48 +183,46 @@ void cppmain()
 	SerardCyphal serard_cyphal(&serard_adapter);
 	serard_cyphal.setNodeID(cyphal_node_id);
 
-	std::tuple<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>> sercan_adapters = { serard_cyphal, canard_cyphal };
+	//	std::tuple<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>> sercan_adapters = { serard_cyphal, canard_cyphal };
+	std::tuple<Cyphal<SerardAdapter>> sercan_adapters = { serard_cyphal };
 	std::tuple<Cyphal<SerardAdapter>> serard_adapters = { serard_cyphal };
 	std::tuple<Cyphal<CanardAdapter>> canard_adapters = { canard_cyphal };
 	std::tuple<> empty_adapters = {} ;
 
+	SerialFrame& slot = serial_buffer.begin_write();
+	HAL_UARTEx_ReceiveToIdle_DMA(&huart2, slot.data, SERIAL_MTU);
+
 	RegistrationManager registration_manager;
 	SubscriptionManager subscription_manager;
-	registration_manager.subscribe(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
-	registration_manager.subscribe(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
-	registration_manager.subscribe(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
-	registration_manager.publish(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
-	registration_manager.publish(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
-	registration_manager.publish(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_);
 
 	static SafeAllocator<CyphalTransfer, LocalHeap> allocator;
 	LoopManager loop_manager(allocator);
-//
-	using TSHeart = TaskSendHeartBeat<SerardCyphal, CanardCyphal>;
+
+	using TSHeart = TaskSendHeartBeat<SerardCyphal>;
 	register_task_with_heap<TSHeart>(registration_manager, 2000, 100, 0, sercan_adapters);
 
-	using TPHeart = TaskProcessHeartBeat<SerardCyphal, CanardCyphal>;
+	using TPHeart = TaskProcessHeartBeat<SerardCyphal>;
 	register_task_with_heap<TPHeart>(registration_manager, 2000, 100, sercan_adapters);
 
-	using TSendNodeList = TaskSendNodePortList<SerardCyphal, CanardCyphal>;
+	using TSendNodeList = TaskSendNodePortList<SerardCyphal>;
 	register_task_with_heap<TSendNodeList>(registration_manager, &registration_manager, 10000, 100, 0, sercan_adapters);
 
-	using TSubscribeNodeList = TaskSubscribeNodePortList<SerardCyphal, CanardCyphal>;
+	using TSubscribeNodeList = TaskSubscribeNodePortList<SerardCyphal>;
 	register_task_with_heap<TSubscribeNodeList>(registration_manager, &subscription_manager, 10000, 100, sercan_adapters);
 
 	constexpr uint8_t uuid[] = {0xc8, 0x03, 0x52, 0xa6, 0x1d, 0x94, 0x40, 0xc9, 0x9b, 0x1d, 0xea, 0xac, 0xfd, 0xdd, 0xb2, 0x85};
 	constexpr char node_name[50] = "AUXL496_CSAT";
-	using TRespondInfo = TaskRespondGetInfo<SerardCyphal, CanardCyphal>;
+	using TRespondInfo = TaskRespondGetInfo<SerardCyphal>;
 	register_task_with_heap<TRespondInfo>(registration_manager, uuid, node_name, 10000, 100, sercan_adapters);
 
-	using TRequestInfo = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
+	using TRequestInfo = TaskRequestGetInfo<SerardCyphal>;
 	register_task_with_heap<TRequestInfo>(registration_manager, 10000, 100, 31, 0, sercan_adapters);
 
 	using TBlink = TaskBlinkLED;
 	register_task_with_heap<TBlink>(registration_manager, GPIOC, LED1_Pin, 1000, 100);
 
 	using TCheckMem = TaskCheckMemory;
-	register_task_with_heap<TCheckMem>(registration_manager, o1heap, 2000, 100);
+	register_task_with_heap<TCheckMem>(registration_manager, o1heap, 250, 100);
 
     subscription_manager.subscribe<SubscriptionManager::MessageTag>(registration_manager.getSubscriptions(), sercan_adapters);
     subscription_manager.subscribe<SubscriptionManager::ResponseTag>(registration_manager.getServers(), sercan_adapters);
@@ -234,38 +233,21 @@ void cppmain()
 
 	while(1)
 	{
-		log(LOG_LEVEL_TRACE, "while loop: %d\r\n", HAL_GetTick());
-		log(LOG_LEVEL_TRACE, "RegistrationManager: (%d %d) (%d %d) \r\n",
-				registration_manager.getHandlers().capacity(), registration_manager.getHandlers().size(),
-				registration_manager.getSubscriptions().capacity(), registration_manager.getSubscriptions().size());
-		log(LOG_LEVEL_TRACE, "ServiceManager: (%d %d) \r\n",
-				service_manager.getHandlers().capacity(), service_manager.getHandlers().size());
-		log(LOG_LEVEL_TRACE, "CanProcessRxQueue: (%d %d) \r\n",
-				can_rx_buffer.capacity(), can_rx_buffer.size());
-		log(LOG_LEVEL_TRACE, "SerialProcessRxQueue: (%d %d) \r\n",
-				serial_buffer.capacity(), serial_buffer.size());
+//		log(LOG_LEVEL_DEBUG, "while loop: %d\r\n", HAL_GetTick());
+//		log(LOG_LEVEL_DEBUG, "RegistrationManager: (%d %d) (%d %d) \r\n",
+//				registration_manager.getHandlers().capacity(), registration_manager.getHandlers().size(),
+//				registration_manager.getSubscriptions().capacity(), registration_manager.getSubscriptions().size());
+//		log(LOG_LEVEL_DEBUG, "ServiceManager: (%d %d) \r\n",
+//				service_manager.getHandlers().capacity(), service_manager.getHandlers().size());
+//		log(LOG_LEVEL_DEBUG, "CanProcessRxQueue: (%d %d) \r\n",
+//				can_rx_buffer.capacity(), can_rx_buffer.size());
+//		log(LOG_LEVEL_DEBUG, "SerialProcessRxQueue: (%d %d) \r\n",
+//				serial_buffer.capacity(), serial_buffer.size());
 		loop_manager.CanProcessTxQueue(&canard_adapter, &hcan1);
 		loop_manager.SerialProcessRxQueue(&serard_cyphal, &service_manager, canard_adapters, serial_buffer);
 		loop_manager.CanProcessRxQueue(&canard_cyphal, &service_manager, serard_adapters, can_rx_buffer);
 		loop_manager.LoopProcessRxQueue(&loopard_cyphal, &service_manager, empty_adapters);
 		service_manager.handleServices();
-		HAL_Delay(100);
+		HAL_Delay(1);
 	}
-//	  uint32_t last = HAL_GetTick();
-//	  while (1)
-//	  {
-//
-//		  if (HAL_GetTick() < last+1000) continue;
-//		  HAL_GPIO_TogglePin(GPIOC, LED1_Pin);
-//		  HAL_Delay(100);
-//		  HAL_GPIO_TogglePin(GPIOC, LED2_Pin);
-//		  HAL_Delay(100);
-//		  HAL_GPIO_TogglePin(GPIOC, LED3_Pin);
-//		  HAL_Delay(100);
-//		  HAL_GPIO_TogglePin(GPIOC, LED4_Pin);
-//		  HAL_Delay(100);
-//		  HAL_GPIO_TogglePin(LED5_GPIO_Port, LED5_Pin);
-//		  last = HAL_GetTick();
-//	  }
-
 }

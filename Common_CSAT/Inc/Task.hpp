@@ -96,6 +96,7 @@ protected:
 		if (result < 0)
 		{
 			log(LOG_LEVEL_ERROR, "ERROR Task.publish serialization result %d with size %d \r\n", result, payload_size);
+			return;
 		}
 		else
 		{
@@ -107,6 +108,8 @@ protected:
 				transfer_kind,
 				port_id,
 				node_id,
+				CYPHAL_NODE_ID_UNSET,
+				CYPHAL_NODE_ID_UNSET,
 				transfer_id,
 			};
 

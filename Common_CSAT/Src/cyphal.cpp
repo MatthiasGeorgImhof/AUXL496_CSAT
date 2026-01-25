@@ -23,6 +23,8 @@ CyphalTransfer createTransfer(size_t payload_size, uint8_t *payload, void *data,
             static_cast<CyphalTransferKind>(transfer_kind), // Use the transfer_kind argument
             port_id,
             node_id,
+			CYPHAL_NODE_ID_UNSET,
+			CYPHAL_NODE_ID_UNSET,
             transfer_id,
         };
 

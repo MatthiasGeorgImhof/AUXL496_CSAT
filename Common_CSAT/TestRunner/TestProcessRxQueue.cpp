@@ -200,6 +200,8 @@ TEST_CASE("processTransfer with LoopardAdapter and CanardAdapter")
     transfer.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer.metadata.port_id = 123;
     transfer.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer.metadata.transfer_id = 0;
 
     constexpr char payload[] = "hello";
@@ -269,6 +271,8 @@ TEST_CASE("CanProcessRxQueue with CanardAdapter and MockTask")
     transfer.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer.metadata.port_id = port_id;
     transfer.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer.metadata.transfer_id = 0;
     constexpr char payload[] = "hello";
     transfer.payload_size = sizeof(payload);
@@ -316,6 +320,8 @@ TEST_CASE("CanProcessRxQueue multiple frames")
     transfer1.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer1.metadata.port_id = port_id;
     transfer1.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer1.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer1.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer1.metadata.transfer_id = 0;
     constexpr char payload1[] = "hello";
     transfer1.payload_size = sizeof(payload1);
@@ -327,6 +333,8 @@ TEST_CASE("CanProcessRxQueue multiple frames")
     transfer2.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer2.metadata.port_id = port_id;
     transfer2.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer2.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer2.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer2.metadata.transfer_id = 1;
     constexpr char payload2[] = "world!";
     transfer2.payload_size = sizeof(payload2);
@@ -382,6 +390,8 @@ TEST_CASE("SerialProcessRxQueue with SerardAdapter and MockTask")
     transfer.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer.metadata.port_id = port_id;
     transfer.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer.metadata.transfer_id = 0;
     constexpr char payload[] = "hello";
     transfer.payload_size = sizeof(payload);
@@ -433,6 +443,8 @@ TEST_CASE("SerialProcessRxQueue multiple frames with Serard")
     transfer1.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer1.metadata.port_id = port_id;
     transfer1.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer1.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer1.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer1.metadata.transfer_id = 0;
     constexpr char payload1[] = "hello";
     transfer1.payload_size = sizeof(payload1);
@@ -444,6 +456,8 @@ TEST_CASE("SerialProcessRxQueue multiple frames with Serard")
     transfer2.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer2.metadata.port_id = port_id;
     transfer2.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer2.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer2.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer2.metadata.transfer_id = 1;
     constexpr char payload2[] = "world!";
     transfer2.payload_size = sizeof(payload2);
@@ -496,6 +510,8 @@ TEST_CASE("LoopProcessRxQueue with LoopardAdapter and MockTask")
     transfer.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer.metadata.port_id = port_id;
     transfer.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer.metadata.transfer_id = 0;
     constexpr char payload[] = "hello";
     transfer.payload_size = sizeof(payload);
@@ -540,6 +556,8 @@ TEST_CASE("LoopProcessRxQueue multiple frames with LoopardAdapter")
     transfer1.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer1.metadata.port_id = port_id1;
     transfer1.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer1.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer1.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer1.metadata.transfer_id = 0;
     constexpr char payload1[] = "hello";
     transfer1.payload_size = sizeof(payload1);
@@ -551,6 +569,8 @@ TEST_CASE("LoopProcessRxQueue multiple frames with LoopardAdapter")
     transfer2.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer2.metadata.port_id = port_id2;
     transfer2.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer2.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer2.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer2.metadata.transfer_id = 1;
     constexpr char payload2[] = "world!";
     transfer2.payload_size = sizeof(payload2);
@@ -595,6 +615,8 @@ TEST_CASE("Full Loop Test with LoopardAdapter and MockTask")
     transfer.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer.metadata.port_id = port_id;
     transfer.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer.metadata.transfer_id = 0;
     constexpr char payload[] = "hello";
     transfer.payload_size = sizeof(payload);
@@ -651,6 +673,8 @@ TEST_CASE("Full Loop Test with LoopardAdapter and MockTaskFromBuffer")
     transfer1.metadata.transfer_kind = CyphalTransferKindMessage;
     transfer1.metadata.port_id = port_id;
     transfer1.metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer1.metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    transfer1.metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     transfer1.metadata.transfer_id = 0;
     constexpr char payload[] = "hello";
 

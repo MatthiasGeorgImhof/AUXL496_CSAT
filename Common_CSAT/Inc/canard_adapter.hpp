@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Logger.hpp"
+
 #include "cyphal.hpp"
 #include "canard.h"
 
@@ -62,12 +64,23 @@ public:
                             const CyphalTransferMetadata *const metadata,
                             const size_t payload_size,
                             const void *const payload,
-                            const CyphalNodeID node_id)
+                            const CyphalNodeID /*node_id*/)
     {
-        CanardNodeID node_id_ = getNodeID();
-        setNodeID(node_id);
-        int32_t res = cyphalTxPush(tx_deadline_usec, metadata, payload_size, payload);
+        CyphalTransferMetadata metadata_{*metadata};
+        metadata_.remote_node_id = metadata_.destination_node_id;
+
+    	CanardNodeID node_id_ = getNodeID();
+        setNodeID(metadata_.source_node_id);
+
+        int32_t res{};
+        res = cyphalTxPush(tx_deadline_usec, &metadata_, payload_size, payload);
+
         setNodeID(node_id_);
+        log(LOG_LEVEL_DEBUG, "canardTxForward %3d %3d %4d %2d: (%3d %3d %3d) (%3d %3d %3d) -> %3d %3d\r\n",
+        		node_id_, metadata_.remote_node_id, metadata_.port_id, res,
+        		metadata->remote_node_id, metadata->source_node_id, metadata->destination_node_id,
+        		metadata_.remote_node_id, metadata_.source_node_id, metadata_.destination_node_id,
+				metadata_.source_node_id, metadata_.remote_node_id);
         return res;
     }
 

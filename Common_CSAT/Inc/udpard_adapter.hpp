@@ -48,6 +48,8 @@ inline void udpartToCyphalMetadata(const UdpardRxTransfer *udpard, const UdpardH
     cyphal->transfer_kind = CyphalTransferKindMessage;
     cyphal->port_id = header->destination_node_id;
     cyphal->remote_node_id = udpardNodeIdToCyphal(udpard->source_node_id);
+    cyphal->source_node_id = udpardNodeIdToCyphal(udpard->source_node_id);
+    cyphal->destination_node_id = udpardNodeIdToCyphal(header->destination_node_id);
     cyphal->transfer_id = udpardTransferIdToCyphal(udpard->transfer_id);
 }
 

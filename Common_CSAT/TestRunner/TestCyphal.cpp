@@ -32,6 +32,8 @@ TEST_CASE("Canard Adapter")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     const char payload[] = "hello";
@@ -60,7 +62,8 @@ TEST_CASE("Canard Adapter")
         const char payload[] = "hello";
         size_t payload_size = sizeof(payload);
 
-        CHECK(cyphal2.cyphalTxForward(0, &metadata, payload_size, payload, 33) == 1);
+        auto res = cyphal2.cyphalTxForward(0, &metadata, payload_size, payload, 33);
+        CHECK(res == 1);
     }
 
     REQUIRE(adapter.subscriptions.size() == 0);
@@ -102,6 +105,9 @@ TEST_CASE("Canard Send Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     const char payload1[] = "hello";
@@ -112,6 +118,8 @@ TEST_CASE("Canard Send Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id++;
 
     const char payload2[] = "ehllo ehllo ehllo";
@@ -169,6 +177,8 @@ TEST_CASE("Canard Send Receive Large")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = port_id;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     char payload[256];
@@ -236,11 +246,14 @@ TEST_CASE("Canard Send Forward Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = forward_id;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     const char payload1[] = "hello";
     size_t payload_size1 = sizeof(payload1);
-    CHECK(cyphal.cyphalTxForward(0, &metadata, payload_size1, payload1, forward_id) == 1);
+    auto res = cyphal.cyphalTxForward(0, &metadata, payload_size1, payload1, 0);
+    CHECK(res == 1);
     const CanardTxQueueItem *const const_ptr1 = canardTxPeek(&adapter.que);
     CanardTxQueueItem *ptr1 = canardTxPop(&adapter.que, const_ptr1);
     CHECK(cyphal.cyphalRxReceive(ptr1->frame.extended_can_id, &ptr1->frame.payload_size, static_cast<const uint8_t *>(ptr1->frame.payload), &transfer1) == 1);
@@ -251,6 +264,8 @@ TEST_CASE("Canard Send Forward Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = forward_id;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id++;
 
     const char payload2[] = "ehllo";
@@ -281,6 +296,8 @@ TEST_CASE("Serard Basics")
             SerardTransferKindMessage,
             123,
             SERARD_NODE_ID_UNSET,
+            SERARD_NODE_ID_UNSET,
+            SERARD_NODE_ID_UNSET,
             11};
         SerardTransferMetadata translated = cyphalMetadataToSerard(serardMetadataToCyphal(metadata));
         CHECK((metadata.priority == translated.priority && metadata.transfer_kind == translated.transfer_kind && metadata.port_id == translated.port_id && metadata.remote_node_id == translated.remote_node_id && metadata.transfer_id == translated.transfer_id));
@@ -291,6 +308,8 @@ TEST_CASE("Serard Basics")
             CyphalPriorityNominal,
             CyphalTransferKindMessage,
             123,
+            CYPHAL_NODE_ID_UNSET,
+            CYPHAL_NODE_ID_UNSET,
             CYPHAL_NODE_ID_UNSET,
             11};
         CyphalTransferMetadata translated = serardMetadataToCyphal(cyphalMetadataToSerard(metadata));
@@ -313,6 +332,8 @@ TEST_CASE("Serard Adapter")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     const char payload[] = "hello";
@@ -399,6 +420,8 @@ TEST_CASE("Cyphal<serard_adapter> Send Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
     const char payload1[] = "hello\0";
     CHECK(cyphal.cyphalTxPush(0, &metadata, strlen(payload1), payload1) == 1);
@@ -408,6 +431,8 @@ TEST_CASE("Cyphal<serard_adapter> Send Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id++;
     const char payload2[] = "ehllo\0";
     CHECK(cyphal.cyphalTxPush(0, &metadata, strlen(payload2), payload2) == 1);
@@ -466,6 +491,8 @@ TEST_CASE("Cyphal<serard_adapter> Send Forward Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
     const char payload1[] = "hello\0";
     CHECK(cyphal.cyphalTxPush(0, &metadata, strlen(payload1), payload1) == 1);
@@ -475,6 +502,8 @@ TEST_CASE("Cyphal<serard_adapter> Send Forward Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = forward_id;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id++;
     const char payload2[] = "ehllo\0";
     CHECK(cyphal.cyphalTxForward(0, &metadata, strlen(payload2), payload2, forward_id) == 1);
@@ -484,6 +513,8 @@ TEST_CASE("Cyphal<serard_adapter> Send Forward Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id++;
     const char payload3[] = "bonjour\0";
     CHECK(cyphal.cyphalTxPush(0, &metadata, strlen(payload3), payload3) == 1);
@@ -533,6 +564,8 @@ TEST_CASE("Udpard Adapter")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     const char payload[] = "hello";
@@ -611,6 +644,8 @@ TEST_CASE("Udpard Adapter Send and Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 13;
 
     const char payload[] = "hello";
@@ -650,6 +685,8 @@ TEST_CASE("Udpard Adapter Forward Send and Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 13;
 
     const char payload1[] = "hello";
@@ -698,6 +735,8 @@ TEST_CASE("Loopard Adapter")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     const char payload[] = "hello";
@@ -759,6 +798,8 @@ TEST_CASE("Loopard Send Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     const char payload1[] = "hello";
@@ -801,6 +842,8 @@ TEST_CASE("Loopard Forward Send Receive")
     metadata.transfer_kind = CyphalTransferKindMessage;
     metadata.port_id = 123;
     metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+    metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
     metadata.transfer_id = 0;
 
     const char payload1[] = "hello";
@@ -846,6 +889,8 @@ public:
         metadata.transfer_kind = CyphalTransferKindMessage;
         metadata.port_id = 123;
         metadata.remote_node_id = CYPHAL_NODE_ID_UNSET;
+        metadata.source_node_id = CYPHAL_NODE_ID_UNSET;
+        metadata.destination_node_id = CYPHAL_NODE_ID_UNSET;
         metadata.transfer_id = 0;
 
         int32_t res0 = std::get<0>(adapters_).cyphalTxPush(0, &metadata, frame_size, frame);

@@ -11,40 +11,45 @@
 class RegistrationManager;
 
 // DummyAdapter
-class DummyAdapter {
+class DummyAdapter
+{
 public:
     DummyAdapter(int value) : value_(value) {}
     int getValue() const { return value_; }
+
 private:
     int value_;
 };
 
 // Mock Task class that interacts with the RegistrationManager
-class MockTask : public Task {
+class MockTask : public Task
+{
 public:
     MockTask(uint32_t interval, uint32_t tick) : Task(interval, tick), message_handled(false), task_handled(false) {}
     ~MockTask() override {}
 
-    void handleMessage(std::shared_ptr<CyphalTransfer> transfer) override {
+    void handleMessage(std::shared_ptr<CyphalTransfer> transfer) override
+    {
         message_handled = true;
         last_transfer = transfer;
     }
 
-    void handleTaskImpl() override {
+    void handleTaskImpl() override
+    {
         task_handled = true;
     }
 
     // Correct override signature (now taking void* as the manager)
-    void registerTask(RegistrationManager* /*manager*/, std::shared_ptr<Task> /*task*/) override {}
-    void unregisterTask(RegistrationManager* /*manager*/, std::shared_ptr<Task> /*task*/) override {}
+    void registerTask(RegistrationManager * /*manager*/, std::shared_ptr<Task> /*task*/) override {}
+    void unregisterTask(RegistrationManager * /*manager*/, std::shared_ptr<Task> /*task*/) override {}
 
     bool message_handled;
     bool task_handled;
     std::shared_ptr<CyphalTransfer> last_transfer;
 };
 
-
-TEST_CASE("ServiceManager: Initialization") {
+TEST_CASE("ServiceManager: Initialization")
+{
     ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0);
     std::shared_ptr<MockTask> task2 = std::make_shared<MockTask>(20, 5);
@@ -61,7 +66,8 @@ TEST_CASE("ServiceManager: Initialization") {
     CHECK(task2->getLastTick() == now + 5);
 }
 
-TEST_CASE("ServiceManager: Handle Message") {
+TEST_CASE("ServiceManager: Handle Message")
+{
     ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0);
     std::shared_ptr<MockTask> task2 = std::make_shared<MockTask>(20, 5);
@@ -77,11 +83,12 @@ TEST_CASE("ServiceManager: Handle Message") {
         CyphalTransferKindMessage,
         100, // Matching port ID
         CYPHAL_NODE_ID_UNSET,
+        CYPHAL_NODE_ID_UNSET,
+        CYPHAL_NODE_ID_UNSET,
         1,
     };
     auto transfer = std::make_shared<CyphalTransfer>();
     transfer->metadata = metadata;
-
 
     manager.handleMessage(transfer);
 
@@ -89,13 +96,14 @@ TEST_CASE("ServiceManager: Handle Message") {
     CHECK(task1->last_transfer->metadata.port_id == 100);
     CHECK(task2->message_handled == false);
 
+    // Send another transfer to task2
 
-    //Send another transfer to task2
-
-        CyphalTransferMetadata metadata2 = {
+    CyphalTransferMetadata metadata2 = {
         CyphalPriorityNominal,
         CyphalTransferKindMessage,
         200, // Matching port ID
+        CYPHAL_NODE_ID_UNSET,
+        CYPHAL_NODE_ID_UNSET,
         CYPHAL_NODE_ID_UNSET,
         1,
     };
@@ -110,12 +118,13 @@ TEST_CASE("ServiceManager: Handle Message") {
     CHECK(task2->message_handled == true);
     CHECK(task2->last_transfer->metadata.port_id == 200);
 
-
-        //Send another transfer to port id not in handler
-         CyphalTransferMetadata metadata3 = {
+    // Send another transfer to port id not in handler
+    CyphalTransferMetadata metadata3 = {
         CyphalPriorityNominal,
         CyphalTransferKindMessage,
         300, // Matching port ID
+        CYPHAL_NODE_ID_UNSET,
+        CYPHAL_NODE_ID_UNSET,
         CYPHAL_NODE_ID_UNSET,
         1,
     };
@@ -125,15 +134,14 @@ TEST_CASE("ServiceManager: Handle Message") {
     task1->message_handled = false; // reset flag
     task2->message_handled = false; // reset flag
 
-
     manager.handleMessage(transfer3);
 
     CHECK(task1->message_handled == false);
     CHECK(task2->message_handled == false);
-
 }
 
-TEST_CASE("ServiceManager: Handle Services") {
+TEST_CASE("ServiceManager: Handle Services")
+{
     ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers;
     std::shared_ptr<MockTask> task1 = std::make_shared<MockTask>(10, 0);
     std::shared_ptr<MockTask> task2 = std::make_shared<MockTask>(20, 5);
@@ -144,11 +152,11 @@ TEST_CASE("ServiceManager: Handle Services") {
     ServiceManager manager(handlers);
 
     // *IMPORTANT*: Initialize the services *before* calling handleServices
-    manager.initializeServices(0);  // Initialize with a starting tick of 0
+    manager.initializeServices(0); // Initialize with a starting tick of 0
 
     // Advance the tick to ensure the tasks are ready to run
     uint32_t now = 100; // Advance the tick
-    HAL_SetTick(now);  // Set the mock tick
+    HAL_SetTick(now);   // Set the mock tick
 
     manager.handleServices();
 
@@ -156,21 +164,22 @@ TEST_CASE("ServiceManager: Handle Services") {
     CHECK(task2->task_handled == true);
 
     // Add debugging checks if the tests fail
-    if (!task1->task_handled) {
+    if (!task1->task_handled)
+    {
         std::cout << "Task1 not handled: last_tick=" << task1->getLastTick() << ", interval=" << task1->getInterval() << ", now=" << HAL_GetTick() << std::endl;
     }
-    if (!task2->task_handled) {
+    if (!task2->task_handled)
+    {
         std::cout << "Task2 not handled: last_tick=" << task2->getLastTick() << ", interval=" << task2->getInterval() << ", now=" << HAL_GetTick() << std::endl;
     }
 }
 
-TEST_CASE("ServiceManager: No tasks in handler") {
-     ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers; // empty handler
+TEST_CASE("ServiceManager: No tasks in handler")
+{
+    ArrayList<TaskHandler, RegistrationManager::NUM_TASK_HANDLERS> handlers; // empty handler
     ServiceManager manager(handlers);
 
     manager.initializeServices(1000);
     manager.handleServices();
     // handleMessage tested with empty handler in previous test case
-
-
 }

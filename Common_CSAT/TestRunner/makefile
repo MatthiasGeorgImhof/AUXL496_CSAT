@@ -17,7 +17,7 @@ INCLUDE_PATHS = -I ../Inc \
 				-I ../OpenCyphal/target 
 
 LIBS_PATH =			-L $(HOME)/Data/github/can/lib_x86_64
-LIBS =				-lcanardd -lserardd -ludpardd -lo1heapd
+LIBS =				-lcanard_fw -lserard_fw -ludpard_fw -lo1heap
 
 # Source and object files
 TEST_FILES = TestAccessorEraseAndFormat.cpp \

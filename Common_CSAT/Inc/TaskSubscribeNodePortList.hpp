@@ -24,6 +24,7 @@ public:
 private:
     std::tuple<Adapters...>& adapters_;
     SubscriptionManager *subscription_manager_;
+    uavcan_node_port_List_1_0 data;
 };
 
 template <typename... Adapters>
@@ -43,7 +44,7 @@ void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
         log(LOG_LEVEL_DEBUG, "TaskSubscribeNodePortList message i=%d with %d owners,  current buffer size=%d of %d\r\n", i, transfer.use_count(), buffer_.size(), buffer_.capacity());
 
         size_t payload_size = transfer->payload_size;
-        uavcan_node_port_List_1_0 data;  // Declare data here
+//        uavcan_node_port_List_1_0 data;  // Declare data here
         int8_t result = uavcan_node_port_List_1_0_deserialize_(&data, static_cast<const uint8_t*>(transfer->payload), &payload_size); // Pass the address
         if (result != 0)
         {
@@ -51,10 +52,10 @@ void TaskSubscribeNodePortList<Adapters...>::handleTaskImpl()
         	continue;
         }
 
-         char substring[64];
-         char pubstring[64];
-         char clistring[64];
-         char servstring[64];
+         char substring[64] = "";
+         char pubstring[64] = "";
+         char clistring[64] = "";
+         char servstring[64] = "";
 
          for (size_t j = 0; j < data.publishers.sparse_list.count; ++j)
          {
