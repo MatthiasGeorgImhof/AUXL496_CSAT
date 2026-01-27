@@ -184,7 +184,7 @@ void cppmain()
 	serard_cyphal.setNodeID(cyphal_node_id);
 
 	//	std::tuple<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>> sercan_adapters = { serard_cyphal, canard_cyphal };
-	std::tuple<Cyphal<SerardAdapter>> sercan_adapters = { serard_cyphal };
+	std::tuple<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>> sercan_adapters = { serard_cyphal, canard_cyphal };
 	std::tuple<Cyphal<SerardAdapter>> serard_adapters = { serard_cyphal };
 	std::tuple<Cyphal<CanardAdapter>> canard_adapters = { canard_cyphal };
 	std::tuple<> empty_adapters = {} ;
@@ -198,25 +198,29 @@ void cppmain()
 	static SafeAllocator<CyphalTransfer, LocalHeap> allocator;
 	LoopManager loop_manager(allocator);
 
-	using TSHeart = TaskSendHeartBeat<SerardCyphal>;
-	register_task_with_heap<TSHeart>(registration_manager, 2000, 100, 0, sercan_adapters);
-
-	using TPHeart = TaskProcessHeartBeat<SerardCyphal>;
-	register_task_with_heap<TPHeart>(registration_manager, 2000, 100, sercan_adapters);
-
-	using TSendNodeList = TaskSendNodePortList<SerardCyphal>;
-	register_task_with_heap<TSendNodeList>(registration_manager, &registration_manager, 10000, 100, 0, sercan_adapters);
-
-	using TSubscribeNodeList = TaskSubscribeNodePortList<SerardCyphal>;
-	register_task_with_heap<TSubscribeNodeList>(registration_manager, &subscription_manager, 10000, 100, sercan_adapters);
-
 	constexpr uint8_t uuid[] = {0xc8, 0x03, 0x52, 0xa6, 0x1d, 0x94, 0x40, 0xc9, 0x9b, 0x1d, 0xea, 0xac, 0xfd, 0xdd, 0xb2, 0x85};
 	constexpr char node_name[50] = "AUXL496_CSAT";
-	using TRespondInfo = TaskRespondGetInfo<SerardCyphal>;
+
+	using TSHeart = TaskSendHeartBeat<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TSHeart>(registration_manager, 2000, 100, 0, sercan_adapters);
+
+	using TPHeart = TaskProcessHeartBeat<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TPHeart>(registration_manager, 2000, 100, sercan_adapters);
+
+	using TSendNodeList = TaskSendNodePortList<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TSendNodeList>(registration_manager, &registration_manager, 10000, 100, 0, sercan_adapters);
+
+	using TSubscribeNodeList = TaskSubscribeNodePortList<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TSubscribeNodeList>(registration_manager, &subscription_manager, 10000, 100, sercan_adapters);
+
+	using TRespondInfo = TaskRespondGetInfo<SerardCyphal, CanardCyphal>;
 	register_task_with_heap<TRespondInfo>(registration_manager, uuid, node_name, 10000, 100, sercan_adapters);
 
-	using TRequestInfo = TaskRequestGetInfo<SerardCyphal>;
-	register_task_with_heap<TRequestInfo>(registration_manager, 10000, 100, 31, 0, sercan_adapters);
+	using TRequestInfo = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TRequestInfo>(registration_manager, 10000, 100, 21, 0, sercan_adapters);
+
+	using TRequestInfo = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
+	register_task_with_heap<TRequestInfo>(registration_manager, 10000, 800, 31, 0, sercan_adapters);
 
 	using TBlink = TaskBlinkLED;
 	register_task_with_heap<TBlink>(registration_manager, GPIOC, LED1_Pin, 1000, 100);
