@@ -112,6 +112,7 @@ TEST_FILES = TestAccessorEraseAndFormat.cpp \
 			 TestTaskSendTimeSynchronization.cpp \
 			 TestTaskSetRTC.cpp \
 			 TestTaskSGP4.cpp \
+			 TestTaskSyntheticImageGenerator.cpp \
 			 TestTaskSubscribeNodePortList.cpp \
 			 TestTimeUtils.cpp \
 			 TestTransport.cpp \
@@ -714,6 +715,15 @@ $(BIN_DIR)/TestSGP4 : $(BIN_DIR)/TestSGP4.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/Regis
 	@echo "Linking $@"
 	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestSGP4.o $(MOCK_HAL_OBJECTS) $(BIN_DIR)/RegistrationManager.o $(BIN_DIR)/SGP4.o $(BIN_DIR)/TimeUtils.o $(BIN_DIR)/coordinate_transformations.o $(BIN_DIR)/sgp4_tle.o $(LIBS) 
 	@echo "Linking $@"
+
+# Rule for TestTaskSyntheticImageGenerator with extra sources
+$(BIN_DIR)/TestTaskSyntheticImageGenerator.o : TestTaskSyntheticImageGenerator.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTaskSyntheticImageGenerator : $(BIN_DIR)/TestTaskSyntheticImageGenerator.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSyntheticImageGenerator.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestMainLoop with extra sources
 $(BIN_DIR)/TestMainLoop.o : TestMainLoop.cpp
