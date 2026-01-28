@@ -29,6 +29,9 @@ public:
     SubscriptionManager(const SubscriptionManager &) = delete;
     SubscriptionManager &operator=(const SubscriptionManager &) = delete;
 
+    template <typename... Adapters>
+    void subscribeAll(const RegistrationManager& reg, std::tuple<Adapters...>& adapters);
+
     /**
      * @brief Subscribes to a single Cyphal port using the provided adapters.
      * @tparam Adapters  Variadic template parameter representing the Cyphal adapter types.
@@ -221,5 +224,19 @@ void SubscriptionManager::unsubscribe(const CyphalPortID port_id, std::tuple<Ada
     }
     unsubscribe(subscription, adapters);
 }
+
+template <typename... Adapters>
+void SubscriptionManager::subscribeAll(const RegistrationManager& reg, std::tuple<Adapters...>& adapters)
+{
+    // Subscribe to all message ports
+    subscribe<SubscriptionManager::MessageTag>(reg.getSubscriptions(), adapters);
+
+    // Subscribe to all request ports (servers receive requests)
+    subscribe<SubscriptionManager::RequestTag>(reg.getServers(), adapters);
+
+    // Subscribe to all response ports (clients receive responses)
+    subscribe<SubscriptionManager::ResponseTag>(reg.getClients(), adapters);
+}
+
 
 #endif // INC_SubscriptionManager_HPP_

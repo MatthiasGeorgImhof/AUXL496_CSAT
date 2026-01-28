@@ -39,6 +39,11 @@
 #include "TaskRespondGetInfo.hpp"
 #include "TaskRequestGetInfo.hpp"
 
+#include "TrivialImageBuffer.hpp"
+#include "TaskSyntheticImageGenerator.hpp"
+#include "InputOutputStream.hpp"
+#include "TaskRequestWrite.hpp"
+
 #include <cppmain.h>
 #include "Logger.hpp"
 
@@ -204,9 +209,9 @@ void cppmain()
 	using TSHeart = TaskSendHeartBeat<SerardCyphal, CanardCyphal>;
 	register_task_with_heap<TSHeart>(registration_manager, 2000, 100, 0, sercan_adapters);
 
-	using TPHeart = TaskProcessHeartBeat<SerardCyphal, CanardCyphal>;
-	register_task_with_heap<TPHeart>(registration_manager, 2000, 100, sercan_adapters);
-
+//	using TPHeart = TaskProcessHeartBeat<SerardCyphal, CanardCyphal>;
+//	register_task_with_heap<TPHeart>(registration_manager, 2000, 100, sercan_adapters);
+//
 	using TSendNodeList = TaskSendNodePortList<SerardCyphal, CanardCyphal>;
 	register_task_with_heap<TSendNodeList>(registration_manager, &registration_manager, 10000, 100, 0, sercan_adapters);
 
@@ -216,11 +221,21 @@ void cppmain()
 	using TRespondInfo = TaskRespondGetInfo<SerardCyphal, CanardCyphal>;
 	register_task_with_heap<TRespondInfo>(registration_manager, uuid, node_name, 10000, 100, sercan_adapters);
 
-	using TRequestInfo = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
-	register_task_with_heap<TRequestInfo>(registration_manager, 10000, 100, 21, 0, sercan_adapters);
+	using TRequestInfoCanard = TaskRequestGetInfo<CanardCyphal>;
+	register_task_with_heap<TRequestInfoCanard>(registration_manager, 10000, 100, 21, 0, canard_adapters);
+	register_task_with_heap<TRequestInfoCanard>(registration_manager, 10000, 800, 31, 0, canard_adapters);
 
-	using TRequestInfo = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
-	register_task_with_heap<TRequestInfo>(registration_manager, 10000, 800, 31, 0, sercan_adapters);
+	using TRequestInfoSerard = TaskRequestGetInfo<SerardCyphal>;
+	register_task_with_heap<TRequestInfoSerard>(registration_manager, 10000, 800, 121, 0, serard_adapters);
+
+	using TSyntheticImageGenerator = TaskSyntheticImageGenerator<TrivialImageBuffer>;
+	TrivialImageBuffer img_buf;
+	register_task_with_heap<TSyntheticImageGenerator>(registration_manager, img_buf, 128, 1000, 200);
+
+	using TrivialPipeline = ImageInputStream<TrivialImageBuffer>;
+	using TRequestWrite = TaskRequestWrite<TrivialPipeline, SerardCyphal>;
+	ImageInputStream<TrivialImageBuffer> stream(img_buf);
+	register_task_with_heap<TRequestWrite>(registration_manager, stream, 2000, 1200, 121, 0, serard_adapters);
 
 	using TBlink = TaskBlinkLED;
 	register_task_with_heap<TBlink>(registration_manager, GPIOC, LED1_Pin, 1000, 100);
@@ -228,9 +243,7 @@ void cppmain()
 	using TCheckMem = TaskCheckMemory;
 	register_task_with_heap<TCheckMem>(registration_manager, o1heap, 250, 100);
 
-    subscription_manager.subscribe<SubscriptionManager::MessageTag>(registration_manager.getSubscriptions(), sercan_adapters);
-    subscription_manager.subscribe<SubscriptionManager::ResponseTag>(registration_manager.getServers(), sercan_adapters);
-    subscription_manager.subscribe<SubscriptionManager::RequestTag>(registration_manager.getClients(), sercan_adapters);
+    subscription_manager.subscribeAll(registration_manager, sercan_adapters);
 
     ServiceManager service_manager(registration_manager.getHandlers());
 	service_manager.initializeServices(HAL_GetTick());

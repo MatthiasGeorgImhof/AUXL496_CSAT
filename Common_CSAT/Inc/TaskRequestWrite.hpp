@@ -75,13 +75,15 @@ void TaskRequestWrite<InputStream, Adapters...>::handleTaskImpl()
 template <InputStreamConcept InputStream, typename... Adapters>
 bool TaskRequestWrite<InputStream, Adapters...>::respond()
 {
-    if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
+	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: respond %d\r\n", state_);
+
+	if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
         return false;
 
     std::shared_ptr<CyphalTransfer> transfer = TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
     if (transfer->metadata.transfer_kind != CyphalTransferKindResponse)
     {
-        log(LOG_LEVEL_ERROR, "TaskRequestGetInfo: Expected Response transfer kind\r\n");
+        log(LOG_LEVEL_ERROR, "TaskRequestWrite: Expected Response transfer kind\r\n");
         return false;
     }
 
@@ -91,11 +93,11 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
     int8_t deserialization_result = uavcan_file_Write_Response_1_1_deserialize_(&data, static_cast<const uint8_t *>(transfer->payload), &payload_size);
     if (deserialization_result < 0)
     {
-        log(LOG_LEVEL_ERROR, "TaskRequestGetInfo: Deserialization Error\r\n");
+        log(LOG_LEVEL_ERROR, "TaskRequestWrite: Deserialization Error\r\n");
         return false;
     }
 
-    log(LOG_LEVEL_DEBUG, "TaskRequestGetInfo: received response\r\n");
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: received response\r\n");
 
     if (data._error.value == uavcan_file_Error_1_0_OK)
     {
@@ -134,20 +136,27 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
 template <InputStreamConcept InputStream, typename... Adapters>
 bool TaskRequestWrite<InputStream, Adapters...>::request()
 {
-    if (state_ == WAIT_INIT || state_ == WAIT_TRANSFER || state_ == WAIT_DONE)
+	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request %d\r\n", state_);
+
+	if (state_ == WAIT_INIT || state_ == WAIT_TRANSFER || state_ == WAIT_DONE)
         return false;
 
     if (!TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty()) // Should have been emtpied by respond
         return false;
 
     if (!stream_.is_empty() && state_ == IDLE)
-        state_ = SEND_INIT;
+    {
+    	state_ = SEND_INIT;
+    	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: data available\r\n");
+    }
 
     if (!data_)
     {
         data_ = std::make_unique<uavcan_file_Write_Request_1_1>();
     }
     data_->offset = offset_;
+
+	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request state switch\r\n");
 
     size_t size = uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_;
     switch (state_)
