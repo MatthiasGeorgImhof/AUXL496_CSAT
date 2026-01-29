@@ -9,6 +9,8 @@
 #include <vector>
 #include <cstring>
 
+using Buffer = TrivialImageBuffer<1024>;
+
 // ------------------------------------------------------------
 // Dummy Cyphal TX adapter (only needs cyphalTxPush)
 // ------------------------------------------------------------
@@ -65,12 +67,13 @@ public:
     using State = typename Base::State;
 
     MockTaskRequestWrite(InputStream& stream,
-                         uint32_t interval,
+                         uint32_t sleep_interval,
+                         uint32_t operate_interval,
                          uint32_t tick,
                          CyphalNodeID node_id,
                          CyphalTransferID transfer_id,
                          std::tuple<Adapters...>& adapters)
-        : Base(stream, interval, tick, node_id, transfer_id, adapters)
+        : Base(stream, sleep_interval, operate_interval, tick, node_id, transfer_id, adapters)
     {}
 
     State getState() const { return this->state_; }
@@ -103,8 +106,8 @@ public:
 // ------------------------------------------------------------
 // Compile-time concept check
 // ------------------------------------------------------------
-static_assert(InputStreamConcept<ImageInputStream<TrivialImageBuffer>>,
-              "ImageInputStream<TrivialImageBuffer> must satisfy InputStreamConcept");
+static_assert(InputStreamConcept<ImageInputStream<Buffer>>,
+              "ImageInputStream<Buffer> must satisfy InputStreamConcept");
 
 // ------------------------------------------------------------
 // Helper: create dummy metadata
@@ -124,18 +127,18 @@ static ImageMetadata make_meta(uint32_t payload_size)
 // ------------------------------------------------------------
 // Test suite
 // ------------------------------------------------------------
-TEST_CASE("TaskRequestWrite end-to-end with TrivialImageBuffer")
+TEST_CASE("TaskRequestWrite end-to-end with Buffer")
 {
     using Writer = MockTaskRequestWrite<
-        ImageInputStream<TrivialImageBuffer>,
+        ImageInputStream<Buffer>,
         DummyAdapter&
     >;
 
     // 1. Producer buffer
-    TrivialImageBuffer buf;
+    Buffer buf;
 
     // 2. Stream adapter
-    ImageInputStream<TrivialImageBuffer> stream(buf);
+    ImageInputStream<Buffer> stream(buf);
 
     // 3. Dummy Cyphal adapter
     DummyAdapter adapter;
@@ -143,7 +146,8 @@ TEST_CASE("TaskRequestWrite end-to-end with TrivialImageBuffer")
 
     // 4. Writer task
     Writer writer(stream,
-                  /*interval*/ 0,
+                  /*sleep_interval*/ 0,
+                  /*operate_interval*/ 0,
                   /*tick*/ 0,
                   /*node_id*/ 42,
                   /*transfer_id*/ 7,
@@ -208,7 +212,7 @@ TEST_CASE("TaskRequestWrite end-to-end with TrivialImageBuffer")
 class MockTaskMLX90640 : public Task
 {
 public:
-    MockTaskMLX90640(TrivialImageBuffer& buf) : Task(0,0), buf_(buf), published_(false)
+    MockTaskMLX90640(Buffer& buf) : Task(0,0), buf_(buf), published_(false)
     {}
 
     void handleTaskImpl() override
@@ -245,7 +249,7 @@ public:
     void unregisterTask(RegistrationManager*, std::shared_ptr<Task>) override {}
 
 private:
-    TrivialImageBuffer& buf_;
+    Buffer& buf_;
     bool published_;
     std::vector<uint8_t> payload_;
 };
@@ -253,12 +257,12 @@ private:
 // ------------------------------------------------------------
 // Full pipeline test: MLX → Buffer → Stream → Writer
 // ------------------------------------------------------------
-TEST_CASE("Full pipeline: MockTaskMLX90640 → TrivialImageBuffer → ImageInputStream → TaskRequestWrite")
+TEST_CASE("Full pipeline: MockTaskMLX90640 → Buffer → ImageInputStream → TaskRequestWrite")
 {
-    using Writer = MockTaskRequestWrite<ImageInputStream<TrivialImageBuffer>, DummyAdapter&>;
+    using Writer = MockTaskRequestWrite<ImageInputStream<Buffer>, DummyAdapter&>;
 
     // 1. Trivial buffer
-    TrivialImageBuffer buf;
+    Buffer buf;
 
     // 2. MLX mock task
     MockTaskMLX90640 mlx(buf);
@@ -268,7 +272,7 @@ TEST_CASE("Full pipeline: MockTaskMLX90640 → TrivialImageBuffer → ImageInput
     mlx.setPayload(payload);
 
     // 3. Stream adapter
-    ImageInputStream<TrivialImageBuffer> stream(buf);
+    ImageInputStream<Buffer> stream(buf);
 
     // 4. Dummy Cyphal adapter
     DummyAdapter adapter;
@@ -276,7 +280,8 @@ TEST_CASE("Full pipeline: MockTaskMLX90640 → TrivialImageBuffer → ImageInput
 
     // 5. Writer task
     Writer writer(stream,
-                  /*interval*/ 0,
+                  /*sleep_interval*/ 0,
+                  /*operate_interval*/ 0,
                   /*tick*/ 0,
                   /*node_id*/ 42,
                   /*transfer_id*/ 7,

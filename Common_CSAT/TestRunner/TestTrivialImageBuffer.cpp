@@ -6,10 +6,12 @@
 #include <vector>
 #include <cstring>
 
+using Buffer = TrivialImageBuffer<8192>;
+
 // ------------------------------------------------------------
 // Compile-time concept check
 // ------------------------------------------------------------
-static_assert(ImageBufferConcept<TrivialImageBuffer>, "TrivialImageBuffer must satisfy ImageBufferConcept");
+static_assert(ImageBufferConcept<Buffer>, "TrivialImageBuffer must satisfy ImageBufferConcept");
 
 // ------------------------------------------------------------
 // Helper: create a dummy metadata object
@@ -31,7 +33,7 @@ static ImageMetadata make_meta(uint32_t payload_size)
 // ------------------------------------------------------------
 TEST_CASE("TrivialImageBuffer basic lifecycle")
 {
-    TrivialImageBuffer buf;
+    Buffer buf;
 
     SUBCASE("Initially empty")
     {
@@ -97,7 +99,7 @@ TEST_CASE("TrivialImageBuffer basic lifecycle")
 
 TEST_CASE("TrivialImageBuffer rejects second image while full")
 {
-    TrivialImageBuffer buf;
+    Buffer buf;
 
     auto meta = make_meta(10);
     CHECK(buf.add_image(meta) == ImageBufferError::NO_ERROR);
@@ -117,8 +119,8 @@ TEST_CASE("TrivialImageBuffer rejects second image while full")
 
 TEST_CASE("ImageInputStream<TrivialImageBuffer> basic streaming")
 {
-    TrivialImageBuffer buf;
-    ImageInputStream<TrivialImageBuffer> stream(buf);
+    Buffer buf;
+    ImageInputStream<Buffer> stream(buf);
 
     const size_t payload_size = 40;
     auto meta = make_meta(payload_size);

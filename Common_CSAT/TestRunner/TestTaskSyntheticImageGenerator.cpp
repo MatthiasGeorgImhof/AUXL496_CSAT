@@ -5,6 +5,7 @@
 #include "TrivialImageBuffer.hpp"
 #include "InputOutputStream.hpp"
 #include "RegistrationManager.hpp"
+#include "Trigger.hpp"
 
 #include "mock_hal.h"
 
@@ -22,18 +23,25 @@ void RegistrationManager::server(const CyphalPortID, std::shared_ptr<Task>) {}
 void RegistrationManager::server(const CyphalPortID) {}
 void RegistrationManager::unserver(const CyphalPortID, std::shared_ptr<Task>) {}
 
+using Buffer = TrivialImageBuffer<8192>;
+
 // ------------------------------------------------------------
 // Test: Synthetic task produces one image and stream reads it
 // ------------------------------------------------------------
 TEST_CASE("SyntheticImageGenerator basic pipeline")
 {
+    HAL_SetTick(0);
+
     // 1. Buffer
-    TrivialImageBuffer buf;
+    Buffer buf;
 
     // 2. Synthetic task: generate payload {0,1,2,...,15}
     constexpr uint32_t N = 16;
-    TaskSyntheticImageGenerator<TrivialImageBuffer> gen(
+    OnceTrigger trig;   // <-- NEW: required trigger
+
+    TaskSyntheticImageGenerator<Buffer, OnceTrigger> gen(
         buf,
+        trig,       // <-- NEW: trigger argument
         N,          // payload length
         0,          // interval
         0           // tick
@@ -47,7 +55,7 @@ TEST_CASE("SyntheticImageGenerator basic pipeline")
     CHECK(!buf.is_empty());
 
     // 5. Stream adapter
-    ImageInputStream<TrivialImageBuffer> stream(buf);
+    ImageInputStream<Buffer> stream(buf);
     CHECK(!stream.is_empty());
 
     // 6. Read metadata via initialize()

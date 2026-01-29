@@ -77,6 +77,30 @@ protected:
 // traits
 //
 
+class TaskPacing
+{
+public:
+    TaskPacing(uint32_t sleep_interval, uint32_t operate_interval)
+        : sleep_interval_(sleep_interval),
+          operate_interval_(operate_interval)
+    {}
+
+protected:
+    void sleep(Task& task)
+    {
+        task.setInterval(sleep_interval_);
+    }
+
+    void operate(Task& task)
+    {
+        task.setInterval(operate_interval_);
+    }
+
+private:
+    uint32_t sleep_interval_;
+    uint32_t operate_interval_;
+};
+
 template <typename... Adapters>
 class Publisher
 {

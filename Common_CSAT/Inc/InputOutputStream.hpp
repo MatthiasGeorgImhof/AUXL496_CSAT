@@ -12,6 +12,7 @@
 #include "imagebuffer/image.hpp"
 #include "imagebuffer/buffer_state.hpp"
 #include "ImageBuffer.hpp"
+#include "ImageBufferConcept.hpp"
 
 //
 //
@@ -65,19 +66,11 @@ concept InputStreamConcept = requires(Stream &s) {
     { s.getChunk(std::declval<uint8_t *>(), std::declval<size_t &>()) } -> std::convertible_to<bool>;
 };
 
-template <typename Buffer>
-concept ImageBufferConcept = requires(Buffer &b, ImageMetadata &metadata, uint8_t *data, size_t &size) {
-    { b.is_empty() } -> std::convertible_to<bool>;
-    { b.get_image(metadata) } -> std::convertible_to<ImageBufferError>;
-    { b.get_data_chunk(data, size) } -> std::convertible_to<ImageBufferError>;
-    { b.pop_image() } -> std::convertible_to<ImageBufferError>;
-};
-
-template <ImageBufferConcept Buffer>
+template <ImageBufferConcept ImageBufferT>
 class ImageInputStream
 {
 public:
-    ImageInputStream(Buffer &buffer) : buffer_(buffer) {}
+    ImageInputStream(ImageBufferT &buffer) : buffer_(buffer) {}
     ~ImageInputStream() = default;
 
     bool is_empty()
@@ -126,14 +119,21 @@ public:
     }
 
 private:
-    Buffer &buffer_;
+    ImageBufferT &buffer_;
     size_t size_;
     std::array<char, NAME_LENGTH> name_;
 };
 
 struct MockImageBuffer
 {
-    bool is_empty() { return false; }
+    bool is_empty() const { return false; }
+    bool has_room_for(size_t /*size*/) const { return true; }
+    size_t count() const { return 0; }
+
+    ImageBufferError add_image(ImageMetadata & /*metadata*/) { return ImageBufferError::NO_ERROR; }
+    ImageBufferError add_data_chunk(uint8_t * /*data*/, size_t & /*size*/) { return ImageBufferError::NO_ERROR; }
+    ImageBufferError push_image() { return ImageBufferError::NO_ERROR; }
+
     ImageBufferError get_image(ImageMetadata & /*metadata*/) { return ImageBufferError::NO_ERROR; }
     ImageBufferError get_data_chunk(uint8_t * /*data*/, size_t & /*size*/) { return ImageBufferError::NO_ERROR; }
     ImageBufferError pop_image() { return ImageBufferError::NO_ERROR; }

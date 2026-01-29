@@ -7,23 +7,12 @@
 #include <cstring>
 #include <vector>
 
+#include "ImageBufferConcept.hpp"
 #include "imagebuffer/accessor.hpp"
 #include "imagebuffer/image.hpp"
 #include "imagebuffer/storageheader.hpp"
 #include "imagebuffer/buffer_state.hpp"
 #include "Checksum.hpp"
-
-enum class ImageBufferError : uint16_t
-{
-    NO_ERROR = 0,
-    WRITE_ERROR = 1,
-    READ_ERROR = 2,
-    OUT_OF_BOUNDS = 3,
-    CHECKSUM_ERROR = 4,
-    EMPTY_BUFFER = 5,
-    FULL_BUFFER = 6,
-    DATA_ERROR = 7,
-};
 
 template <typename Accessor, typename ChecksumPolicy = DefaultChecksumPolicy>
 class ImageBuffer
@@ -44,6 +33,7 @@ public:
     // Public state queries (unchanged API)
     // ---------------------------------------------------------------------
     inline bool   is_empty() const { return buffer_state_.is_empty(); }
+    inline bool   has_room_for(size_t size) const { return buffer_state_.has_room_for(size); }
     inline size_t size()     const { return buffer_state_.size(); }
     inline size_t count()    const { return buffer_state_.count(); }
     inline size_t available()const { return buffer_state_.available(); }

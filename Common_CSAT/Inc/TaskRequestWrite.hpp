@@ -12,7 +12,7 @@
 #include <cstring>
 
 template <InputStreamConcept InputStream, typename... Adapters>
-class TaskRequestWrite : public TaskForClient<CyphalBuffer8, Adapters...>
+class TaskRequestWrite : public TaskForClient<CyphalBuffer8, Adapters...>, private TaskPacing
 {
 public:
     enum State
@@ -31,8 +31,9 @@ public:
 
 public:
     TaskRequestWrite() = delete;
-    TaskRequestWrite(InputStream &stream, uint32_t interval, uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters)
-        : TaskForClient<CyphalBuffer8, Adapters...>(interval, tick, node_id, transfer_id, adapters),
+    TaskRequestWrite(InputStream &stream, uint32_t sleep_interval, uint32_t operate_interval, uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters)
+        : TaskForClient<CyphalBuffer8, Adapters...>(sleep_interval, tick, node_id, transfer_id, adapters),
+          TaskPacing(sleep_interval, operate_interval),
           stream_(stream), state_(IDLE), size_(0), offset_(0), name_{}, data_(nullptr)
     {
     }
@@ -63,6 +64,7 @@ void TaskRequestWrite<InputStream, Adapters...>::reset()
     offset_ = 0;
     name_ = {};
     data_ = nullptr;
+    TaskPacing::sleep(*this);
 }
 
 template <InputStreamConcept InputStream, typename... Adapters>
@@ -148,6 +150,7 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
     {
     	state_ = SEND_INIT;
     	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: data available\r\n");
+        TaskPacing::operate(*this);
     }
 
     if (!data_)

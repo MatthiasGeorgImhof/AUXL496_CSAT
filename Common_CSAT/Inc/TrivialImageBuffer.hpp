@@ -1,29 +1,43 @@
-#pragma once
+#ifndef TRIVIAL_IMAGE_BUFFER_HPP
+#define TRIVIAL_IMAGE_BUFFER_HPP
 
-#include <vector>
+#include <array>
 #include <cstring>
 #include "imagebuffer/image.hpp"
 #include "imagebuffer/buffer_state.hpp"
 #include "ImageBuffer.hpp"   // for ImageBufferError enum
+#include "ImageBufferConcept.hpp"   // for ImageBufferError enum
 
+template <size_t N>
 class TrivialImageBuffer
 {
 public:
-    TrivialImageBuffer() : has_image_(false), read_offset_(0) {}
+    TrivialImageBuffer()
+        : has_image_(false),
+          payload_size_(0),
+          read_offset_(0)
+    {}
 
     // ------------------------------------------------------------
     // State queries
     // ------------------------------------------------------------
     bool is_empty() const { return !has_image_; }
 
-    // Not meaningful for trivial buffer, but required by concept
-    size_t size() const { return has_image_ ? payload_.size() : 0; }
+    bool has_room_for(size_t size) const
+    {
+        return !has_image_ && (size <= N);
+    }
+
     size_t count() const { return has_image_ ? 1 : 0; }
-    size_t available() const { return 1 - count(); }
-    size_t capacity() const { return 1; }
+
+    size_t size() const { return has_image_ ? payload_size_ : 0; }
+
+    size_t available() const { return has_image_ ? 0 : N; }
+
+    size_t capacity() const { return N; }
 
     // ------------------------------------------------------------
-    // Producer API (TaskMLX90640 calls these)
+    // Producer API
     // ------------------------------------------------------------
     ImageBufferError add_image(const ImageMetadata& meta)
     {
@@ -31,8 +45,9 @@ public:
             return ImageBufferError::FULL_BUFFER;
 
         meta_ = meta;
-        payload_.clear();
+        payload_size_ = 0;
         read_offset_ = 0;
+
         return ImageBufferError::NO_ERROR;
     }
 
@@ -41,7 +56,12 @@ public:
         if (has_image_)
             return ImageBufferError::FULL_BUFFER;
 
-        payload_.insert(payload_.end(), data, data + size);
+        if (payload_size_ + size > N)
+            return ImageBufferError::OUT_OF_BOUNDS;
+
+        std::memcpy(payload_.data() + payload_size_, data, size);
+        payload_size_ += size;
+
         return ImageBufferError::NO_ERROR;
     }
 
@@ -52,7 +72,7 @@ public:
     }
 
     // ------------------------------------------------------------
-    // Consumer API (ImageInputStream calls these)
+    // Consumer API
     // ------------------------------------------------------------
     ImageBufferError get_image(ImageMetadata& out)
     {
@@ -61,6 +81,7 @@ public:
 
         out = meta_;
         read_offset_ = 0;
+
         return ImageBufferError::NO_ERROR;
     }
 
@@ -69,7 +90,7 @@ public:
         if (!has_image_)
             return ImageBufferError::EMPTY_BUFFER;
 
-        size_t remaining = payload_.size() - read_offset_;
+        size_t remaining = payload_size_ - read_offset_;
         size = std::min(size, remaining);
 
         if (size > 0)
@@ -87,14 +108,19 @@ public:
             return ImageBufferError::EMPTY_BUFFER;
 
         has_image_ = false;
-        payload_.clear();
+        payload_size_ = 0;
         read_offset_ = 0;
+
         return ImageBufferError::NO_ERROR;
     }
 
 private:
     bool has_image_;
     ImageMetadata meta_;
-    std::vector<uint8_t> payload_;
-    size_t read_offset_;
+
+    std::array<uint8_t, N> payload_;
+    size_t payload_size_;   // how many bytes are valid
+    size_t read_offset_;    // how many bytes have been consumed
 };
+
+#endif // TRIVIAL_IMAGE_BUFFER_HPP

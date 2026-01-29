@@ -8,6 +8,7 @@
 #include <type_traits>
 #include "ArrayList.hpp"
 #include "Task.hpp"
+#include "RegistrationManager.hpp"
 #include "cyphal.hpp"
 #include "cyphal_subscriptions.hpp"
 

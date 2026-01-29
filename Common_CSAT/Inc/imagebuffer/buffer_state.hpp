@@ -36,6 +36,7 @@ struct BufferState
     // Basic queries
     // -------------------------------------------------------------------------
     bool   is_empty() const { return size_ == 0; }
+    bool   has_room_for(size_t size) const { return available() >= size; }
     size_t size()     const { return size_; }
     size_t count()    const { return count_; }
     size_t capacity() const { return TOTAL_BUFFER_CAPACITY_; }

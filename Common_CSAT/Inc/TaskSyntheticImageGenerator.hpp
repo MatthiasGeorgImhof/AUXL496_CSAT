@@ -8,21 +8,22 @@
 
 #include "Task.hpp"
 #include "RegistrationManager.hpp"
-#include "imagebuffer/metadata.hpp"
-#include "ImageBuffer.hpp"
+#include "ImageBufferConcept.hpp"
+#include "Trigger.hpp"
 
-template <typename ImageBufferT>
+template <ImageBufferConcept ImageBufferT, typename TriggerT = OnceTrigger>
 class TaskSyntheticImageGenerator : public Task
 {
 public:
     TaskSyntheticImageGenerator(ImageBufferT& buffer,
+                                TriggerT trigger,
                                 uint32_t payload_length,
                                 uint32_t interval,
                                 uint32_t tick)
         : Task(interval, tick),
           buffer_(buffer),
-          payload_length_(payload_length),
-          published_(false)
+          trigger_(trigger),
+          payload_length_(payload_length)
     {
         payload_.resize(payload_length_);
         for (uint32_t i = 0; i < payload_length_; i++)
@@ -42,16 +43,20 @@ public:
 protected:
     void handleTaskImpl() override
     {
-        if (published_)
+        // Only generate a frame when the trigger fires
+        if (!trigger_.trigger())
             return;
 
         publishSyntheticImage();
-        published_ = true;
     }
 
 private:
     void publishSyntheticImage()
     {
+        // Respect buffer capacity contract
+        if (!buffer_.has_room_for(payload_length_))
+            return;
+
         ImageMetadata meta{};
         meta.timestamp    = HAL_GetTick();
         meta.payload_size = payload_length_;
@@ -81,8 +86,8 @@ private:
 
 private:
     ImageBufferT& buffer_;
+    TriggerT trigger_;
     uint32_t payload_length_;
-    bool published_;
     std::vector<uint8_t> payload_;
 };
 

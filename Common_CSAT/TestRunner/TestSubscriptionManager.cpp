@@ -2,6 +2,7 @@
 #include "doctest/doctest.h"
 
 #include "SubscriptionManager.hpp"
+#include "RegistrationManager.hpp"
 #include "cyphal.hpp"
 #include "cyphal_subscriptions.hpp"
 #include <memory>
