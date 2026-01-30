@@ -7,6 +7,7 @@
 #include "imagebuffer/buffer_state.hpp"
 #include "ImageBuffer.hpp"   // for ImageBufferError enum
 #include "ImageBufferConcept.hpp"   // for ImageBufferError enum
+#include "Logger.hpp"
 
 template <size_t N>
 class TrivialImageBuffer
@@ -47,7 +48,7 @@ public:
         meta_ = meta;
         payload_size_ = 0;
         read_offset_ = 0;
-
+        log(LOG_LEVEL_DEBUG, "TrivialImageBuffer::add_image\r\n");
         return ImageBufferError::NO_ERROR;
     }
 
@@ -62,12 +63,14 @@ public:
         std::memcpy(payload_.data() + payload_size_, data, size);
         payload_size_ += size;
 
+        log(LOG_LEVEL_DEBUG, "TrivialImageBuffer::add_data_chunk\r\n");
         return ImageBufferError::NO_ERROR;
     }
 
     ImageBufferError push_image()
     {
         has_image_ = true;
+        log(LOG_LEVEL_DEBUG, "TrivialImageBuffer::push_image\r\n");
         return ImageBufferError::NO_ERROR;
     }
 
@@ -81,7 +84,7 @@ public:
 
         out = meta_;
         read_offset_ = 0;
-
+        log(LOG_LEVEL_DEBUG, "TrivialImageBuffer::get_image\r\n");
         return ImageBufferError::NO_ERROR;
     }
 
@@ -98,6 +101,7 @@ public:
             std::memcpy(dst, payload_.data() + read_offset_, size);
             read_offset_ += size;
         }
+        log(LOG_LEVEL_DEBUG, "TrivialImageBuffer::get_data_chunk\r\n");
 
         return ImageBufferError::NO_ERROR;
     }
@@ -110,6 +114,7 @@ public:
         has_image_ = false;
         payload_size_ = 0;
         read_offset_ = 0;
+        log(LOG_LEVEL_DEBUG, "TrivialImageBuffer::pop_image\r\n");
 
         return ImageBufferError::NO_ERROR;
     }

@@ -58,4 +58,10 @@ struct PeriodicTrigger {
     }
 };
 
+struct ContinuousTrigger {
+	bool trigger() {
+		return true;
+	}
+};
+
 #endif // __TRIGGER_HPP__

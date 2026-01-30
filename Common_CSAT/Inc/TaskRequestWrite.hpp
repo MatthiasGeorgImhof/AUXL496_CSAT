@@ -31,10 +31,21 @@ public:
 
 public:
     TaskRequestWrite() = delete;
-    TaskRequestWrite(InputStream &stream, uint32_t sleep_interval, uint32_t operate_interval, uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters)
+    TaskRequestWrite(InputStream &stream,
+                     uint32_t sleep_interval,
+                     uint32_t operate_interval,
+                     uint32_t tick,
+                     CyphalNodeID node_id,
+                     CyphalTransferID transfer_id,
+                     std::tuple<Adapters...> &adapters)
         : TaskForClient<CyphalBuffer8, Adapters...>(sleep_interval, tick, node_id, transfer_id, adapters),
           TaskPacing(sleep_interval, operate_interval),
-          stream_(stream), state_(IDLE), size_(0), offset_(0), name_{}, data_(nullptr)
+          stream_(stream)
+        , state_(IDLE)
+        , size_(0)
+        , offset_(0)
+        , name_{}
+        , data_(nullptr)
     {
     }
 
@@ -77,9 +88,9 @@ void TaskRequestWrite<InputStream, Adapters...>::handleTaskImpl()
 template <InputStreamConcept InputStream, typename... Adapters>
 bool TaskRequestWrite<InputStream, Adapters...>::respond()
 {
-	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: respond %d\r\n", state_);
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: respond %d\r\n", state_);
 
-	if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
+    if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
         return false;
 
     std::shared_ptr<CyphalTransfer> transfer = TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
@@ -92,7 +103,10 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
     uavcan_file_Write_Response_1_1 data;
     size_t payload_size = transfer->payload_size;
 
-    int8_t deserialization_result = uavcan_file_Write_Response_1_1_deserialize_(&data, static_cast<const uint8_t *>(transfer->payload), &payload_size);
+    int8_t deserialization_result =
+        uavcan_file_Write_Response_1_1_deserialize_(&data,
+                                                     static_cast<const uint8_t *>(transfer->payload),
+                                                     &payload_size);
     if (deserialization_result < 0)
     {
         log(LOG_LEVEL_ERROR, "TaskRequestWrite: Deserialization Error\r\n");
@@ -109,10 +123,12 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
         }
         else if (state_ == WAIT_TRANSFER)
         {
-            state_ = (offset_ < size_) ? SEND_TRANSFER : SEND_DONE ;
+            state_ = (offset_ < size_) ? SEND_TRANSFER : SEND_DONE;
         }
         else if (state_ == WAIT_DONE)
         {
+            // Final ACK for SEND_DONE: now we can finalize the stream.
+            stream_.finalize();
             reset();
         }
     }
@@ -138,9 +154,9 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
 template <InputStreamConcept InputStream, typename... Adapters>
 bool TaskRequestWrite<InputStream, Adapters...>::request()
 {
-	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request %d\r\n", state_);
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request %d\r\n", state_);
 
-	if (state_ == WAIT_INIT || state_ == WAIT_TRANSFER || state_ == WAIT_DONE)
+    if (state_ == WAIT_INIT || state_ == WAIT_TRANSFER || state_ == WAIT_DONE)
         return false;
 
     if (!TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty()) // Should have been emtpied by respond
@@ -148,8 +164,8 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
 
     if (!stream_.is_empty() && state_ == IDLE)
     {
-    	state_ = SEND_INIT;
-    	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: data available\r\n");
+        state_ = SEND_INIT;
+        log(LOG_LEVEL_DEBUG, "TaskRequestWrite: data available\r\n");
         TaskPacing::operate(*this);
     }
 
@@ -159,7 +175,7 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
     }
     data_->offset = offset_;
 
-	log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request state switch\r\n");
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request state switch\r\n");
 
     size_t size = uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_;
     switch (state_)
@@ -188,11 +204,17 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
     case RESEND_TRANSFER:
         state_ = WAIT_TRANSFER;
         break;
-    
+
     case SEND_DONE:
         data_->data.value.count = 0;
-        [[fallthrough]];
+        data_->path.path.count = NAME_LENGTH;
+        std::memcpy(data_->path.path.elements, name_.data(), NAME_LENGTH);
+        state_ = WAIT_DONE;
+        break;
+
     case RESEND_DONE:
+        // Re-send the same zero-size packet
+        state_ = WAIT_DONE;
         break;
 
     default:
@@ -201,9 +223,14 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
 
     constexpr size_t PAYLOAD_SIZE = uavcan_file_Write_Request_1_1_SERIALIZATION_BUFFER_SIZE_BYTES_;
     uint8_t payload[PAYLOAD_SIZE];
-    TaskForClient<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE, payload, data_.get(),
-                                        reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_file_Write_Request_1_1_serialize_),
-                                        uavcan_file_Write_1_1_FIXED_PORT_ID_, TaskForClient<CyphalBuffer8, Adapters...>::node_id_);
+    TaskForClient<CyphalBuffer8, Adapters...>::publish(
+        PAYLOAD_SIZE,
+        payload,
+        data_.get(),
+        reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(
+            uavcan_file_Write_Request_1_1_serialize_),
+        uavcan_file_Write_1_1_FIXED_PORT_ID_,
+        TaskForClient<CyphalBuffer8, Adapters...>::node_id_);
     log(LOG_LEVEL_DEBUG, "TaskRequestWrite: sent request\r\n");
     return true;
 }

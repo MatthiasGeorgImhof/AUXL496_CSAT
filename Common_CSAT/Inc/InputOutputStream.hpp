@@ -13,31 +13,34 @@
 #include "imagebuffer/buffer_state.hpp"
 #include "ImageBuffer.hpp"
 #include "ImageBufferConcept.hpp"
+#include "Logger.hpp"
 
 //
 //
 //
 
-constexpr size_t NAME_LENGTH = 19;
+constexpr size_t NAME_LENGTH = 19; // 16 + 1 + 2
 
 std::array<char, NAME_LENGTH> formatValues(uint64_t u64, uint8_t u8)
 {
-    std::array<char, NAME_LENGTH> result = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '_', '0', '0'};
+    std::array<char, NAME_LENGTH> result = {};
     static constexpr char hex_digits[] = "0123456789abcdef";
 
-    // Convert uint64_t to 16-character hexadecimal
     for (size_t i = 0; i < 16; ++i)
     {
-        result[i] = hex_digits[u64 & 0x0f];
+        result[15 - i] = hex_digits[u64 & 0x0f];
         u64 >>= 4;
     }
 
-    // Convert uint8_t to 2-character hexadecimal
-    for (size_t i = 9; i < 11; ++i)
-    { // Correct loop bounds
-        result[i] = hex_digits[u8 & 0x0f];
+    result[16] = '_';
+
+    for (size_t i = 0; i < 2; ++i)
+    {
+        result[18 - i] = hex_digits[u8 & 0x0f];
         u8 >>= 4;
     }
+
+    return result;
 
     static_assert((2 * sizeof(u64) + 2 * sizeof(u8) + 1) == NAME_LENGTH, "formatValues, invalid NAME_LENGTH");
     static_assert((2 * sizeof(u64) + 2 * sizeof(u8) + 1) == sizeof(result), "formatValues, invalid result length");
@@ -86,6 +89,7 @@ public:
         name_ = formatValues(metadata.timestamp, static_cast<uint8_t>(metadata.producer));
         size = sizeof(metadata);
         std::memcpy(data, reinterpret_cast<uint8_t *>(&metadata), sizeof(ImageMetadata));
+        log(LOG_LEVEL_DEBUG, "ImageInputStream::initialize %19c\r\n", name_.data());
         return true;
     }
 
@@ -102,19 +106,28 @@ public:
     bool finalize()
     {
         (void)buffer_.pop_image();
+        log(LOG_LEVEL_DEBUG, "ImageInputStream::finalize\r\n");
         return true;
     }
 
     bool getChunk(uint8_t *data, size_t &size)
     {
+        // Caller sets size = max capacity.
+        auto err = buffer_.get_data_chunk(data, size);
+
+        if (err != ImageBufferError::NO_ERROR)
+        {
+            size = 0;
+            return false;
+        }
+
         if (size == 0)
         {
-            finalize();
+            // TRUE EOF: no more data in the buffer.
+            // Caller must now send the final zero-length request.
+            return false;
         }
-        else
-        {
-            (void)buffer_.get_data_chunk(data, size);
-        }
+        log(LOG_LEVEL_DEBUG, "ImageInputStream::getChunk\r\n");
         return true;
     }
 

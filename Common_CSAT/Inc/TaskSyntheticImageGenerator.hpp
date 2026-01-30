@@ -10,6 +10,7 @@
 #include "RegistrationManager.hpp"
 #include "ImageBufferConcept.hpp"
 #include "Trigger.hpp"
+#include "Logger.hpp"
 
 template <ImageBufferConcept ImageBufferT, typename TriggerT = OnceTrigger>
 class TaskSyntheticImageGenerator : public Task
@@ -54,7 +55,8 @@ private:
     void publishSyntheticImage()
     {
         // Respect buffer capacity contract
-        if (!buffer_.has_room_for(payload_length_))
+        log(LOG_LEVEL_DEBUG, "TaskSyntheticImageGenerator::publishSyntheticImage %d\r\n", HAL_GetTick());
+    	if (!buffer_.has_room_for(payload_length_))
             return;
 
         ImageMetadata meta{};
@@ -82,6 +84,7 @@ private:
         }
 
         buffer_.push_image();
+        log(LOG_LEVEL_DEBUG, "TaskSyntheticImageGenerator::publishSyntheticImage pushed image\r\n");
     }
 
 private:
