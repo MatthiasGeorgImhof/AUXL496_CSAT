@@ -155,6 +155,8 @@ TEST_CASE("ImageInputStream with ImageBuffer") {
         size = std::min(chunk_size, stream_size);
         REQUIRE(stream.getChunk(chunk, size) == true);
         CHECK(size==0);
+        REQUIRE(stream.is_empty() == false);
+        stream.finalize();
         REQUIRE(stream.is_empty() == true);
 
     }
@@ -247,6 +249,8 @@ TEST_CASE("ImageInputStream with CachedImageBuffer") {
         size = std::min(chunk_size, stream_size);
         REQUIRE(stream.getChunk(chunk, size) == true);
         CHECK(size==0);
+        REQUIRE(stream.is_empty() == false);
+        stream.finalize();
         REQUIRE(stream.is_empty() == true);
 
     }

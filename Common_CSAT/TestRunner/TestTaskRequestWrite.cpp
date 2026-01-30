@@ -325,7 +325,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     response = unpackResponse(ret_transfer);
     task.handleMessage(ret_transfer);
     task.handleTaskImpl();
-    CHECK(loopard.buffer.size() == 1);
+    CHECK(loopard.buffer.size() == 0);
     CHECK(task.buffer_.size() == 0);
     loopard.buffer.clear();
 }
@@ -483,7 +483,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     response = unpackResponse(ret_transfer);
     task.handleMessage(ret_transfer);
     task.handleTaskImpl();
-    CHECK(loopard.buffer.size() == 1);
+    CHECK(loopard.buffer.size() == 0);
     CHECK(task.buffer_.size() == 0);
 }
 

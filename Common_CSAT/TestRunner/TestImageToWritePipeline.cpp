@@ -200,7 +200,7 @@ TEST_CASE("TaskRequestWrite end-to-end with Buffer")
     // --------------------------------------------------------
     writer.handleTaskImpl();   // SEND_DONE → SEND_DONE (no WAIT_DONE / reset implemented)
 
-    CHECK(writer.getState() == Writer::State::SEND_DONE);
+    CHECK(writer.getState() == Writer::State::WAIT_DONE);
 
     // Confirm full stream logically consumed
     CHECK(writer.getOffset() == writer.getSize());
@@ -323,7 +323,7 @@ TEST_CASE("Full pipeline: MockTaskMLX90640 → Buffer → ImageInputStream → T
     // Step 4: DONE (fire-and-forget in current MVP)
     // --------------------------------------------------------
     writer.handleTaskImpl();
-    CHECK(writer.getState() == Writer::State::SEND_DONE);
+    CHECK(writer.getState() == Writer::State::WAIT_DONE);
 
     // --------------------------------------------------------
     // Step 5: Confirm full stream consumed

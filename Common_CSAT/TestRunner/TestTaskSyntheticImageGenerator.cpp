@@ -87,7 +87,7 @@ TEST_CASE("SyntheticImageGenerator basic pipeline")
         offset += chunk_size;
     }
 
-    // 8. Finalize (size=0)
+    // 8. (size=0)
     size_t zero = 0;
     CHECK(stream.getChunk(nullptr, zero));
 
@@ -96,6 +96,9 @@ TEST_CASE("SyntheticImageGenerator basic pipeline")
         CHECK(readback[i] == static_cast<uint8_t>(i));
 
     // 10. Stream and buffer should now be empty
+    CHECK(! stream.is_empty());
+    CHECK(! buf.is_empty());
+    stream.finalize();
     CHECK(stream.is_empty());
     CHECK(buf.is_empty());
 }

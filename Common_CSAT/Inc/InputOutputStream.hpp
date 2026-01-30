@@ -121,12 +121,6 @@ public:
             return false;
         }
 
-        if (size == 0)
-        {
-            // TRUE EOF: no more data in the buffer.
-            // Caller must now send the final zero-length request.
-            return false;
-        }
         log(LOG_LEVEL_DEBUG, "ImageInputStream::getChunk\r\n");
         return true;
     }

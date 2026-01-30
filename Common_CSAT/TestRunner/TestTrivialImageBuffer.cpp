@@ -176,11 +176,14 @@ TEST_CASE("ImageInputStream<TrivialImageBuffer> basic streaming")
             offset += req;
         }
 
-        // Final chunk: size == 0 triggers finalize()
+        // Final chunk: size == 0 indicates end of payload and one should request finalization
         size_t zero = 0;
-        CHECK(stream.getChunk(nullptr, zero));  // finalize() path
+        CHECK(stream.getChunk(nullptr, zero));
 
         // After finalize, buffer should be empty
+        CHECK(! stream.is_empty());
+        CHECK(! buf.is_empty());
+        stream.finalize();
         CHECK(stream.is_empty());
         CHECK(buf.is_empty());
     }
