@@ -117,6 +117,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 		CanRxFrame &frame = can_rx_buffer.next();
 		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &frame.header, frame.data);
+		log(LOG_LEVEL_DEBUG, "HAL_CAN_RxFifo0MsgPendingCallback %x\r\n", frame.header.ExtId);
 	}
 }
 
@@ -147,10 +148,6 @@ void cppmain()
 	if (HAL_CAN_Start(&hcan1) != HAL_OK) {
 		Error_Handler();
 	}
-	if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
-	{
-		Error_Handler();
-	}
 
 	CAN_FilterTypeDef filter {};
 	filter.FilterIdHigh = 0x1fff;
@@ -179,8 +176,8 @@ void cppmain()
 	canard_adapter.que = canardTxInit(512, CANARD_MTU_CAN_CLASSIC);
 	CanardCyphal canard_cyphal(&canard_adapter);
 	canard_cyphal.setNodeID(cyphal_node_id);
-//	canard_adapter.ins.forward_range.start_id = 20;
-//	canard_adapter.ins.forward_range.end_id = 39;
+	canard_adapter.ins.forward_start_id = 64;
+	canard_adapter.ins.forward_end_id = 127;
 
 	struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, LocalHeap::serardMemoryDeallocate, LocalHeap::serardMemoryAllocate};
 	using SerardCyphal = Cyphal<SerardAdapter>;
@@ -188,8 +185,9 @@ void cppmain()
 	serard_adapter.emitter = serial_send;
 	SerardCyphal serard_cyphal(&serard_adapter);
 	serard_cyphal.setNodeID(cyphal_node_id);
+//	serard_adapter.ins.forward_start_id = 0;
+//	serard_adapter.ins.forward_end_id = 63;
 
-	//	std::tuple<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>> sercan_adapters = { serard_cyphal, canard_cyphal };
 	std::tuple<Cyphal<SerardAdapter>, Cyphal<CanardAdapter>> sercan_adapters = { serard_cyphal, canard_cyphal };
 	std::tuple<Cyphal<SerardAdapter>> serard_adapters = { serard_cyphal };
 	std::tuple<Cyphal<CanardAdapter>> canard_adapters = { canard_cyphal };
@@ -207,6 +205,8 @@ void cppmain()
 //	constexpr uint8_t uuid[] = {0xc8, 0x03, 0x52, 0xa6, 0x1d, 0x94, 0x40, 0xc9, 0x9b, 0x1d, 0xea, 0xac, 0xfd, 0xdd, 0xb2, 0x85};
 //	constexpr char node_name[50] = "AUXL496_CSAT";
 
+//	HAL_Delay(7000);
+
 //	using TSHeart = TaskSendHeartBeat<SerardCyphal, CanardCyphal>;
 //	register_task_with_heap<TSHeart>(registration_manager, 2000, 100, 0, sercan_adapters);
 //
@@ -222,24 +222,22 @@ void cppmain()
 //	using TRespondInfo = TaskRespondGetInfo<SerardCyphal, CanardCyphal>;
 //	register_task_with_heap<TRespondInfo>(registration_manager, uuid, node_name, 10000, 100, sercan_adapters);
 //
-//	using TRequestInfoCanard = TaskRequestGetInfo<CanardCyphal>;
-//	register_task_with_heap<TRequestInfoCanard>(registration_manager, 10000, 100, 21, 0, canard_adapters);
-//	register_task_with_heap<TRequestInfoCanard>(registration_manager, 10000, 800, 31, 0, canard_adapters);
+//	using TRequestInfoCanard = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
+//	register_task_with_heap<TRequestInfoCanard>(registration_manager, 10000, 100, 21, 0, sercan_adapters);
+//	register_task_with_heap<TRequestInfoCanard>(registration_manager, 10000, 800, 31, 0, sercan_adapters);
 //
-//	using TRequestInfoSerard = TaskRequestGetInfo<SerardCyphal>;
-//	register_task_with_heap<TRequestInfoSerard>(registration_manager, 10000, 800, 121, 0, serard_adapters);
-
-	HAL_Delay(7000);
-
-	using TTrivialImageBuffer = TrivialImageBuffer<256>;
-	using TSyntheticImageGenerator = TaskSyntheticImageGenerator<TTrivialImageBuffer, ContinuousTrigger>;
-	TTrivialImageBuffer img_buf;
-	register_task_with_heap<TSyntheticImageGenerator>(registration_manager, img_buf, ContinuousTrigger{}, 128, 1000, 200);
-
-	using TrivialPipeline = ImageInputStream<TTrivialImageBuffer>;
-	using TRequestWrite = TaskRequestWrite<TrivialPipeline, SerardCyphal>;
-	ImageInputStream<TTrivialImageBuffer> stream(img_buf);
-	register_task_with_heap<TRequestWrite>(registration_manager, stream, 2000, 200, 0, 121, 0, serard_adapters);
+//	using TRequestInfoSerard = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
+//	register_task_with_heap<TRequestInfoSerard>(registration_manager, 10000, 800, 121, 0, sercan_adapters);
+//
+//	using TTrivialImageBuffer = TrivialImageBuffer<256>;
+//	using TSyntheticImageGenerator = TaskSyntheticImageGenerator<TTrivialImageBuffer, OnceTrigger>;
+//	TTrivialImageBuffer img_buf;
+//	register_task_with_heap<TSyntheticImageGenerator>(registration_manager, img_buf, OnceTrigger{}, 128, 1000, 200);
+//
+//	using TrivialPipeline = ImageInputStream<TTrivialImageBuffer>;
+//	using TRequestWrite = TaskRequestWrite<TrivialPipeline, SerardCyphal, CanardCyphal>;
+//	ImageInputStream<TTrivialImageBuffer> stream(img_buf);
+//	register_task_with_heap<TRequestWrite>(registration_manager, stream, 2000, 200, 0, 121, 0, sercan_adapters);
 
 	using TBlink = TaskBlinkLED;
 	register_task_with_heap<TBlink>(registration_manager, GPIOC, LED1_Pin, 1000, 100);
@@ -247,10 +245,26 @@ void cppmain()
 	using TCheckMem = TaskCheckMemory;
 	register_task_with_heap<TCheckMem>(registration_manager, o1heap, 250, 100);
 
-    subscription_manager.subscribeAll(registration_manager, sercan_adapters);
+	subscription_manager.subscribeAll(registration_manager, sercan_adapters);
+	subscription_manager.subscribe<SubscriptionManager::MessageTag>(static_cast<CyphalPortID>(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_), sercan_adapters);
+//	subscription_manager.subscribe<SubscriptionManager::MessageTag>(static_cast<CyphalPortID>(uavcan_node_port_List_1_0_FIXED_PORT_ID_), sercan_adapters);
+//	subscription_manager.subscribe<SubscriptionManager::MessageTag>(static_cast<CyphalPortID>(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_), sercan_adapters);
+//
+//	subscription_manager.subscribe<SubscriptionManager::RequestTag>(static_cast<CyphalPortID>(uavcan_node_GetInfo_1_0_FIXED_PORT_ID_), sercan_adapters);
+	subscription_manager.subscribe<SubscriptionManager::RequestTag>(static_cast<CyphalPortID>(uavcan_file_Write_1_1_FIXED_PORT_ID_), sercan_adapters);
+//	subscription_manager.subscribe<SubscriptionManager::RequestTag>(static_cast<CyphalPortID>(uavcan_file_Read_1_1_FIXED_PORT_ID_), sercan_adapters);
+//
+//	subscription_manager.subscribe<SubscriptionManager::ResponseTag>(static_cast<CyphalPortID>(uavcan_node_GetInfo_1_0_FIXED_PORT_ID_), sercan_adapters);
+	subscription_manager.subscribe<SubscriptionManager::ResponseTag>(static_cast<CyphalPortID>(uavcan_file_Write_1_1_FIXED_PORT_ID_), sercan_adapters);
+//	subscription_manager.subscribe<SubscriptionManager::ResponseTag>(static_cast<CyphalPortID>(uavcan_file_Read_1_1_FIXED_PORT_ID_), sercan_adapters);
 
     ServiceManager service_manager(registration_manager.getHandlers());
 	service_manager.initializeServices(HAL_GetTick());
+
+	if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
 	while(1)
 	{
@@ -271,4 +285,11 @@ void cppmain()
 		service_manager.handleServices();
 		HAL_Delay(1);
 	}
+//	uint32_t last = 0;
+//	while(1)
+//	{
+//		  if (HAL_GetTick() < last+1000) continue;
+//		  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+//		  last = HAL_GetTick();
+//	}
 }

@@ -30,4 +30,21 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 		<nature>org.eclipse.cdt.core.ccnature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>libcanard</name>
+			<type>2</type>
+			<location>/home/mgi/Data/github/can/libcanard/libcanard</location>
+		</link>
+		<link>
+			<name>libserard</name>
+			<type>2</type>
+			<location>/home/mgi/Data/github/can/libserard_ck/libserard</location>
+		</link>
+		<link>
+			<name>libudpard</name>
+			<type>2</type>
+			<location>/home/mgi/Data/github/can/libudpard/libudpard</location>
+		</link>
+	</linkedResources>
 </projectDescription>
