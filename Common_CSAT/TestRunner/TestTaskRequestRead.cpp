@@ -488,3 +488,80 @@ TEST_CASE("TaskRequestRead - Handles a zero-length file") {
     CHECK(output_stream.getReceivedData().empty()); // Should receive no data
     CHECK(output_stream.isFinalized());          // Should be finalized immediately
 }
+
+TEST_CASE("TaskRequestRead: Registers and Unregisters correctly")
+{
+    // Adapter
+    LoopardAdapter loopard;
+    loopard.memory_allocate = loopardMemoryAllocate;
+    loopard.memory_free = loopardMemoryFree;
+    Cyphal<LoopardAdapter> cy(&loopard);
+    cy.setNodeID(11);
+
+    std::tuple<Cyphal<LoopardAdapter>> adapters(cy);
+
+    // File source + output stream
+    MockFileSource file_source("hello");
+    MockOutputStream output_stream;
+
+    // Task parameters
+    uint32_t interval = 1000;
+    uint32_t tick = 0;
+    CyphalNodeID node_id = 42;
+    CyphalTransferID transfer_id = 7;
+
+    RegistrationManager reg;
+
+    auto task = std::make_shared<TaskRequestRead<MockFileSource, MockOutputStream, Cyphal<LoopardAdapter>>>(
+        file_source, output_stream, interval, tick, node_id, transfer_id, adapters);
+
+    CHECK(reg.getClients().size() == 0);
+
+    task->registerTask(&reg, task);
+
+    CHECK(reg.getClients().size() == 1);
+    CHECK(reg.getClients().containsIf([](CyphalPortID id){
+        return id == uavcan_file_Read_1_1_FIXED_PORT_ID_;
+    }));
+
+    task->unregisterTask(&reg, task);
+
+    CHECK(reg.getClients().size() == 0);
+}
+
+TEST_CASE("TaskRespondRead: Registers and Unregisters correctly")
+{
+    // Adapter
+    LoopardAdapter loopard;
+    loopard.memory_allocate = loopardMemoryAllocate;
+    loopard.memory_free = loopardMemoryFree;
+    Cyphal<LoopardAdapter> cy(&loopard);
+    cy.setNodeID(11);
+
+    std::tuple<Cyphal<LoopardAdapter>> adapters(cy);
+
+    // File accessor
+    MockAccessor accessor(256);
+
+    // Task parameters
+    uint32_t interval = 1000;
+    uint32_t tick = 0;
+
+    RegistrationManager reg;
+
+    auto task = std::make_shared<TaskRespondRead<MockAccessor, Cyphal<LoopardAdapter>>>(
+        accessor, interval, tick, adapters);
+
+    CHECK(reg.getServers().size() == 0);
+
+    task->registerTask(&reg, task);
+
+    CHECK(reg.getServers().size() == 1);
+    CHECK(reg.getServers().containsIf([](CyphalPortID id){
+        return id == uavcan_file_Read_1_1_FIXED_PORT_ID_;
+    }));
+
+    task->unregisterTask(&reg, task);
+
+    CHECK(reg.getServers().size() == 0);
+}

@@ -70,13 +70,13 @@ void TaskRespondWrite<Stream, Adapters...>::handleTaskImpl()
 template <OutputStreamConcept Stream, typename... Adapters>
 void TaskRespondWrite<Stream, Adapters...>::registerTask(RegistrationManager *manager, std::shared_ptr<Task> task)
 {
-    manager->client(uavcan_file_Write_1_1_FIXED_PORT_ID_, task);
+    manager->server(uavcan_file_Write_1_1_FIXED_PORT_ID_, task);
 }
 
 template <OutputStreamConcept Stream, typename... Adapters>
 void TaskRespondWrite<Stream, Adapters...>::unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task)
 {
-    manager->unclient(uavcan_file_Write_1_1_FIXED_PORT_ID_, task);
+    manager->unserver(uavcan_file_Write_1_1_FIXED_PORT_ID_, task);
 }
 
 #endif // __TASKRESPONDWRITE_HPP_

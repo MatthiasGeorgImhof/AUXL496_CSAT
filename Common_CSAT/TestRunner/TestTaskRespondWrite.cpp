@@ -421,3 +421,47 @@ TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles large write")
     CHECK(loopard.buffer.size() == 1);
     CHECK(task_response.buffer_.size() == 0);
 }
+
+TEST_CASE("TaskRespondWrite registers and unregisters as a server")
+{
+    RegistrationManager reg;
+
+    // Dummy adapter tuple (not used for registration)
+    LoopardAdapter loopard;
+    loopard.memory_allocate = loopardMemoryAllocate;
+    loopard.memory_free = loopardMemoryFree;
+    Cyphal<LoopardAdapter> cyphal(&loopard);
+    auto adapters = std::tuple<Cyphal<LoopardAdapter>>(cyphal);
+
+    // Trivial output stream
+    TrivialOuputStream output;
+
+    // Create the task
+    auto task = std::make_shared<MockTaskRespondWrite<TrivialOuputStream, Cyphal<LoopardAdapter>>>(
+        output,
+        /*interval*/ 1000,
+        /*tick*/ 0,
+        adapters
+    );
+
+    // Before registration: no servers
+    CHECK(reg.getServers().size() == 0);
+
+    // Register the task
+    reg.add(task);
+
+    // After registration: server list should contain the Write.1.1 port
+    CHECK(reg.getServers().size() == 1);
+    CHECK(reg.getServers()[0] == uavcan_file_Write_1_1_FIXED_PORT_ID_);
+
+    // Ensure it did NOT register as:
+    CHECK(reg.getSubscriptions().size() == 0);  // subscriber
+    CHECK(reg.getClients().size() == 0);        // client
+    CHECK(reg.getPublications().size() == 0);   // publisher
+
+    // Unregister the task
+    reg.remove(task);
+
+    // After unregistration: server list should be empty again
+    CHECK(reg.getServers().size() == 0);
+}

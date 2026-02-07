@@ -69,6 +69,47 @@ auto createAdapters(Ts&... adapters) {
     return std::tuple<Ts&...>(adapters...);
 }
 
+class MockTask : public Task
+{
+public:
+    enum Kind { Subscriber, Server, Client };
+
+    MockTask(Kind kind, CyphalPortID port)
+        : Task(0, 0),   // interval=0, tick=0 — fine for tests
+          kind_(kind),
+          port_(port)
+    {}
+
+    void registerTask(RegistrationManager* reg, std::shared_ptr<Task> self) override
+    {
+        switch (kind_) {
+            case Subscriber: reg->subscribe(port_, self); break;
+            case Server:     reg->server(port_, self);    break;
+            case Client:     reg->client(port_, self);    break;
+        }
+    }
+
+    void unregisterTask(RegistrationManager* reg, std::shared_ptr<Task> self) override
+    {
+        switch (kind_) {
+            case Subscriber: reg->unsubscribe(port_, self); break;
+            case Server:     reg->unserver(port_, self);    break;
+            case Client:     reg->unclient(port_, self);    break;
+        }
+    }
+
+protected:
+    // Required pure virtual override
+    void handleTaskImpl() override
+    {
+        // No-op for tests
+    }
+
+private:
+    Kind kind_;
+    CyphalPortID port_;
+};
+
 TEST_CASE("SubscriptionManager: Subscribe and Unsubscribe Single Message Port")
 {
     SubscriptionManager manager;
@@ -419,3 +460,103 @@ TEST_CASE("SubscriptionManager: Subscribe and Unsubscribe Response")
     CHECK(subscriptions_[0]->transfer_kind == subscription->transfer_kind);
 }
 
+// -----------------------------------------------------------------------------
+// Additional Tests for SubscriptionManager
+// -----------------------------------------------------------------------------
+
+TEST_CASE("SubscriptionManager: subscribeAll with real RegistrationManager and mock tasks")
+{
+    SubscriptionManager sm;
+    RegistrationManager reg;
+
+    // Create mock tasks
+    auto t_msg = std::make_shared<MockTask>(MockTask::Subscriber,
+                                            uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+    auto t_srv = std::make_shared<MockTask>(MockTask::Server,
+                                            uavcan_file_Write_1_1_FIXED_PORT_ID_);
+    auto t_cln = std::make_shared<MockTask>(MockTask::Client,
+                                            uavcan_file_Read_1_1_FIXED_PORT_ID_);
+
+    // Register tasks (this populates reg.getSubscriptions(), reg.getServers(), reg.getClients())
+    reg.add(t_msg);
+    reg.add(t_srv);
+    reg.add(t_cln);
+
+    DummyAdapter a1(1), a2(2);
+    auto adapters = createAdapters(a1, a2);
+
+    // Now subscribe all ports
+    sm.subscribeAll(reg, adapters);
+
+    const auto& subs = sm.getSubscriptions();
+    CHECK(subs.size() == 3);
+
+    // Adapters must have been called 3 times
+    CHECK(a1.cyphalRxSubscribeCallCount == 3);
+    CHECK(a2.cyphalRxSubscribeCallCount == 3);
+
+    // Check that correct CyphalSubscription* objects were stored
+    CHECK(subs.containsIf([&](auto* s){
+        return s == findMessageByPortIdRuntime(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+    }));
+    CHECK(subs.containsIf([&](auto* s){
+        return s == findRequestByPortIdRuntime(uavcan_file_Write_1_1_FIXED_PORT_ID_);
+    }));
+    CHECK(subs.containsIf([&](auto* s){
+        return s == findResponseByPortIdRuntime(uavcan_file_Read_1_1_FIXED_PORT_ID_);
+    }));
+}
+
+TEST_CASE("SubscriptionManager: capacity overflow prevents new subscriptions")
+{
+    SubscriptionManager sm;
+    DummyAdapter a1(1), a2(2);
+    auto adapters = createAdapters(a1, a2);
+
+    // Fill SubscriptionManager to capacity
+    const CyphalSubscription* heartbeat = findMessageByPortIdRuntime(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_);
+    for (size_t i = 0; i < SubscriptionManager::NUM_SUBSCRIPTIONS; i++)
+    {
+        sm.subscribe(heartbeat, adapters);
+    }
+
+    CHECK(sm.getSubscriptions().size() == SubscriptionManager::NUM_SUBSCRIPTIONS);
+    int before = a1.cyphalRxSubscribeCallCount;
+
+    // Attempt to add one more subscription
+    const CyphalSubscription* port_list = findMessageByPortIdRuntime(uavcan_node_port_List_1_0_FIXED_PORT_ID_);
+    sm.subscribe(port_list, adapters);
+
+    // No change expected
+    CHECK(sm.getSubscriptions().size() == SubscriptionManager::NUM_SUBSCRIPTIONS);
+    CHECK(a1.cyphalRxSubscribeCallCount == before);
+}
+
+TEST_CASE("SubscriptionManager: non-existent Request and Response ports do not subscribe")
+{
+    SubscriptionManager sm;
+    DummyAdapter a1(1), a2(2);
+    auto adapters = createAdapters(a1, a2);
+
+    sm.subscribe<SubscriptionManager::RequestTag>(65535, adapters);
+    sm.subscribe<SubscriptionManager::ResponseTag>(65534, adapters);
+
+    CHECK(sm.getSubscriptions().size() == 0);
+    CHECK(a1.cyphalRxSubscribeCallCount == 0);
+    CHECK(a2.cyphalRxSubscribeCallCount == 0);
+}
+
+TEST_CASE("SubscriptionManager: unsubscribe(Tag, port_id) on missing subscription does nothing")
+{
+    SubscriptionManager sm;
+    DummyAdapter a1(1), a2(2);
+    auto adapters = createAdapters(a1, a2);
+
+    sm.unsubscribe<SubscriptionManager::MessageTag>(9999, adapters);
+    sm.unsubscribe<SubscriptionManager::RequestTag>(9998, adapters);
+    sm.unsubscribe<SubscriptionManager::ResponseTag>(9997, adapters);
+
+    CHECK(sm.getSubscriptions().size() == 0);
+    CHECK(a1.cyphalRxUnsubscribeCallCount == 0);
+    CHECK(a2.cyphalRxUnsubscribeCallCount == 0);
+}

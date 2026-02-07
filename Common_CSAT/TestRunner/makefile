@@ -761,9 +761,9 @@ $(BIN_DIR)/TestSubscriptionManager.o : TestSubscriptionManager.cpp
 	@echo "Compiling $<"
 	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestSubscriptionManager : $(BIN_DIR)/TestSubscriptionManager.o $(MOCK_HAL_OBJECTS)
+$(BIN_DIR)/TestSubscriptionManager : $(BIN_DIR)/TestSubscriptionManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestSubscriptionManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestSubscriptionManager.o $(BIN_DIR)/RegistrationManager.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestImageBuffer with extra sources
 $(BIN_DIR)/TestImageBuffer.o : TestImageBuffer.cpp
