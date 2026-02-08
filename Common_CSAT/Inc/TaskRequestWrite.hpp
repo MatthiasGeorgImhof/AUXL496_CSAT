@@ -17,16 +17,16 @@ class TaskRequestWrite : public TaskForClient<CyphalBuffer8, Adapters...>, priva
 public:
     enum State
     {
-        IDLE,
-        SEND_INIT,       // Initial state: Nothing is initialized
-        WAIT_INIT,       // waiting for initialization ok
-        RESEND_INIT,     // if init failed, there might be retry, also might be the start of a stream
-        SEND_TRANSFER,   // Ready to pull a chunk from stream
-        WAIT_TRANSFER,   // Sent a chunk, awaiting an OK
-        RESEND_TRANSFER, // chunk delivery failed and we need to send the same again
-        SEND_DONE,       // stream is emtpy, need to signal we are done
-        WAIT_DONE,       // Waiting for the final OK to complete the transmission
-        RESEND_DONE      // We have failed and might need to send this over and over
+        IDLE = 0,
+        SEND_INIT = 1,       // Initial state: Nothing is initialized
+        WAIT_INIT = 2,       // waiting for initialization ok
+        RESEND_INIT = 3,     // if init failed, there might be retry, also might be the start of a stream
+        SEND_TRANSFER = 4,   // Ready to pull a chunk from stream
+        WAIT_TRANSFER = 5,   // Sent a chunk, awaiting an OK
+        RESEND_TRANSFER = 6, // chunk delivery failed and we need to send the same again
+        SEND_DONE = 7,       // stream is emtpy, need to signal we are done
+        WAIT_DONE = 8,       // Waiting for the final OK to complete the transmission
+        RESEND_DONE = 9      // We have failed and might need to send this over and over
     };
 
 public:
@@ -42,7 +42,7 @@ public:
           TaskPacing(sleep_interval, operate_interval),
           stream_(stream)
         , state_(IDLE)
-        , size_(0)
+        , total_size_(0)
         , offset_(0)
         , name_{}
         , data_(nullptr)
@@ -61,7 +61,7 @@ protected:
 protected:
     InputStream &stream_;
     State state_;
-    size_t size_;
+    size_t total_size_;
     size_t offset_;
     std::array<char, NAME_LENGTH> name_;
     std::unique_ptr<uavcan_file_Write_Request_1_1> data_;
@@ -71,8 +71,9 @@ template <InputStreamConcept InputStream, typename... Adapters>
 void TaskRequestWrite<InputStream, Adapters...>::reset()
 {
     state_ = IDLE;
-    size_ = 0;
+    total_size_ = 0;
     offset_ = 0;
+
     name_ = {};
     data_ = nullptr;
     TaskPacing::sleep(*this);
@@ -88,7 +89,7 @@ void TaskRequestWrite<InputStream, Adapters...>::handleTaskImpl()
 template <InputStreamConcept InputStream, typename... Adapters>
 bool TaskRequestWrite<InputStream, Adapters...>::respond()
 {
-    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: respond %d\r\n", state_);
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: respond in state %d\r\n", state_);
 
     if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
         return false;
@@ -113,7 +114,7 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
         return false;
     }
 
-    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: received response\r\n");
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: received response %d in state %d\r\n", data._error, state_);
 
     if (data._error.value == uavcan_file_Error_1_0_OK)
     {
@@ -123,11 +124,10 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
         }
         else if (state_ == WAIT_TRANSFER)
         {
-            state_ = (offset_ < size_) ? SEND_TRANSFER : SEND_DONE;
+            state_ = SEND_TRANSFER;
         }
         else if (state_ == WAIT_DONE)
         {
-            // Final ACK for SEND_DONE: now we can finalize the stream.
             stream_.finalize();
             reset();
         }
@@ -154,7 +154,7 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
 template <InputStreamConcept InputStream, typename... Adapters>
 bool TaskRequestWrite<InputStream, Adapters...>::request()
 {
-    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request %d\r\n", state_);
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request in state %d\r\n", state_);
 
     if (state_ == WAIT_INIT || state_ == WAIT_TRANSFER || state_ == WAIT_DONE)
         return false;
@@ -173,39 +173,52 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
     {
         data_ = std::make_unique<uavcan_file_Write_Request_1_1>();
     }
-    data_->offset = offset_;
 
-    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request state switch\r\n");
-
-    size_t size = uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_;
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request in state: %d\r\n", state_);
     switch (state_)
     {
     case SEND_INIT:
-        stream_.initialize(data_->data.value.elements, size);
-        offset_ += size;
+    {
+        size_t current_size{0};
+        stream_.initialize(data_->data.value.elements, current_size);
         name_ = stream_.name();
-        size_ = stream_.size();
+        total_size_ = stream_.size();
 
-        data_->data.value.count = size;
+        data_->offset = offset_;
+        data_->data.value.count = current_size;
         data_->path.path.count = NAME_LENGTH;
         std::memcpy(data_->path.path.elements, name_.data(), NAME_LENGTH);
-        [[fallthrough]];
+        offset_ += current_size;
+    }
+    [[fallthrough]];
     case RESEND_INIT:
         state_ = WAIT_INIT;
         break;
 
     case SEND_TRANSFER:
-        stream_.getChunk(data_->data.value.elements, size);
-        offset_ += size;
-        data_->data.value.count = size;
+    {
+        size_t current_size{uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_};
+        stream_.getChunk(data_->data.value.elements, current_size);
+        if (current_size == 0) 
+        { 
+            state_ = SEND_DONE; 
+            goto send_done_label; 
+        }
+
+    	data_->offset = offset_;
+    	data_->data.value.count = current_size;
         data_->path.path.count = NAME_LENGTH;
         std::memcpy(data_->path.path.elements, name_.data(), NAME_LENGTH);
-        [[fallthrough]];
+        offset_ += current_size;
+    }
+    [[fallthrough]];
     case RESEND_TRANSFER:
         state_ = WAIT_TRANSFER;
         break;
 
+    send_done_label:
     case SEND_DONE:
+        data_->offset = offset_;
         data_->data.value.count = 0;
         data_->path.path.count = NAME_LENGTH;
         std::memcpy(data_->path.path.elements, name_.data(), NAME_LENGTH);

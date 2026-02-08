@@ -85,11 +85,20 @@ public:
     {
         ImageMetadata metadata;
         (void)buffer_.get_image(metadata);
+        size = sizeof(ImageMetadata);
         size_ = metadata.payload_size + sizeof(ImageMetadata);
         name_ = formatValues(metadata.timestamp, static_cast<uint8_t>(metadata.producer));
-        size = sizeof(metadata);
         std::memcpy(data, reinterpret_cast<uint8_t *>(&metadata), sizeof(ImageMetadata));
-        log(LOG_LEVEL_DEBUG, "ImageInputStream::initialize %19c\r\n", name_.data());
+
+
+    	constexpr size_t BUFFER_SIZE = 128;
+    	char name_hex_string_buffer[BUFFER_SIZE];
+    	uchar_buffer_to_hex(reinterpret_cast<unsigned char*>(name_.data()), NAME_LENGTH, name_hex_string_buffer, BUFFER_SIZE);
+
+    	char meta_hex_string_buffer[BUFFER_SIZE];
+    	uchar_buffer_to_hex(reinterpret_cast<unsigned char*>(&metadata), sizeof(metadata), meta_hex_string_buffer, BUFFER_SIZE);
+
+        log(LOG_LEVEL_DEBUG, "ImageInputStream::initialize %s with %s\r\n", name_hex_string_buffer, meta_hex_string_buffer);
         return true;
     }
 
@@ -121,8 +130,12 @@ public:
             return false;
         }
 
-        log(LOG_LEVEL_DEBUG, "ImageInputStream::getChunk\r\n");
-        return true;
+    	constexpr size_t BUFFER_SIZE = 1024;
+    	char data_hex_string_buffer[BUFFER_SIZE];
+    	uchar_buffer_to_hex(data, size, data_hex_string_buffer, BUFFER_SIZE);
+    	log(LOG_LEVEL_DEBUG, "ImageInputStream::getChunk %s\r\n", data_hex_string_buffer);
+
+    	return true;
     }
 
 private:

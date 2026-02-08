@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <vector>
+#include <array>
 
 #include "Task.hpp"
 #include "RegistrationManager.hpp"
@@ -12,22 +12,19 @@
 #include "Trigger.hpp"
 #include "Logger.hpp"
 
-template <ImageBufferConcept ImageBufferT, typename TriggerT = OnceTrigger>
+template <ImageBufferConcept ImageBufferT, typename TriggerT = OnceTrigger, size_t payload_length = 160>
 class TaskSyntheticImageGenerator : public Task
 {
 public:
     TaskSyntheticImageGenerator(ImageBufferT& buffer,
                                 TriggerT trigger,
-                                uint32_t payload_length,
                                 uint32_t interval,
                                 uint32_t tick)
         : Task(interval, tick),
           buffer_(buffer),
-          trigger_(trigger),
-          payload_length_(payload_length)
+          trigger_(trigger)
     {
-        payload_.resize(payload_length_);
-        for (uint32_t i = 0; i < payload_length_; i++)
+        for (uint32_t i = 0; i < payload_length; i++)
             payload_[i] = static_cast<uint8_t>(i);
     }
 
@@ -55,13 +52,13 @@ private:
     void publishSyntheticImage()
     {
         // Respect buffer capacity contract
-        log(LOG_LEVEL_DEBUG, "TaskSyntheticImageGenerator::publishSyntheticImage %d\r\n", HAL_GetTick());
-    	if (!buffer_.has_room_for(payload_length_))
+        log(LOG_LEVEL_DEBUG, "TaskSyntheticImageGenerator::publishSyntheticImage %d with buffer %d\r\n", HAL_GetTick(), buffer_.count());
+    	if (!buffer_.has_room_for(payload_length))
             return;
 
         ImageMetadata meta{};
         meta.timestamp    = HAL_GetTick();
-        meta.payload_size = payload_length_;
+        meta.payload_size = payload_length;
         meta.latitude     = 0.0f;
         meta.longitude    = 0.0f;
         meta.producer     = METADATA_PRODUCER::CAMERA_1;
@@ -71,7 +68,7 @@ private:
             return;
 
         const uint8_t* bytes = payload_.data();
-        size_t remaining = payload_length_;
+        size_t remaining = payload_length;
 
         while (remaining > 0)
         {
@@ -90,8 +87,7 @@ private:
 private:
     ImageBufferT& buffer_;
     TriggerT trigger_;
-    uint32_t payload_length_;
-    std::vector<uint8_t> payload_;
+    std::array<uint8_t, payload_length> payload_;
 };
 
 #endif /* INC_TASKSYNTHETICIMAGEGENERATOR_HPP_ */

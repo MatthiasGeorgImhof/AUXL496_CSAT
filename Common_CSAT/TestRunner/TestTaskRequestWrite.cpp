@@ -242,6 +242,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     // Mock Buffer and Stream
     MockBuffer mock_buffer;
     MockImageInputStream<MockBuffer> mock_stream(mock_buffer, 16);
+    constexpr const char filename[] = "0000000012345678_03";
 
     // Task parameters
     CyphalNodeID node_id = 42;
@@ -278,6 +279,10 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
     request = unpackRequest(transfer);
+    CHECK(request.path.path.count == NAME_LENGTH);
+    CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
+    CHECK(request.data.value.count == sizeof(ImageMetadata));
+    CHECK(strncmp(reinterpret_cast<char *>(request.data.value.elements), reinterpret_cast<char *>(&metadata), sizeof(ImageMetadata)) == 0);
     free(transfer.payload);
     loopard.buffer.clear();
 
@@ -295,8 +300,11 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(strncmp(&static_cast<char *>(transfer.payload)[27], reinterpret_cast<char *>(test_data.data()), 24) == 0);
     request = unpackRequest(transfer);
+    CHECK(request.path.path.count == NAME_LENGTH);
+    CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
+    CHECK(request.data.value.count == test_data.size());
+    CHECK(strncmp(reinterpret_cast<char *>(request.data.value.elements), reinterpret_cast<char *>(test_data.data()), test_data.size()) == 0);
     free(transfer.payload);
     loopard.buffer.clear();
 
@@ -314,12 +322,14 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
-    CHECK(transfer.payload_size == 27);
     request = unpackRequest(transfer);
+    CHECK(request.path.path.count == NAME_LENGTH);
+    CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
+    CHECK(request.data.value.count == 0);
     free(transfer.payload);
     loopard.buffer.clear();
 
-    // Third Task Execution: Receive OK
+    // Fourth Task Execution: Receive OK
 
     ret_transfer = createWriteResponse(uavcan_file_Error_1_0_OK);
     response = unpackResponse(ret_transfer);
@@ -327,7 +337,6 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     task.handleTaskImpl();
     CHECK(loopard.buffer.size() == 0);
     CHECK(task.buffer_.size() == 0);
-    loopard.buffer.clear();
 }
 
 TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
@@ -347,6 +356,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     // Mock Buffer and Stream
     MockBuffer mock_buffer;
     MockImageInputStream<MockBuffer> mock_stream(mock_buffer, 16);
+    constexpr const char filename[] = "0000000012345678_03";
 
     // Task parameters
     CyphalNodeID node_id = 42;
@@ -398,6 +408,10 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
     request = unpackRequest(transfer);
+    CHECK(request.path.path.count == NAME_LENGTH);
+    CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
+    CHECK(request.data.value.count == sizeof(ImageMetadata));
+    CHECK(strncmp(reinterpret_cast<char *>(request.data.value.elements), reinterpret_cast<char *>(&metadata), sizeof(ImageMetadata)) == 0);
     free(transfer.payload);
     loopard.buffer.clear();
 
@@ -416,6 +430,10 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
     CHECK(strncmp(&static_cast<char *>(transfer.payload)[27], reinterpret_cast<char *>(test_data.data()), 24) == 0);
     request = unpackRequest(transfer);
+    CHECK(request.path.path.count == NAME_LENGTH);
+    CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
+    CHECK(request.data.value.count == test_data.size());
+    CHECK(strncmp(reinterpret_cast<char *>(request.data.value.elements), reinterpret_cast<char *>(test_data.data()), test_data.size()) == 0);
     free(transfer.payload);
     loopard.buffer.clear();
 
@@ -432,6 +450,10 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
     CHECK(strncmp(&static_cast<char *>(transfer.payload)[27], reinterpret_cast<char *>(test_data.data()), 24) == 0);
     request = unpackRequest(transfer);
+    CHECK(request.path.path.count == NAME_LENGTH);
+    CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
+    CHECK(request.data.value.count == test_data.size());
+    CHECK(strncmp(reinterpret_cast<char *>(request.data.value.elements), reinterpret_cast<char *>(test_data.data()), test_data.size()) == 0);
     free(transfer.payload);
     loopard.buffer.clear();
 
@@ -450,6 +472,9 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
     CHECK(transfer.payload_size == 27);
     request = unpackRequest(transfer);
+    CHECK(request.path.path.count == NAME_LENGTH);
+    CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
+    CHECK(request.data.value.count == 0);
     free(transfer.payload);
     loopard.buffer.clear();
 
@@ -466,6 +491,9 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
     CHECK(transfer.payload_size == 27);
     request = unpackRequest(transfer);
+    CHECK(request.path.path.count == NAME_LENGTH);
+    CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
+    CHECK(request.data.value.count == 0);
     free(transfer.payload);
     loopard.buffer.clear();
 

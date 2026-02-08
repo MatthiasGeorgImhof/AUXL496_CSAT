@@ -5,6 +5,7 @@
 #include "InputOutputStream.hpp"
 #include "TaskRequestWrite.hpp"
 #include "RegistrationManager.hpp"
+#include "Logger.hpp"
 
 #include <vector>
 #include <cstring>
@@ -79,7 +80,7 @@ public:
     State getState() const { return this->state_; }
 
     size_t getOffset() const { return this->offset_; }
-    size_t getSize()   const { return this->size_;   }
+    size_t getSize()   const { return this->total_size_;   }
 
     // Inject a synthetic OK response into TaskForClient::buffer_
     void injectOkResponse()
@@ -193,7 +194,7 @@ TEST_CASE("TaskRequestWrite end-to-end with Buffer")
     }
 
     // After loop, we should be at SEND_DONE
-    CHECK(writer.getState() == Writer::State::SEND_DONE);
+    CHECK(writer.getState() == Writer::State::WAIT_DONE);
 
     // --------------------------------------------------------
     // Step 3: DONE is fire-and-forget in current implementation
@@ -317,7 +318,7 @@ TEST_CASE("Full pipeline: MockTaskMLX90640 → Buffer → ImageInputStream → T
         }
     }
 
-    CHECK(writer.getState() == Writer::State::SEND_DONE);
+    CHECK(writer.getState() == Writer::State::WAIT_DONE);
 
     // --------------------------------------------------------
     // Step 4: DONE (fire-and-forget in current MVP)

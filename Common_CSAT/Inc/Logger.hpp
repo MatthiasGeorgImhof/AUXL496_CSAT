@@ -84,9 +84,6 @@ void log(uint8_t level, const char* format, ...);
 inline void log(uint8_t, const char*, ...) {}
 #endif
 
-extern "C" {
-int uchar_buffer_to_hex(const unsigned char* src, size_t len,
-                        char* dst, size_t dst_size);
-}
+int uchar_buffer_to_hex(const unsigned char* src, size_t len, char* dst, size_t dst_size);
 
 #endif // LOGGER_HPP_

@@ -39,10 +39,9 @@ TEST_CASE("SyntheticImageGenerator basic pipeline")
     constexpr uint32_t N = 16;
     OnceTrigger trig;   // <-- NEW: required trigger
 
-    TaskSyntheticImageGenerator<Buffer, OnceTrigger> gen(
+    TaskSyntheticImageGenerator<Buffer, OnceTrigger, N> gen(
         buf,
         trig,       // <-- NEW: trigger argument
-        N,          // payload length
         0,          // interval
         0           // tick
     );

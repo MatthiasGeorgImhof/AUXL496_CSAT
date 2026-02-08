@@ -149,9 +149,7 @@ void log(uint8_t level, const char* format, ...)
     va_end(args);
 }
 
-extern "C" {
-int uchar_buffer_to_hex(const unsigned char* src, size_t len,
-                        char* dst, size_t dst_size)
+int uchar_buffer_to_hex(const unsigned char* src, size_t len, char* dst, size_t dst_size)
 {
     if (!src || !dst || len == 0 || dst_size == 0) return -1;
 
@@ -164,5 +162,4 @@ int uchar_buffer_to_hex(const unsigned char* src, size_t len,
     }
     dst[len*3 - 1] = '\0';
     return 0;
-}
 }

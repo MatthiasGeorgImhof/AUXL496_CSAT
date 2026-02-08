@@ -124,7 +124,11 @@ protected:
 		}
 		else
 		{
-			log(LOG_LEVEL_DEBUG, "Task.publish serialization result %d with size %d \r\n", result, payload_size);
+        	constexpr size_t BUFFER_SIZE = 512;
+        	char hex_string_buffer[BUFFER_SIZE];
+        	uchar_buffer_to_hex(payload, payload_size, hex_string_buffer, BUFFER_SIZE);
+
+			log(LOG_LEVEL_DEBUG, "Task.publish serialization %d %d: %s \r\n", node_id, port_id, hex_string_buffer);
 		}
 		CyphalTransferMetadata metadata =
 			{
