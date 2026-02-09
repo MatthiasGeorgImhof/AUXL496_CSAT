@@ -13,6 +13,9 @@
 #include "ServiceManager.hpp"
 #include "o1heap.h"
 #include "Logger.hpp"
+#include "CanTxQueueDrainer.hpp"
+
+extern CanTxQueueDrainer tx_drainer;
 
 constexpr size_t SERIAL_MTU = 640;
 struct SerialFrame
@@ -165,17 +168,9 @@ public:
         }
     }
 
-	void CanProcessTxQueue(CanardAdapter */*adapter*/, CAN_HandleTypeDef *hcan)
+	void CanProcessTxQueue(CanardAdapter */*adapter*/, CAN_HandleTypeDef */*hcan*/)
 	{
-		// Optional: log queue state before draining
-		// if (adapter->que.size > 0)
-		// {
-		//     log(LOG_LEVEL_DEBUG,
-		//         "CanProcessTxQueue: draining queue, size=%u/%u\r\n",
-		//         adapter->que.size, adapter->que.capacity);
-		// }
-
-		drain_canard_tx_queue(hcan);
+		tx_drainer.irq_safe_drain();
 	}
 };
 

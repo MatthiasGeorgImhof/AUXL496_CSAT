@@ -12,6 +12,7 @@
 #include "udpard.h"
 
 #include "Logger.hpp"
+#include "IRQLock.hpp"
 
 #ifdef __arm____
 #include "stm32l4xx_hal.h"
@@ -39,14 +40,16 @@ private:
 
 	static void disableCANInterrupts()
 	{
-		HAL_NVIC_DisableIRQ(CAN1_RX0_IRQn);
-		HAL_NVIC_DisableIRQ(CAN1_RX1_IRQn);
+		CanTxIrqLock::lock();
+		CanRx0IrqLock::lock();
+		CanRx1IrqLock::lock();
 	}
 
 	static void enableCANInterrupts()
 	{
-		HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
-		HAL_NVIC_EnableIRQ(CAN1_RX1_IRQn);
+		CanTxIrqLock::unlock();
+		CanRx0IrqLock::unlock();
+		CanRx1IrqLock::unlock();
 	}
 
 	static void *safeAllocate(const size_t size)
