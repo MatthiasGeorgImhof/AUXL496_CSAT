@@ -52,7 +52,7 @@ private:
     void publishSyntheticImage()
     {
         // Respect buffer capacity contract
-        log(LOG_LEVEL_DEBUG, "TaskSyntheticImageGenerator::publishSyntheticImage %d with buffer %d\r\n", HAL_GetTick(), buffer_.count());
+        log(LOG_LEVEL_DEBUG, "TaskSyntheticImageGenerator::publishSyntheticImage %d with buffer isfull %d and payload %d\r\n", HAL_GetTick(), buffer_.count(), payload_length);
     	if (!buffer_.has_room_for(payload_length))
             return;
 
