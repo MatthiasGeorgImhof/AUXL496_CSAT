@@ -91,7 +91,7 @@ public:
         std::memcpy(data, reinterpret_cast<uint8_t *>(&metadata), sizeof(ImageMetadata));
 
 
-    	constexpr size_t BUFFER_SIZE = 128;
+    	constexpr size_t BUFFER_SIZE = 2048;
     	char name_hex_string_buffer[BUFFER_SIZE];
     	uchar_buffer_to_hex(reinterpret_cast<unsigned char*>(name_.data()), NAME_LENGTH, name_hex_string_buffer, BUFFER_SIZE);
 

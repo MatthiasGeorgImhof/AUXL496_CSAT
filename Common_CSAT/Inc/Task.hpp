@@ -23,7 +23,7 @@
 
 class RegistrationManager;
 
-//
+//ERROR Task.publish push
 // baseclass
 //
 
@@ -124,11 +124,12 @@ protected:
 		}
 		else
 		{
-        	constexpr size_t BUFFER_SIZE = 512;
-        	char hex_string_buffer[BUFFER_SIZE];
-        	uchar_buffer_to_hex(payload, payload_size, hex_string_buffer, BUFFER_SIZE);
-
-			log(LOG_LEVEL_DEBUG, "Task.publish serialization %d %d: %s \r\n", node_id, port_id, hex_string_buffer);
+//        	constexpr size_t BUFFER_SIZE = 1024;
+//        	char hex_string_buffer[BUFFER_SIZE];
+//        	uchar_buffer_to_hex(payload, payload_size, hex_string_buffer, BUFFER_SIZE);
+//
+//			log(LOG_LEVEL_DEBUG, "Task.publish serialization %d %d: %s \r\n", node_id, port_id, hex_string_buffer);
+			log(LOG_LEVEL_DEBUG, "Task.publish serialization %d %d: %d \r\n", node_id, port_id, transfer_id);
 		}
 		CyphalTransferMetadata metadata =
 			{
@@ -142,13 +143,14 @@ protected:
 			};
 
 		bool all_successful = true;
+		int32_t r{0};
 		std::apply([&](auto &...adapter)
 				   { ([&]()
 					  {
                 int32_t res = adapter.cyphalTxPush(static_cast<CyphalMicrosecond>(0), &metadata, payload_size, payload);
-                all_successful = all_successful && (res > 0); }(), ...); }, adapters_);
+                all_successful = all_successful && (res > 0); r += res;}(), ...); }, adapters_);
 		if (!all_successful)
-			log(LOG_LEVEL_ERROR, "ERROR Task.publish push\r\n");
+			log(LOG_LEVEL_ERROR, "ERROR Task.publish push: %d\r\n", r);
 	}
 
 protected:

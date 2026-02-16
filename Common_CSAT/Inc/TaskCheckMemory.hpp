@@ -19,8 +19,6 @@ public:
 	TaskCheckMemory() = delete;
 	TaskCheckMemory(O1HeapInstance *o1heap, uint32_t interval, uint32_t tick) : Task(interval, tick), o1heap(o1heap) {}
 
-	virtual void handleMessage(std::shared_ptr<CyphalTransfer> /*transfer*/) override {};
-
 	virtual void registerTask(RegistrationManager *manager, std::shared_ptr<Task> task) override;
 	virtual void unregisterTask(RegistrationManager* manager, std::shared_ptr<Task> task) override;
 

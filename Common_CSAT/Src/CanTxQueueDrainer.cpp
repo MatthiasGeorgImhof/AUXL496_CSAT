@@ -10,7 +10,6 @@ CanTxQueueDrainer::CanTxQueueDrainer(CanardAdapter* adapter,
 
 void CanTxQueueDrainer::drain()
 {
-	CanTxIrqLock::lock();
 	const CanardTxQueueItem* ti = nullptr;
     while ((ti = canardTxPeek(&adapter_->que)) != nullptr)
     {
@@ -24,21 +23,24 @@ void CanTxQueueDrainer::drain()
         header.IDE   = CAN_ID_EXT;
 
         uint32_t mailbox;
-        HAL_CAN_AddTxMessage(hcan_, &header,
-                             (uint8_t*)ti->frame.payload,
-                             &mailbox);
+        HAL_CAN_AddTxMessage(hcan_, &header, (uint8_t*)ti->frame.payload, &mailbox);
 
-        adapter_->ins.memory_free(
-            &adapter_->ins,
-            canardTxPop(&adapter_->que, ti)
-        );
+        adapter_->ins.memory_free(&adapter_->ins, canardTxPop(&adapter_->que, ti));
     }
-	CanTxIrqLock::unlock();
+
+    if (adapter_->que.size > 0 && HAL_CAN_GetTxMailboxesFreeLevel(hcan_) == 0)
+    {
+    	__HAL_CAN_ENABLE_IT(hcan_, CAN_IT_TX_MAILBOX_EMPTY);
+    }
+    else
+    {
+    	__HAL_CAN_DISABLE_IT(hcan_, CAN_IT_TX_MAILBOX_EMPTY);
+    }
 }
 
 void CanTxQueueDrainer::irq_safe_drain()
 {
-	CanTxIrqLock::lock();
+//	CanTxIrqLock::lock();
 	drain();
-	CanTxIrqLock::unlock();
+//	CanTxIrqLock::unlock();
 }

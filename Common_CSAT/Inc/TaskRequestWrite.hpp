@@ -4,6 +4,7 @@
 #include "Task.hpp"
 #include "RegistrationManager.hpp"
 #include "InputOutputStream.hpp"
+#include "heapallocation.hpp"
 
 #include "nunavut_assert.h"
 #include "uavcan/file/Write_1_1.h"
@@ -40,12 +41,8 @@ public:
                      std::tuple<Adapters...> &adapters)
         : TaskForClient<CyphalBuffer8, Adapters...>(sleep_interval, tick, node_id, transfer_id, adapters),
           TaskPacing(sleep_interval, operate_interval),
-          stream_(stream)
-        , state_(IDLE)
-        , total_size_(0)
-        , offset_(0)
-        , name_{}
-        , data_(nullptr)
+		  stream_(stream),
+		  state_(IDLE), total_size_(0), offset_(0), timeout_(0), last_transfer_id_{0}, name_{}, values_{}, num_values_(0)
     {
     }
 
@@ -53,18 +50,35 @@ public:
     virtual void unregisterTask(RegistrationManager *manager, std::shared_ptr<Task> task) override;
     virtual void handleTaskImpl() override;
 
+	virtual void update(uint32_t now) override;
+
 protected:
     bool request();
     bool respond();
     void reset();
+
+    template <typename T, typename... Args>
+    auto make_on_local_heap(Args&&... args)
+    {
+        static SafeAllocator<T, LocalHeap> alloc;
+        return alloc_unique_custom<T, LocalHeap>(alloc, std::forward<Args>(args)...);
+    }
+
+protected:
+    using ValueBuffer = std::array<uint8_t, uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_>;
+    using ValueAlloc  = SafeAllocator<ValueBuffer, LocalHeap>;
+    using ValuePtr    = std::unique_ptr<ValueBuffer, ValueAlloc::Deletor>;
 
 protected:
     InputStream &stream_;
     State state_;
     size_t total_size_;
     size_t offset_;
+    uint32_t timeout_;
+    CyphalTransferID last_transfer_id_;
     std::array<char, NAME_LENGTH> name_;
-    std::unique_ptr<uavcan_file_Write_Request_1_1> data_;
+    ValuePtr values_;
+    size_t num_values_;
 };
 
 template <InputStreamConcept InputStream, typename... Adapters>
@@ -75,14 +89,17 @@ void TaskRequestWrite<InputStream, Adapters...>::reset()
     offset_ = 0;
 
     name_ = {};
-    data_ = nullptr;
     TaskPacing::sleep(*this);
 }
 
 template <InputStreamConcept InputStream, typename... Adapters>
 void TaskRequestWrite<InputStream, Adapters...>::handleTaskImpl()
 {
-    (void)respond();
+    if (values_ == nullptr)
+    {
+    	values_ = make_on_local_heap<ValueBuffer>();
+    }
+	(void)respond();
     (void)request();
 }
 
@@ -92,7 +109,33 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
     log(LOG_LEVEL_DEBUG, "TaskRequestWrite: respond in state %d\r\n", state_);
 
     if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
+    {
+    	if (HAL_GetTick() < timeout_)
+    		return true;
+
+    	switch(state_)
+    	{
+    	case WAIT_INIT:
+    	{
+    		state_ = RESEND_INIT;
+    		break;
+    	}
+    	case WAIT_TRANSFER:
+    	{
+    		state_ = RESEND_TRANSFER;
+            break;
+    	}
+        case WAIT_DONE:
+        {
+        	state_ = RESEND_DONE;
+        	break;
+        }
+        default:
+        {
+    	}
+    	}
         return false;
+    }
 
     std::shared_ptr<CyphalTransfer> transfer = TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
     if (transfer->metadata.transfer_kind != CyphalTransferKindResponse)
@@ -114,38 +157,44 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
         return false;
     }
 
-    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: received response %d in state %d\r\n", data._error, state_);
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: received response %d in state %d for transfer_id %d \r\n", data._error, state_, transfer->metadata.transfer_id);
 
     if (data._error.value == uavcan_file_Error_1_0_OK)
     {
-        if (state_ == WAIT_INIT)
+        switch(state_)
         {
+        case WAIT_INIT:
             state_ = SEND_TRANSFER;
-        }
-        else if (state_ == WAIT_TRANSFER)
-        {
+            break;
+        case WAIT_TRANSFER:
+
             state_ = SEND_TRANSFER;
-        }
-        else if (state_ == WAIT_DONE)
-        {
+            break;
+
+        case WAIT_DONE:
             stream_.finalize();
             reset();
+            break;
+        default:
+        	return false;
         }
     }
     else
     {
-        if (state_ == WAIT_INIT)
-        {
-            state_ = RESEND_INIT;
-        }
-        if (state_ == WAIT_TRANSFER)
-        {
+    	switch(state_)
+    	{
+    	case WAIT_INIT:
+        	state_ = RESEND_INIT;
+    		break;
+    	case WAIT_TRANSFER:
             state_ = RESEND_TRANSFER;
-        }
-        else if (state_ == WAIT_DONE)
-        {
-            state_ = RESEND_DONE;
-        }
+            break;
+        case WAIT_DONE:
+        	state_ = RESEND_DONE;
+        	break;
+        default:
+        	return false;
+    	}
     }
 
     return true;
@@ -169,82 +218,98 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
         TaskPacing::operate(*this);
     }
 
-    if (!data_)
-    {
-        data_ = std::make_unique<uavcan_file_Write_Request_1_1>();
-    }
+    auto data = make_on_local_heap<uavcan_file_Write_Request_1_1>();
 
-    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request in state: %d\r\n", state_);
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: request in state %d\r\n", state_);
     switch (state_)
     {
     case SEND_INIT:
     {
-        size_t current_size{0};
-        stream_.initialize(data_->data.value.elements, current_size);
+        stream_.initialize(values_->data(), num_values_);
         name_ = stream_.name();
         total_size_ = stream_.size();
 
-        data_->offset = offset_;
-        data_->data.value.count = current_size;
-        data_->path.path.count = NAME_LENGTH;
-        std::memcpy(data_->path.path.elements, name_.data(), NAME_LENGTH);
-        offset_ += current_size;
-    }
-    [[fallthrough]];
-    case RESEND_INIT:
+        data->offset = offset_;
+        data->data.value.count = num_values_;
+        data->path.path.count = NAME_LENGTH;
+        std::memcpy(data->path.path.elements, name_.data(), NAME_LENGTH);
+        std::memcpy(data->data.value.elements, values_->data(), num_values_);
+        offset_ += num_values_;
         state_ = WAIT_INIT;
+        break;
+    }
+    case RESEND_INIT:
+        data->offset = offset_ - num_values_;
+        data->data.value.count = num_values_;
+        data->path.path.count = NAME_LENGTH;
+        std::memcpy(data->path.path.elements, name_.data(), NAME_LENGTH);
+        std::memcpy(data->data.value.elements, values_->data(), num_values_);
+    	state_ = WAIT_INIT;
         break;
 
     case SEND_TRANSFER:
     {
-        size_t current_size{uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_};
-        stream_.getChunk(data_->data.value.elements, current_size);
-        if (current_size == 0) 
+    	num_values_ = std::min(64U, uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_);
+        stream_.getChunk(values_->data(), num_values_);
+        if (num_values_ == 0)
         { 
             state_ = SEND_DONE; 
             goto send_done_label; 
         }
 
-    	data_->offset = offset_;
-    	data_->data.value.count = current_size;
-        data_->path.path.count = NAME_LENGTH;
-        std::memcpy(data_->path.path.elements, name_.data(), NAME_LENGTH);
-        offset_ += current_size;
-    }
-    [[fallthrough]];
-    case RESEND_TRANSFER:
+    	data->offset = offset_;
+    	data->data.value.count = num_values_;
+        data->path.path.count = NAME_LENGTH;
+        std::memcpy(data->path.path.elements, name_.data(), NAME_LENGTH);
+        std::memcpy(data->data.value.elements, values_->data(), num_values_);
+        offset_ += num_values_;
         state_ = WAIT_TRANSFER;
+        break;
+    }
+    case RESEND_TRANSFER:
+    	data->offset = offset_ - num_values_;
+    	data->data.value.count = num_values_;
+        data->path.path.count = NAME_LENGTH;
+        std::memcpy(data->path.path.elements, name_.data(), NAME_LENGTH);
+        std::memcpy(data->data.value.elements, values_->data(), num_values_);
+    	state_ = WAIT_TRANSFER;
         break;
 
     send_done_label:
     case SEND_DONE:
-        data_->offset = offset_;
-        data_->data.value.count = 0;
-        data_->path.path.count = NAME_LENGTH;
-        std::memcpy(data_->path.path.elements, name_.data(), NAME_LENGTH);
+        data->offset = offset_;
+        data->data.value.count = 0;
+        data->path.path.count = NAME_LENGTH;
+        std::memcpy(data->path.path.elements, name_.data(), NAME_LENGTH);
         state_ = WAIT_DONE;
         break;
 
     case RESEND_DONE:
-        // Re-send the same zero-size packet
-        state_ = WAIT_DONE;
+        data->offset = offset_;
+        data->data.value.count = 0;
+        data->path.path.count = NAME_LENGTH;
+        std::memcpy(data->path.path.elements, name_.data(), NAME_LENGTH);
+    	state_ = WAIT_DONE;
         break;
 
     default:
         return false; // catch it all
     }
 
+    last_transfer_id_ = this->transfer_id_;
     constexpr size_t PAYLOAD_SIZE = uavcan_file_Write_Request_1_1_SERIALIZATION_BUFFER_SIZE_BYTES_;
     uint8_t payload[PAYLOAD_SIZE];
     TaskForClient<CyphalBuffer8, Adapters...>::publish(
         PAYLOAD_SIZE,
         payload,
-        data_.get(),
+        data.get(),
         reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(
             uavcan_file_Write_Request_1_1_serialize_),
         uavcan_file_Write_1_1_FIXED_PORT_ID_,
         TaskForClient<CyphalBuffer8, Adapters...>::node_id_);
-    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: sent request\r\n");
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: sent request with %d bytes at offset %d and transfer_id %d\r\n", data->data.value.count, offset_- data->data.value.count, this->transfer_id_);
+    timeout_ = HAL_GetTick() + 100 * Task::interval_;
+    ++this->transfer_id_;
     return true;
 }
 
@@ -259,5 +324,12 @@ void TaskRequestWrite<InputStream, Adapters...>::unregisterTask(RegistrationMana
 {
     manager->unclient(uavcan_file_Write_1_1_FIXED_PORT_ID_, task);
 }
+
+template <InputStreamConcept InputStream, typename... Adapters>
+void TaskRequestWrite<InputStream, Adapters...>::update(uint32_t now)
+{
+	Task::update(now);
+}
+
 
 #endif // __TASKREQUESTWRITE_HPP_
