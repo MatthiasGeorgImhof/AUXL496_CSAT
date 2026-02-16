@@ -101,7 +101,7 @@ public:
                          const void *const payload)
     {
         SerardTransferMetadata serard_metadata = cyphalMetadataToSerard(*metadata);
-        log(LOG_LEVEL_DEBUG, "serardTxPush %3d %3d -> %3d %3d\r\n",
+        log(LOG_LEVEL_DEBUG, "serardTxPush at %08u: %3d %3d -> %3d %3d\r\n", HAL_GetTick(),
         		serard_metadata.source_node_id, serard_metadata.destination_node_id,
         		serard_metadata.remote_node_id, serard_metadata.port_id);
 
@@ -130,11 +130,11 @@ public:
         (void)payload;
 
         setNodeID(node_id_);
-        log(LOG_LEVEL_DEBUG, "serardTxForward %3d %3d %4d %2d: (%3d %3d %3d) (%3d %3d %3d)  -> %3d %3d\r\n",
+        log(LOG_LEVEL_DEBUG, "serardTxForward at %08u: %3d %3d %4d %2d: (%3d %3d %3d) (%3d %3d %3d)  -> %3d %3d %d\r\n", HAL_GetTick(),
             node_id_, metadata_.remote_node_id, metadata_.port_id, res,
             metadata->remote_node_id, metadata->source_node_id, metadata->destination_node_id,
             metadata_.remote_node_id, metadata_.source_node_id, metadata_.destination_node_id,
-            metadata_.source_node_id, metadata_.remote_node_id);
+            metadata_.source_node_id, metadata_.remote_node_id, metadata_.transfer_id);
         return res;
     }
 

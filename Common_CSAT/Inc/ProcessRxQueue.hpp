@@ -44,10 +44,10 @@ public:
     template <typename... Adapters>
     bool processTransfer(CyphalTransfer &transfer, ServiceManager *service_manager, std::tuple<Adapters...> &adapters)
     {
-    	constexpr size_t BUFFER_SIZE = 512;
-    	char hex_string_buffer[BUFFER_SIZE];
-    	uchar_buffer_to_hex(static_cast<const unsigned char*>(transfer.payload), transfer.payload_size, hex_string_buffer, BUFFER_SIZE);
-        log(LOG_LEVEL_DEBUG, "LoopManager::processTransfer: %4d %s\r\n", transfer.metadata.port_id, hex_string_buffer);
+//    	constexpr size_t BUFFER_SIZE = 512;
+//    	char hex_string_buffer[BUFFER_SIZE];
+//    	uchar_buffer_to_hex(static_cast<const unsigned char*>(transfer.payload), transfer.payload_size, hex_string_buffer, BUFFER_SIZE);
+//        log(LOG_LEVEL_DEBUG, "LoopManager::processTransfer: %4d %s\r\n", transfer.metadata.port_id, hex_string_buffer);
 
     	std::shared_ptr<CyphalTransfer> transfer_ptr = std::allocate_shared<CyphalTransfer>(allocator_, transfer);
         service_manager->handleMessage(transfer_ptr);
@@ -70,10 +70,10 @@ public:
             CanRxFrame frame = can_rx_buffer.pop();
             size_t frame_size = frame.header.DLC;
 
-        	constexpr size_t BUFFER_SIZE = 256;
-        	char hex_string_buffer[BUFFER_SIZE];
-        	uchar_buffer_to_hex(frame.data, frame_size, hex_string_buffer, BUFFER_SIZE);
-            log(LOG_LEVEL_DEBUG, "LoopManager::CanProcessRxQueue dump: %4x %s\r\n", frame.header.ExtId, hex_string_buffer);
+//        	constexpr size_t BUFFER_SIZE = 256;
+//        	char hex_string_buffer[BUFFER_SIZE];
+//        	uchar_buffer_to_hex(frame.data, frame_size, hex_string_buffer, BUFFER_SIZE);
+//            log(LOG_LEVEL_DEBUG, "LoopManager::CanProcessRxQueue dump: %4x %s\r\n", frame.header.ExtId, hex_string_buffer);
 
             CyphalTransfer transfer;
             int32_t result = cyphal->cyphalRxReceive(frame.header.ExtId, &frame_size, frame.data, &transfer);
@@ -95,10 +95,10 @@ public:
             size_t frame_size = frame.size;
             size_t shift = 0;
 
-        	constexpr size_t BUFFER_SIZE = 256;
-        	char hex_string_buffer[BUFFER_SIZE];
-        	uchar_buffer_to_hex(frame.data + shift, frame_size, hex_string_buffer, BUFFER_SIZE);
-            log(LOG_LEVEL_DEBUG, "LoopManager::SerialProcessRxQueue dump: %s\r\n", hex_string_buffer);
+//        	constexpr size_t BUFFER_SIZE = 256;
+//        	char hex_string_buffer[BUFFER_SIZE];
+//        	uchar_buffer_to_hex(frame.data + shift, frame_size, hex_string_buffer, BUFFER_SIZE);
+//            log(LOG_LEVEL_DEBUG, "LoopManager::SerialProcessRxQueue dump: %s\r\n", hex_string_buffer);
 
             CyphalTransfer transfer;
             for (;;)

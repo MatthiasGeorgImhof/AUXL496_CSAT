@@ -57,7 +57,12 @@ public:
                          const size_t payload_size,
                          const void *const payload)
     {
-        auto res = canardTxPush(&adapter_->que, &adapter_->ins, tx_deadline_usec, reinterpret_cast<const CanardTransferMetadata *>(metadata), payload_size, payload);
+        log(LOG_LEVEL_DEBUG, "canardTxPush at %08u: %3d %3d -> %3d %3d %3d\r\n", HAL_GetTick(),
+        		metadata->source_node_id, metadata->destination_node_id,
+        		metadata->remote_node_id, metadata->port_id, metadata->transfer_id);
+
+
+    	auto res = canardTxPush(&adapter_->que, &adapter_->ins, tx_deadline_usec, reinterpret_cast<const CanardTransferMetadata *>(metadata), payload_size, payload);
         tx_drainer.irq_safe_drain();
         return res;
     }
@@ -81,7 +86,7 @@ public:
         res = cyphalTxPush(tx_deadline_usec, &metadata_, payload_size, payload);
 
         setNodeID(node_id_);
-        log(LOG_LEVEL_DEBUG, "canardTxForward %3d %3d %4d %2d: (%3d %3d %3d) (%3d %3d %3d) -> %3d %3d\r\n",
+        log(LOG_LEVEL_DEBUG, "canardTxForward at %08u: %3d %3d %4d %2d: (%3d %3d %3d) (%3d %3d %3d) -> %3d %3d\r\n", HAL_GetTick(),
         		node_id_, metadata_.remote_node_id, metadata_.port_id, res,
         		metadata->remote_node_id, metadata->source_node_id, metadata->destination_node_id,
         		metadata_.remote_node_id, metadata_.source_node_id, metadata_.destination_node_id,
