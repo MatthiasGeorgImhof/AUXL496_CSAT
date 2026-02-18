@@ -207,6 +207,8 @@ void loopardMemoryFree(void *pointer) { free(pointer); };
 
 TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles small write")
 {
+    LocalHeap::initialize();
+    
     // Create adapter
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;
@@ -305,6 +307,8 @@ TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles small write")
 
 TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles large write")
 {
+    LocalHeap::initialize();
+    
     // Create adapter
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;

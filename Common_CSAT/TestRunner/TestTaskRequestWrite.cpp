@@ -227,6 +227,8 @@ void loopardMemoryFree(void *pointer) { free(pointer); };
 
 TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
 {
+    LocalHeap::initialize();
+
     uavcan_file_Write_Response_1_1 response{};
     uavcan_file_Write_Request_1_1 request{};
 
@@ -277,7 +279,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+0); // Request with defined transfer_id
     request = unpackRequest(transfer);
     CHECK(request.path.path.count == NAME_LENGTH);
     CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
@@ -299,7 +301,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+1); // Request with defined transfer_id
     request = unpackRequest(transfer);
     CHECK(request.path.path.count == NAME_LENGTH);
     CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
@@ -321,7 +323,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+2); // Request with defined transfer_id
     request = unpackRequest(transfer);
     CHECK(request.path.path.count == NAME_LENGTH);
     CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
@@ -341,6 +343,8 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle")
 
 TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
 {
+    LocalHeap::initialize();
+    
     uavcan_file_Write_Response_1_1 response{};
     uavcan_file_Write_Request_1_1 request{};
 
@@ -391,7 +395,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+0); // Request with defined transfer_id
     request = unpackRequest(transfer);
     free(transfer.payload);
     loopard.buffer.clear();
@@ -406,7 +410,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+1); // Request with defined transfer_id
     request = unpackRequest(transfer);
     CHECK(request.path.path.count == NAME_LENGTH);
     CHECK(strncmp(reinterpret_cast<char *>(request.path.path.elements), filename, sizeof(filename)) == 0);
@@ -427,7 +431,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+2); // Request with defined transfer_id
     CHECK(strncmp(&static_cast<char *>(transfer.payload)[27], reinterpret_cast<char *>(test_data.data()), 24) == 0);
     request = unpackRequest(transfer);
     CHECK(request.path.path.count == NAME_LENGTH);
@@ -447,7 +451,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+3); // Request with defined transfer_id
     CHECK(strncmp(&static_cast<char *>(transfer.payload)[27], reinterpret_cast<char *>(test_data.data()), 24) == 0);
     request = unpackRequest(transfer);
     CHECK(request.path.path.count == NAME_LENGTH);
@@ -469,7 +473,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+4); // Request with defined transfer_id
     CHECK(transfer.payload_size == 27);
     request = unpackRequest(transfer);
     CHECK(request.path.path.count == NAME_LENGTH);
@@ -488,7 +492,7 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
     CHECK(transfer.metadata.port_id == uavcan_file_Write_1_1_FIXED_PORT_ID_);
     CHECK(transfer.metadata.transfer_kind == CyphalTransferKindRequest);
     CHECK(transfer.metadata.remote_node_id == 11);       // Request with client node_id
-    CHECK(transfer.metadata.transfer_id == transfer_id); // Request with defined transfer_id
+    CHECK(transfer.metadata.transfer_id == transfer_id+5); // Request with defined transfer_id
     CHECK(transfer.payload_size == 27);
     request = unpackRequest(transfer);
     CHECK(request.path.path.count == NAME_LENGTH);
@@ -517,6 +521,8 @@ TEST_CASE("TaskRequestWrite: Handles Write Request Lifecycle with Errors")
 
 TEST_CASE("TaskRequestWrite: Registers and Unregisters correctly")
 {
+    LocalHeap::initialize();
+    
     // Create adapter
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;

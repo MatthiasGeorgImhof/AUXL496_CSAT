@@ -2,7 +2,8 @@
 #include "doctest.h"
 
 #include "TrivialImageBuffer.hpp"
-#include "InputOutputStream.hpp"   // for ImageBufferConcept
+#include "InputOutputStream.hpp"
+#include "Logger.hpp"
 #include <vector>
 #include <cstring>
 

@@ -2,11 +2,11 @@
 
 #ifdef __arm____
 #include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal.h"
 #else
 #include "mock_hal.h"
 #endif
 
-#include "stm32l4xx_hal.h"
 
 // Forward declaration only
 struct CanardAdapter;

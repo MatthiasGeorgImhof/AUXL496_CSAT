@@ -135,6 +135,8 @@ TEST_CASE("TaskRequestWrite end-to-end with Buffer")
         DummyAdapter&
     >;
 
+    LocalHeap::initialize();
+
     // 1. Producer buffer
     Buffer buf;
 
@@ -259,8 +261,10 @@ private:
 // Full pipeline test: MLX → Buffer → Stream → Writer
 // ------------------------------------------------------------
 TEST_CASE("Full pipeline: MockTaskMLX90640 → Buffer → ImageInputStream → TaskRequestWrite")
-{
+{    
     using Writer = MockTaskRequestWrite<ImageInputStream<Buffer>, DummyAdapter&>;
+
+    LocalHeap::initialize();
 
     // 1. Trivial buffer
     Buffer buf;

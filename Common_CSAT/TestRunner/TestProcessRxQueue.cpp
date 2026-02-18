@@ -8,6 +8,15 @@
 #include "RegistrationManager.hpp"
 #include "SubscriptionManager.hpp"
 #include "ServiceManager.hpp"
+#include "CanTxQueueDrainer.hpp"
+
+CanTxQueueDrainer::CanTxQueueDrainer(CanardAdapter* /*adapter*/, CAN_HandleTypeDef* /*hcan*/) {}
+
+void CanTxQueueDrainer::drain() {}
+
+void CanTxQueueDrainer::irq_safe_drain() {}
+
+CanTxQueueDrainer tx_drainer{nullptr, nullptr};
 
 // ------------------------------------------------------------
 // Local heap adapter for SafeAllocator

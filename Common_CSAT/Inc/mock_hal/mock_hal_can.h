@@ -97,6 +97,12 @@ CAN_TxMessage_t get_can_tx_message(int pos);
 void set_current_free_mailboxes(uint32_t free_mailboxes);
 void set_current_rx_fifo_fill_level(uint32_t rx_fifo_level);
 
+HAL_StatusTypeDef HAL_CAN_ActivateNotification(CAN_HandleTypeDef *hcan, uint32_t ActiveITs);
+HAL_StatusTypeDef HAL_CAN_DeactivateNotification(CAN_HandleTypeDef *hcan, uint32_t ActiveITs);
+
+#define __HAL_CAN_ENABLE_IT(__HANDLE__, __INTERRUPT__)   (void)0
+#define __HAL_CAN_DISABLE_IT(__HANDLE__, __INTERRUPT__)  (void)0
+
 #ifdef __cplusplus
 }
 #endif

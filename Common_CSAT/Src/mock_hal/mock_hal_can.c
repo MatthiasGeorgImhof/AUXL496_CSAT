@@ -167,4 +167,22 @@ void set_current_rx_fifo_fill_level(uint32_t rx_fifo_level){
     current_rx_fifo_fill_level = rx_fifo_level;
 }
 
+// track which interrupts are currently enabled
+static uint32_t mock_can_enabled_interrupts = 0;
+
+HAL_StatusTypeDef HAL_CAN_ActivateNotification(CAN_HandleTypeDef *hcan, uint32_t ActiveITs)
+{
+    (void)hcan;
+    mock_can_enabled_interrupts |= ActiveITs;
+    return 0; // HAL_OK
+}
+
+HAL_StatusTypeDef HAL_CAN_DeactivateNotification(CAN_HandleTypeDef *hcan, uint32_t ActiveITs)
+{
+    (void)hcan;
+    mock_can_enabled_interrupts &= ~ActiveITs;
+    return 0; // HAL_OK
+}
+
+
 #endif

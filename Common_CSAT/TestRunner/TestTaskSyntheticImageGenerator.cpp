@@ -6,8 +6,10 @@
 #include "InputOutputStream.hpp"
 #include "RegistrationManager.hpp"
 #include "Trigger.hpp"
+#include "Logger.hpp"
 
 #include "mock_hal.h"
+
 
 // Stub RegistrationManager methods
 void RegistrationManager::subscribe(const CyphalPortID, std::shared_ptr<Task>) {}

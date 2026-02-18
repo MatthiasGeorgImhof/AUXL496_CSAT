@@ -17,7 +17,7 @@ INCLUDE_PATHS = -I ../Inc \
 				-I ../OpenCyphal/target 
 
 LIBS_PATH =			-L $(HOME)/Data/github/can/lib_x86_64
-LIBS =				-lcanard_fw -lserard_fw -ludpard_fw -lo1heap
+LIBS =				-lcanard_fwd -lserard_fwd -ludpard_fwd -lo1heapd
 
 # Source and object files
 TEST_FILES = TestAccessorEraseAndFormat.cpp \
@@ -730,9 +730,9 @@ $(BIN_DIR)/TestTaskSyntheticImageGenerator.o : TestTaskSyntheticImageGenerator.c
 	@echo "Compiling $<"
 	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestTaskSyntheticImageGenerator : $(BIN_DIR)/TestTaskSyntheticImageGenerator.o $(MOCK_HAL_OBJECTS)
+$(BIN_DIR)/TestTaskSyntheticImageGenerator : $(BIN_DIR)/TestTaskSyntheticImageGenerator.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSyntheticImageGenerator.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTaskSyntheticImageGenerator.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestMainLoop with extra sources
 $(BIN_DIR)/TestMainLoop.o : TestMainLoop.cpp
@@ -867,9 +867,9 @@ $(BIN_DIR)/TestInputOutputStream.o : TestInputOutputStream.cpp
 	@echo "Compiling $<"
 	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
 
-$(BIN_DIR)/TestInputOutputStream : $(BIN_DIR)/TestInputOutputStream.o $ $(MOCK_HAL_OBJECTS)
+$(BIN_DIR)/TestInputOutputStream : $(BIN_DIR)/TestInputOutputStream.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
-	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestInputOutputStream.o $(MOCK_HAL_OBJECTS) $(LIBS)
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestInputOutputStream.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTrigger with extra sources
 $(BIN_DIR)/TestTrigger.o : TestTrigger.cpp
@@ -879,6 +879,15 @@ $(BIN_DIR)/TestTrigger.o : TestTrigger.cpp
 $(BIN_DIR)/TestTrigger : $(BIN_DIR)/TestTrigger.o $(MOCK_HAL_OBJECTS)
 	@echo "Linking $@"
 	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTrigger.o $(MOCK_HAL_OBJECTS) $(LIBS)
+
+# Rule for TestTrivialImageBuffer with extra sources
+$(BIN_DIR)/TestTrivialImageBuffer.o : TestTrivialImageBuffer.cpp
+	@echo "Compiling $<"
+	$(CXX)	-c $< $(CXXFLAGS) $(EXTRA_FLAGS) $(EXTRA_EXTRA_FLAGS) $(INCLUDE_PATHS) -o $@
+
+$(BIN_DIR)/TestTrivialImageBuffer : $(BIN_DIR)/TestTrivialImageBuffer.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS)
+	@echo "Linking $@"
+	$(CXX) $(LIBS_PATH) -o $@ $(BIN_DIR)/TestTrivialImageBuffer.o $(BIN_DIR)/Logger.o $(MOCK_HAL_OBJECTS) $(LIBS)
 
 # Rule for TestTimeUtils with extra sources
 $(BIN_DIR)/TestTimeUtils.o : TestTimeUtils.cpp

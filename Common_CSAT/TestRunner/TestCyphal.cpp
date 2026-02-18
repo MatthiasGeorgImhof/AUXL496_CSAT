@@ -19,6 +19,14 @@
 void *canardMemoryAllocate(CanardInstance * /*ins*/, size_t amount) { return static_cast<void *>(malloc(amount)); };
 void canardMemoryFree(CanardInstance * /*ins*/, void *pointer) { free(pointer); };
 
+CanTxQueueDrainer::CanTxQueueDrainer(CanardAdapter* /*adapter*/, CAN_HandleTypeDef* /*hcan*/) {}
+
+void CanTxQueueDrainer::drain() {}
+
+void CanTxQueueDrainer::irq_safe_drain() {}
+
+CanTxQueueDrainer tx_drainer{nullptr, nullptr};
+
 TEST_CASE("Canard Adapter")
 {
     CanardAdapter adapter;

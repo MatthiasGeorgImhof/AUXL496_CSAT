@@ -30,6 +30,8 @@ public:
         RESEND_DONE = 9      // We have failed and might need to send this over and over
     };
 
+    constexpr static unsigned int MAX_CHUNK_SIZE = 256U;
+
 public:
     TaskRequestWrite() = delete;
     TaskRequestWrite(InputStream &stream,
@@ -249,7 +251,7 @@ bool TaskRequestWrite<InputStream, Adapters...>::request()
 
     case SEND_TRANSFER:
     {
-    	num_values_ = std::min(64U, uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_);
+    	num_values_ = std::min(MAX_CHUNK_SIZE, uavcan_primitive_Unstructured_1_0_value_ARRAY_CAPACITY_);
         stream_.getChunk(values_->data(), num_values_);
         if (num_values_ == 0)
         { 

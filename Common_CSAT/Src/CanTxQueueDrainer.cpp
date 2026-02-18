@@ -40,7 +40,11 @@ void CanTxQueueDrainer::drain()
 
 void CanTxQueueDrainer::irq_safe_drain()
 {
-//	CanTxIrqLock::lock();
+	CanTxIrqLock::lock();
 	drain();
-//	CanTxIrqLock::unlock();
+	CanTxIrqLock::unlock();
 }
+
+// #ifdef __x86_64__
+// CanTxQueueDrainer tx_drainer;
+// #endif // __x86_64__
