@@ -28,21 +28,21 @@ void CanTxQueueDrainer::drain()
         adapter_->ins.memory_free(&adapter_->ins, canardTxPop(&adapter_->que, ti));
     }
 
-    if (adapter_->que.size > 0 && HAL_CAN_GetTxMailboxesFreeLevel(hcan_) == 0)
-    {
-    	__HAL_CAN_ENABLE_IT(hcan_, CAN_IT_TX_MAILBOX_EMPTY);
-    }
-    else
-    {
-    	__HAL_CAN_DISABLE_IT(hcan_, CAN_IT_TX_MAILBOX_EMPTY);
-    }
+//    if (adapter_->que.size > 0 && HAL_CAN_GetTxMailboxesFreeLevel(hcan_) == 0)
+//    {
+//    	__HAL_CAN_ENABLE_IT(hcan_, CAN_IT_TX_MAILBOX_EMPTY);
+//    }
+//    else
+//    {
+//    	__HAL_CAN_DISABLE_IT(hcan_, CAN_IT_TX_MAILBOX_EMPTY);
+//    }
 }
 
 void CanTxQueueDrainer::irq_safe_drain()
 {
-	CanTxIrqLock::lock();
+//	CanTxIrqLock::lock();
 	drain();
-	CanTxIrqLock::unlock();
+//	CanTxIrqLock::unlock();
 }
 
 // #ifdef __x86_64__
