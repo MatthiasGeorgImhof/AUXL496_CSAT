@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef __arm____
+#ifdef __arm__
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_hal.h"
 #else
