@@ -83,5 +83,7 @@ CyphalTransfer createTransfer(size_t payload_size, uint8_t *payload, void *data,
 
 void unpackTransfer(const CyphalTransfer *transfer, int8_t (*deserialize)(uint8_t *data, const uint8_t *payload, size_t *payload_size), uint8_t *data);
 
+CyphalTransferID wrap_transfer_id(CyphalTransferID id);
+
 template <typename Adapter>
 class Cyphal;

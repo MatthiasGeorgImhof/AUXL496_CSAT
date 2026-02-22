@@ -210,11 +210,13 @@ TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles small write")
     LocalHeap::initialize();
     
     // Create adapter
+    CyphalNodeID client_node_id = 11;
+    CyphalNodeID server_node_id = 11;
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;
     loopard.memory_free = loopardMemoryFree;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard);
-    loopard_cyphal.setNodeID(11);
+    loopard_cyphal.setNodeID(client_node_id);
 
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal); // Single adapter
 
@@ -224,7 +226,7 @@ TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles small write")
     TrivialOuputStream output;
 
     // Task parameters
-    CyphalNodeID node_id = 42;
+    CyphalNodeID node_id = server_node_id;
     CyphalTransferID transfer_id = 7;
     uint32_t tick = 0;
     uint32_t interval = 1000;
@@ -309,12 +311,15 @@ TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles large write")
 {
     LocalHeap::initialize();
     
+    CyphalNodeID client_node_id = 11;
+    CyphalNodeID server_node_id = 11;
+
     // Create adapter
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;
     loopard.memory_free = loopardMemoryFree;
     Cyphal<LoopardAdapter> loopard_cyphal(&loopard);
-    loopard_cyphal.setNodeID(11);
+    loopard_cyphal.setNodeID(client_node_id);
 
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal); // Single adapter
 
@@ -324,7 +329,7 @@ TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles large write")
     TrivialOuputStream output;
 
     // Task parameters
-    CyphalNodeID node_id = 42;
+    CyphalNodeID node_id = server_node_id;
     CyphalTransferID transfer_id = 7;
     uint32_t tick = 0;
     uint32_t interval = 1000;

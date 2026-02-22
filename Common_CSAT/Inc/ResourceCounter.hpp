@@ -11,7 +11,7 @@ public:
 
 public:
     ResourceCounter(Resource resource = {}, size_t initial_claims = 0)
-        : resource_(resource), count_(initial_claims) {}
+        : count_(initial_claims), resource_(resource) {}
 
     ~ResourceCounter() {}
 

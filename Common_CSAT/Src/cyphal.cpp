@@ -36,3 +36,8 @@ void unpackTransfer(const CyphalTransfer *transfer, int8_t (*deserialize)(uint8_
     size_t payload_size = transfer->payload_size;
     (void) deserialize(data, static_cast<const uint8_t *>(transfer->payload), &payload_size);
 }
+
+CyphalTransferID wrap_transfer_id(CyphalTransferID id)
+{
+	return id & 0x1f;
+}

@@ -130,7 +130,7 @@ void Logger::uart_transmit_log_message(const char* str, uint16_t size)
 #ifdef LOGGER_OUTPUT_USB
 void Logger::usb_cdc_transmit_log_message(const char* str, uint16_t size)
 {
-    CDC_Transmit_FS((uint8_t*)str, size);
+    while(CDC_Transmit_FS((uint8_t*)str, size)==USBD_BUSY);
 }
 #endif
 

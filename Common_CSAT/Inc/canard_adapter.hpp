@@ -57,7 +57,7 @@ public:
                          const size_t payload_size,
                          const void *const payload)
     {
-        log(LOG_LEVEL_DEBUG, "canardTxPush at %08u: %3d -> %3d (%4d %3d)\r\n", HAL_GetTick(),
+        log(LOG_LEVEL_INFO, "canardTxPush at %08u: %3d -> %3d (%4d %3d)\r\n", HAL_GetTick(),
         		metadata->source_node_id, metadata->destination_node_id, metadata->port_id, metadata->transfer_id);
 
 
@@ -85,7 +85,7 @@ public:
         res = cyphalTxPush(tx_deadline_usec, &metadata_, payload_size, payload);
 
         setNodeID(node_id_);
-        log(LOG_LEVEL_DEBUG, "canardTxForward at %08u: %3d -> %3d (%4d %3d)\r\n", HAL_GetTick(),
+        log(LOG_LEVEL_INFO, "canardTxForward at %08u: %3d -> %3d (%4d %3d)\r\n", HAL_GetTick(),
         		metadata->source_node_id, metadata->destination_node_id, metadata->port_id, metadata->transfer_id);
         return res;
     }

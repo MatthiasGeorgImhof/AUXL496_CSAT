@@ -18,12 +18,16 @@ using Buffer = TrivialImageBuffer<1024>;
 struct DummyAdapter
 {
     int32_t cyphalTxPush(CyphalMicrosecond,
-                         const CyphalTransferMetadata*,
+                         const CyphalTransferMetadata *,
                          size_t,
-                         const uint8_t*)
+                         const uint8_t *)
     {
         return 1; // TX always "succeeds"
     }
+
+    CyphalNodeID getNodeID() const { return node_id; }
+
+    CyphalNodeID node_id;
 };
 
 // ------------------------------------------------------------
@@ -64,29 +68,33 @@ template <typename InputStream, typename... Adapters>
 class MockTaskRequestWrite : public TaskRequestWrite<InputStream, Adapters...>
 {
 public:
-    using Base  = TaskRequestWrite<InputStream, Adapters...>;
+    using Base = TaskRequestWrite<InputStream, Adapters...>;
     using State = typename Base::State;
 
-    MockTaskRequestWrite(InputStream& stream,
+    MockTaskRequestWrite(InputStream &stream,
                          uint32_t sleep_interval,
                          uint32_t operate_interval,
                          uint32_t tick,
                          CyphalNodeID node_id,
                          CyphalTransferID transfer_id,
-                         std::tuple<Adapters...>& adapters)
+                         std::tuple<Adapters...> &adapters)
         : Base(stream, sleep_interval, operate_interval, tick, node_id, transfer_id, adapters)
-    {}
+    {
+    }
 
-    State getState() const { return this->state_; }
+    State getState() const { return this->write_state_.state; }
 
-    size_t getOffset() const { return this->offset_; }
-    size_t getSize()   const { return this->total_size_;   }
+    size_t getOffset() const { return this->write_state_.offset; }
+    size_t getSize() const { return this->total_size_; }
 
     // Inject a synthetic OK response into TaskForClient::buffer_
     void injectOkResponse()
     {
         auto t = std::make_shared<TestCyphalTransfer>();
+        t->metadata.remote_node_id = this->node_id_; // Response from server
+        t->metadata.transfer_id = this->write_state_.last_transfer_id;
         t->metadata.transfer_kind = CyphalTransferKindResponse;
+        t->metadata.priority = CyphalPriorityNominal; // optional but realistic
 
         uavcan_file_Write_Response_1_1 resp{};
         resp._error.value = uavcan_file_Error_1_0_OK;
@@ -96,7 +104,7 @@ public:
         (void)uavcan_file_Write_Response_1_1_serialize_(&resp, buf, &sz);
 
         t->storage.assign(buf, buf + sz);
-        t->payload      = t->storage.data();
+        t->payload = t->storage.data();
         t->payload_size = sz;
 
         this->buffer_.push(t);
@@ -116,12 +124,12 @@ static_assert(InputStreamConcept<ImageInputStream<Buffer>>,
 static ImageMetadata make_meta(uint32_t payload_size)
 {
     ImageMetadata m{};
-    m.timestamp    = 0xABCDEF00;
+    m.timestamp = 0xABCDEF00;
     m.payload_size = payload_size;
-    m.latitude     = 11.11f;
-    m.longitude    = 22.22f;
-    m.producer     = METADATA_PRODUCER::CAMERA_1;
-    m.format       = METADATA_FORMAT::UNKN;
+    m.latitude = 11.11f;
+    m.longitude = 22.22f;
+    m.producer = METADATA_PRODUCER::CAMERA_1;
+    m.format = METADATA_FORMAT::UNKN;
     return m;
 }
 
@@ -132,8 +140,7 @@ TEST_CASE("TaskRequestWrite end-to-end with Buffer")
 {
     using Writer = MockTaskRequestWrite<
         ImageInputStream<Buffer>,
-        DummyAdapter&
-    >;
+        DummyAdapter &>;
 
     LocalHeap::initialize();
 
@@ -145,7 +152,8 @@ TEST_CASE("TaskRequestWrite end-to-end with Buffer")
 
     // 3. Dummy Cyphal adapter
     DummyAdapter adapter;
-    std::tuple<DummyAdapter&> adapters(adapter);
+    adapter.node_id = 42;
+    std::tuple<DummyAdapter &> adapters(adapter);
 
     // 4. Writer task
     Writer writer(stream,
@@ -201,7 +209,7 @@ TEST_CASE("TaskRequestWrite end-to-end with Buffer")
     // --------------------------------------------------------
     // Step 3: DONE is fire-and-forget in current implementation
     // --------------------------------------------------------
-    writer.handleTaskImpl();   // SEND_DONE → SEND_DONE (no WAIT_DONE / reset implemented)
+    writer.handleTaskImpl(); // SEND_DONE → SEND_DONE (no WAIT_DONE / reset implemented)
 
     CHECK(writer.getState() == Writer::State::WAIT_DONE);
 
@@ -215,21 +223,23 @@ TEST_CASE("TaskRequestWrite end-to-end with Buffer")
 class MockTaskMLX90640 : public Task
 {
 public:
-    MockTaskMLX90640(Buffer& buf) : Task(0,0), buf_(buf), published_(false)
-    {}
+    MockTaskMLX90640(Buffer &buf) : Task(0, 0), buf_(buf), published_(false)
+    {
+    }
 
     void handleTaskImpl() override
     {
-        if (published_) return;
+        if (published_)
+            return;
 
         // Build metadata
         ImageMetadata meta{};
-        meta.timestamp    = 0x12345678;
+        meta.timestamp = 0x12345678;
         meta.payload_size = static_cast<uint32_t>(payload_.size());
-        meta.latitude     = 1.0f;
-        meta.longitude    = 2.0f;
-        meta.producer     = METADATA_PRODUCER::CAMERA_1;
-        meta.format       = METADATA_FORMAT::UNKN;
+        meta.latitude = 1.0f;
+        meta.longitude = 2.0f;
+        meta.producer = METADATA_PRODUCER::CAMERA_1;
+        meta.format = METADATA_FORMAT::UNKN;
 
         // Publish metadata
         buf_.add_image(meta);
@@ -243,16 +253,16 @@ public:
         published_ = true;
     }
 
-    void setPayload(const std::vector<uint8_t>& p)
+    void setPayload(const std::vector<uint8_t> &p)
     {
         payload_ = p;
     }
 
-    void registerTask(RegistrationManager*, std::shared_ptr<Task>) override {}
-    void unregisterTask(RegistrationManager*, std::shared_ptr<Task>) override {}
+    void registerTask(RegistrationManager *, std::shared_ptr<Task>) override {}
+    void unregisterTask(RegistrationManager *, std::shared_ptr<Task>) override {}
 
 private:
-    Buffer& buf_;
+    Buffer &buf_;
     bool published_;
     std::vector<uint8_t> payload_;
 };
@@ -261,8 +271,8 @@ private:
 // Full pipeline test: MLX → Buffer → Stream → Writer
 // ------------------------------------------------------------
 TEST_CASE("Full pipeline: MockTaskMLX90640 → Buffer → ImageInputStream → TaskRequestWrite")
-{    
-    using Writer = MockTaskRequestWrite<ImageInputStream<Buffer>, DummyAdapter&>;
+{
+    using Writer = MockTaskRequestWrite<ImageInputStream<Buffer>, DummyAdapter &>;
 
     LocalHeap::initialize();
 
@@ -281,7 +291,7 @@ TEST_CASE("Full pipeline: MockTaskMLX90640 → Buffer → ImageInputStream → T
 
     // 4. Dummy Cyphal adapter
     DummyAdapter adapter;
-    std::tuple<DummyAdapter&> adapters(adapter);
+    std::tuple<DummyAdapter &> adapters(adapter);
 
     // 5. Writer task
     Writer writer(stream,

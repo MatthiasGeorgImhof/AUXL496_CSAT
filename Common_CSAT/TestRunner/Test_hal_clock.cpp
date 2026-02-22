@@ -1,4 +1,4 @@
-//#define DOCTEST_CONFIG_IMPLEMENT
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include "mock_hal/mock_hal_clock.h"
 #include "mock_hal/mock_hal_time.h" // For HAL_Delay (if needed)
