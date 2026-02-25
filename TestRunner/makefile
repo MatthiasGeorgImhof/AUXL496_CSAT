@@ -86,8 +86,10 @@ LOOSE_SRC := 		MLX90640_API.c
 
 # Per-test extra dependencies
 EXTRA_OBJS_TestCoordinateTransformations := src/coordinate_transformations.o src/coordinate_rotators.o src/TimeUtils.o
+EXTRA_OBJS_TestCyphal := src/cyphal.o
 EXTRA_OBJS_TestGNSS := src/GNSS.o src/GNSSCore.o src/coordinate_transformations.o src/TimeUtils.o
 EXTRA_OBJS_TestHSClockSwitch := src/HSClockSwitch.o
+EXTRA_OBJS_TestImageToWritePipeline := src/cyphal.o
 EXTRA_OBJS_TestIMUExtension := src/coordinate_transformations.o src/coordinate_rotators.o src/TimeUtils.o
 EXTRA_OBJS_TestLVLHAttitudeTarget= src/LVLHAttitudeTarget.o src/Quaternion.o src/coordinate_transformations.o src/coordinate_rotators.o src/TimeUtils.o
 EXTRA_OBJS_TestMagnetorquerDriver= src/LVLHAttitudeTarget.o src/Quaternion.o src/coordinate_transformations.o src/coordinate_rotators.o src/TimeUtils.o
@@ -118,9 +120,9 @@ EXTRA_OBJS_TestTaskRegisterServer := src/RegistrationManager.o src/cyphal.o
 EXTRA_OBJS_TestTaskRegistrationSubscription := src/RegistrationManager.o src/ServiceManager.o
 EXTRA_OBJS_TestTaskRequestGetInfo := src/ServiceManager.o src/RegistrationManager.o
 EXTRA_OBJS_TestTaskRequestRead := src/RegistrationManager.o
-EXTRA_OBJS_TestTaskRequestWrite := src/RegistrationManager.o
+EXTRA_OBJS_TestTaskRequestWrite := src/RegistrationManager.o src/cyphal.o
 EXTRA_OBJS_TestTaskRespondGetInfo := src/ServiceManager.o src/RegistrationManager.o
-EXTRA_OBJS_TestTaskRespondWrite := src/RegistrationManager.o
+EXTRA_OBJS_TestTaskRespondWrite := src/RegistrationManager.o src/cyphal.o
 EXTRA_OBJS_TestTaskSendHeartBeat := src/RegistrationManager.o
 EXTRA_OBJS_TestTaskSendNodePortList := src/TaskCheckMemory.o src/TaskBlinkLED.o src/RegistrationManager.o
 EXTRA_OBJS_TestTaskSendTimeSynchronization := src/RegistrationManager.o src/TimeUtils.o
