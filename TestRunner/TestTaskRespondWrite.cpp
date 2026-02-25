@@ -223,7 +223,7 @@ TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles small write")
     // Mock Buffer and Stream
     MockBuffer mock_buffer;
     MockImageInputStream<MockBuffer> mock_stream(mock_buffer, 16);
-    TrivialOuputStream output;
+    TrivialOutputStream output;
 
     // Task parameters
     CyphalNodeID node_id = server_node_id;
@@ -326,7 +326,7 @@ TEST_CASE("TaskRequestWrite - TaskRequestWrite: Handles large write")
     // Mock Buffer and Stream
     MockBuffer mock_buffer;
     MockImageInputStream<MockBuffer> mock_stream(mock_buffer, 16);
-    TrivialOuputStream output;
+    TrivialOutputStream output;
 
     // Task parameters
     CyphalNodeID node_id = server_node_id;
@@ -443,10 +443,10 @@ TEST_CASE("TaskRespondWrite registers and unregisters as a server")
     auto adapters = std::tuple<Cyphal<LoopardAdapter>>(cyphal);
 
     // Trivial output stream
-    TrivialOuputStream output;
+    TrivialOutputStream output;
 
     // Create the task
-    auto task = std::make_shared<MockTaskRespondWrite<TrivialOuputStream, Cyphal<LoopardAdapter>>>(
+    auto task = std::make_shared<MockTaskRespondWrite<TrivialOutputStream, Cyphal<LoopardAdapter>>>(
         output,
         /*interval*/ 1000,
         /*tick*/ 0,

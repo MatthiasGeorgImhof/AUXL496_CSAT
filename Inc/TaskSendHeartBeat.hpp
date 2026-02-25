@@ -34,7 +34,7 @@ void TaskSendHeartBeat<Adapters...>::handleTaskImpl()
         .vendor_specific_status_code = 0};
     // @formatter:on
     
-    log(LOG_LEVEL_DEBUG, "TaskSendHeartBeat %d\r\n", data.uptime);
+    log(LOG_LEVEL_INFO, "TaskSendHeartBeat %d\r\n", data.uptime);
     
     constexpr size_t PAYLOAD_SIZE = uavcan_node_Heartbeat_1_0_SERIALIZATION_BUFFER_SIZE_BYTES_;
     uint8_t payload[PAYLOAD_SIZE];

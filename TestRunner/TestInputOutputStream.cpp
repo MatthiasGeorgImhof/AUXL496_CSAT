@@ -256,8 +256,8 @@ TEST_CASE("ImageInputStream with CachedImageBuffer") {
     }
 }
 
-TEST_CASE("TrivialOuputStream satisfies OutputStreamConcept") {
-    TrivialOuputStream stream;
+TEST_CASE("TrivialOutputStream satisfies OutputStreamConcept") {
+    TrivialOutputStream stream;
     std::array<char, NAME_LENGTH> name = {'t', 'e', 's', 't', '.', 't', 'x', 't', 0, 0, 0};
     std::vector<uint8_t> data(10, 0);
     size_t size = data.size();

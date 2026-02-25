@@ -58,66 +58,119 @@ template <FileSourceConcept FileSource, OutputStreamConcept OutputStream, typena
 bool TaskRequestRead<FileSource, OutputStream, Adapters...>::respond()
 {
     if (TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
+    {
+        log(LOG_LEVEL_INFO, "TaskRequestRead: respond() no response available, state=%d offset=%u\r\n",
+            state_, static_cast<unsigned>(source_.offset()));
         return true;
+    }
 
-    std::shared_ptr<CyphalTransfer> transfer = TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
+    auto transfer = TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
+
+    log(LOG_LEVEL_DEBUG,
+        "TaskRequestRead: respond() got transfer: tid=%u kind=%u size=%u\r\n",
+        transfer->metadata.transfer_id,
+        transfer->metadata.transfer_kind,
+        transfer->payload_size);
+
     if (transfer->metadata.transfer_kind != CyphalTransferKindResponse)
     {
-        log(LOG_LEVEL_ERROR, "TaskRequestRead: Expected Response transfer kind\r\n");
+        log(LOG_LEVEL_ERROR, "TaskRequestRead: unexpected transfer kind %u\r\n",
+            transfer->metadata.transfer_kind);
         return false;
     }
 
     uavcan_file_Read_Response_1_1 response_data;
     size_t payload_size = transfer->payload_size;
-    int8_t deserialization_result = uavcan_file_Read_Response_1_1_deserialize_(&response_data, static_cast<const uint8_t *>(transfer->payload), &payload_size);
-    if (deserialization_result < 0)
-    {
-        log(LOG_LEVEL_ERROR, "TaskRequestRead: Deserialization Error\r\n");
-        state_ = RESEND_REQUEST; // Or some other error state
-        return false;
-    }
+    int8_t res = uavcan_file_Read_Response_1_1_deserialize_(
+        &response_data,
+        static_cast<const uint8_t*>(transfer->payload),
+        &payload_size);
 
-    log(LOG_LEVEL_DEBUG, "TaskRequestRead: Received response\r\n");
-
-    if (response_data._error.value != uavcan_file_Error_1_0_OK)
+    if (res < 0)
     {
-        log(LOG_LEVEL_ERROR, "TaskRequestRead: Server returned error: %d\r\n", response_data._error.value);
+        log(LOG_LEVEL_ERROR, "TaskRequestRead: deserialization error res=%d\r\n", res);
         state_ = RESEND_REQUEST;
         return false;
     }
 
-    if (!output_.output(response_data.data.value.elements, response_data.data.value.count))
+    log(LOG_LEVEL_DEBUG,
+        "TaskRequestRead: response OK, error=%d count=%u\r\n",
+        response_data._error.value,
+        response_data.data.value.count);
+
+    if (response_data._error.value != uavcan_file_Error_1_0_OK)
     {
-        log(LOG_LEVEL_ERROR, "TaskRequestRead: OutputStream returned error\r\n");
-        state_ = RESEND_REQUEST; // Error
+        log(LOG_LEVEL_ERROR, "TaskRequestRead: server error=%d\r\n",
+            response_data._error.value);
+        state_ = RESEND_REQUEST;
+        return false;
+    }
+
+    // Log chunk data in hex
+    {
+        constexpr size_t BUF = 1024;
+        char hexbuf[BUF];
+        uchar_buffer_to_hex(
+            reinterpret_cast<const unsigned char*>(response_data.data.value.elements),
+            response_data.data.value.count,
+            hexbuf,
+            BUF);
+
+        log(LOG_LEVEL_INFO,
+            "TaskRequestRead: chunk size=%u data=%s\r\n",
+            response_data.data.value.count,
+            hexbuf);
+    }
+
+    if (!output_.output(response_data.data.value.elements,
+                        response_data.data.value.count))
+    {
+        log(LOG_LEVEL_ERROR, "TaskRequestRead: OutputStream error\r\n");
+        state_ = RESEND_REQUEST;
         return false;
     }
 
     if (response_data.data.value.count == 0)
     {
-        log(LOG_LEVEL_INFO, "TaskRequestRead: End of file reached\r\n");
-        state_ = IDLE;
+        log(LOG_LEVEL_INFO, "TaskRequestRead: EOF reached, finalizing\r\n");
         output_.finalize();
+        state_ = IDLE;
         return true;
     }
 
+    size_t new_offset = source_.offset() + response_data.data.value.count;
+    log(LOG_LEVEL_DEBUG,
+        "TaskRequestRead: advancing offset %u -> %u\r\n",
+        static_cast<unsigned>(source_.offset()),
+        static_cast<unsigned>(new_offset));
+
+    source_.setOffset(new_offset);
     state_ = SEND_REQUEST;
-    source_.setOffset(source_.offset() + response_data.data.value.count);
     return true;
 }
 
 template <FileSourceConcept FileSource, OutputStreamConcept OutputStream, typename... Adapters>
 bool TaskRequestRead<FileSource, OutputStream, Adapters...>::request()
 {
-    if (state_ == WAIT_RESPONSE)
-        return true;
+	log(LOG_LEVEL_DEBUG,
+	    "TaskRequestRead: request() state=%d offset=%u buffer_empty=%d tid=%u\r\n",
+	    state_,
+	    static_cast<unsigned>(source_.offset()),
+	    TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty(),
+	    this->transfer_id_);
 
+	if (state_ == WAIT_RESPONSE)
+	{	log(LOG_LEVEL_INFO, "TaskRequestRead: request() WAIT_RESPONSE, skipping\r\n");
+        return true;
+	}
     if (!TaskForClient<CyphalBuffer8, Adapters...>::buffer_.is_empty())
+    {	log(LOG_LEVEL_INFO, "TaskRequestRead: request() RX buffer not empty, skipping\r\n");
         return true;
-
+    }
     if (state_ == IDLE)
     {
-        state_ = SEND_REQUEST;
+    	log(LOG_LEVEL_DEBUG, "TaskRequestRead: IDLE → SEND_REQUEST\r\n");
+    	state_ = SEND_REQUEST;
     }
 
     if (state_ == SEND_REQUEST)
