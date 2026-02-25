@@ -7,7 +7,6 @@
 #include "mock_hal.h"
 #endif
 
-
 // Forward declaration only
 struct CanardAdapter;
 

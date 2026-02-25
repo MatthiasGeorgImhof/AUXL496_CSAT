@@ -4,132 +4,160 @@
 #include <array>
 #include <cstddef>
 #include <utility>
+#include <atomic>
 #include "BufferLikeConcept.hpp"
 
-template <typename T, size_t capacity_>
-class CircularBuffer
-{
-public:
-    CircularBuffer() : head_(0), tail_(0), count_(0) {}
+//
+// ─────────────────────────────────────────────
+//   LOW‑LEVEL: SPSCBuffer
+// ─────────────────────────────────────────────
+//
 
-    T &next()
+template <typename T, size_t capacity_>
+class SPSCBuffer
+{
+    static constexpr size_t RealCapacity = capacity_ + 1;
+
+public:
+    SPSCBuffer() : head_(0), tail_(0) {}
+
+    bool is_empty() const
     {
-        if (is_full())
-            drop_tail();
-        T &result = data[head_];
-        head_ = (head_ + 1) % capacity_;
-        ++count_;
-        return result;
+        return head_.load(std::memory_order_acquire) ==
+               tail_.load(std::memory_order_acquire);
     }
 
-    void push(T value)
+    bool is_full() const
+    {
+        size_t h = head_.load(std::memory_order_acquire);
+        size_t t = tail_.load(std::memory_order_acquire);
+        return ((h + 1) % RealCapacity) == t;
+    }
+
+    T& begin_write()
     {
         if (is_full())
-            drop_tail();
-        data[head_] = value;
-        head_ = (head_ + 1) % capacity_;
-        ++count_;
+        {
+            size_t t = tail_.load(std::memory_order_relaxed);
+            tail_.store((t + 1) % RealCapacity, std::memory_order_release);
+        }
+        return data_[head_.load(std::memory_order_relaxed)];
+    }
+
+    void commit_write()
+    {
+        size_t h = head_.load(std::memory_order_relaxed);
+        head_.store((h + 1) % RealCapacity, std::memory_order_release);
     }
 
     T pop()
     {
         if (is_empty())
-        {
             return T{};
-        }
-        size_t current = tail_;
-        tail_ = (tail_ + 1) % capacity_;
-        --count_;
-        return std::move(data[current]);
-    }
 
-    const T &peek() const
-    {
-        size_t current = tail_;
-        return data[current];
-    }
-
-    T &peek()
-    {
-        size_t current = tail_;
-        return data[current];
-    }
-
-    T& begin_write()
-    {
-        // If full, drop oldest
-        if (is_full()) {
-            drop_tail();
-        }
-
-        return data[head_];     // caller gives this to DMA
-    }
-
-    void commit_write()
-    {
-        // Move head to write_index_ + 1
-        head_ = (head_ + 1) % capacity_;
-        ++count_;
-    }
-
-    bool is_empty() const
-    {
-        return count_ == 0;
-    }
-
-    bool is_full() const
-    {
-        return count_ == capacity_;
+        size_t t = tail_.load(std::memory_order_relaxed);
+        T out = std::move(data_[t]);
+        tail_.store((t + 1) % RealCapacity, std::memory_order_release);
+        return out;
     }
 
     size_t size() const
     {
-        return count_;
+        size_t h = head_.load(std::memory_order_acquire);
+        size_t t = tail_.load(std::memory_order_acquire);
+        if (h >= t) return h - t;
+        return RealCapacity - (t - h);
     }
 
-    size_t capacity() const
+void clear()
+{
+    size_t t = tail_.load(std::memory_order_relaxed);
+    size_t h = head_.load(std::memory_order_relaxed);
+
+    while (t != h)
     {
-        return capacity_;
+        data_[t] = T{};
+        t = (t + 1) % RealCapacity;
     }
 
-    void clear()
+    head_.store(0, std::memory_order_release);
+    tail_.store(0, std::memory_order_release);
+}
+
+    static constexpr size_t capacity() { return capacity_; }
+
+protected:
+    // Safe front access for peek()
+    T& front()
     {
-        if constexpr (std::is_default_constructible_v<T>)
-        {
-            for (size_t i = 0; i < count_; ++i)
-            {
-                data[i] = T(); // reset shared_ptr → release references
-            }
-        }
-        head_ = 0;
-        tail_ = 0;
-        count_ = 0;
+        size_t t = tail_.load(std::memory_order_acquire);
+        return data_[t];
     }
 
-private:
-    void drop_tail()
+    const T& front() const
     {
-
-        if constexpr (std::is_default_constructible_v<T>)
-        {
-            data[tail_] = T();
-        }
-        tail_ = (tail_ + 1) % capacity_;
-        --count_;
+        size_t t = tail_.load(std::memory_order_acquire);
+        return data_[t];
     }
 
-private:
-    std::array<T, capacity_> data;
-    size_t head_;
-    size_t tail_;
-    size_t count_;
-
-    static_assert(capacity_ > 0, "CircularBuffer capacity must be greater than zero.");
-    static_assert(std::is_default_constructible_v<T>, "CircularBuffer<T>: T must be default-constructible");
-    static_assert(std::is_copy_assignable_v<T>, "CircularBuffer<T>: T must be copy-assignable");
-    static_assert(std::is_move_assignable_v<T>, "CircularBuffer<T>: T must be move-assignable");
+protected:
+    std::array<T, RealCapacity> data_;
+    std::atomic<size_t> head_;
+    std::atomic<size_t> tail_;
 };
 
-static_assert(BufferLike<CircularBuffer<int, 8>, int>);
+
+//
+// ─────────────────────────────────────────────
+//   HIGH‑LEVEL: CircularBuffer (old API)
+// ─────────────────────────────────────────────
+//
+
+template <typename T, size_t capacity_>
+class CircularBuffer : private SPSCBuffer<T, capacity_>
+{
+    using Base = SPSCBuffer<T, capacity_>;
+
+public:
+    using Base::is_empty;
+    using Base::is_full;
+    using Base::size;
+    using Base::capacity;
+    using Base::clear;
+    using Base::begin_write;
+    using Base::commit_write;
+
+    T& next()
+    {
+        T& ref = Base::begin_write();
+        Base::commit_write();
+        return ref;
+    }
+
+    void push(T value)
+    {
+        T& slot = Base::begin_write();
+        slot = std::move(value);
+        Base::commit_write();
+    }
+
+    T pop()
+    {
+        return Base::pop();
+    }
+
+    T& peek()
+    {
+        return Base::front();
+    }
+
+    const T& peek() const
+    {
+        return Base::front();
+    }
+};
+
+static_assert(BufferLike<CircularBuffer<int, 8>, int>,
+              "CircularBuffer must satisfy BufferLike concept");
 
 #endif /* INC_CIRCULARBUFFER_HPP_ */
