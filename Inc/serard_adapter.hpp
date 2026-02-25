@@ -22,7 +22,7 @@ struct SerardAdapter
 inline SerardNodeID cyphalNodeIdToSerard(const CyphalNodeID node_id) { return node_id == CYPHAL_NODE_ID_UNSET ? SERARD_NODE_ID_UNSET : static_cast<SerardNodeID>(node_id); }
 inline CyphalNodeID serardNodeIdToCyphal(const SerardNodeID node_id) { return static_cast<CyphalNodeID>(node_id & CYPHAL_NODE_ID_UNSET); }
 inline SerardTransferID cyphalTransferIdToSerard(const CyphalTransferID transfer_id) { return static_cast<SerardTransferID>(transfer_id); }
-inline CyphalTransferID serardTransferIdToCyphal(const SerardTransferID transfer_id) { return static_cast<CyphalTransferID>(transfer_id); }
+inline CyphalTransferID serardTransferIdToCyphal(const SerardTransferID transfer_id) { return wrap_transfer_id(static_cast<CyphalTransferID>(transfer_id)) ; }
 
 inline SerardTransferMetadata cyphalMetadataToSerard(const CyphalTransferMetadata metadata)
 {
@@ -174,6 +174,10 @@ public:
         out_transfer->payload = serard_transfer.payload;
         out_transfer->payload_size = serard_transfer.payload_size;
         out_transfer->timestamp_usec = serard_transfer.timestamp_usec;
+        if (result==1)
+        	log(LOG_LEVEL_DEBUG, "serardRxReceive at %08u: %3d -> %3d (%4d %3d [%ld -> %3d])\r\n", HAL_GetTick(),
+        		out_transfer->metadata.source_node_id, out_transfer->metadata.destination_node_id, out_transfer->metadata.port_id, out_transfer->metadata.transfer_id,
+				static_cast<uint32_t>(serard_transfer.metadata.transfer_id), serardTransferIdToCyphal(serard_transfer.metadata.transfer_id));
         return result;
     }
 };
