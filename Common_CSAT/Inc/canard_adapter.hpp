@@ -118,7 +118,11 @@ public:
     int32_t cyphalRxReceive(uint32_t extended_can_id, const size_t *frame_size, const uint8_t *const frame, CyphalTransfer *out_transfer)
     {
         CanardFrame canard_frame = {extended_can_id, *frame_size, frame};
-        return canardRxAccept(&adapter_->ins, 0, &canard_frame, 0, reinterpret_cast<CanardRxTransfer *>(out_transfer), nullptr);
+        auto result = canardRxAccept(&adapter_->ins, 0, &canard_frame, 0, reinterpret_cast<CanardRxTransfer *>(out_transfer), nullptr);
+        if (result==1)
+        	log(LOG_LEVEL_DEBUG, "canardRxReceive at %08u: %3d -> %3d (%4d %3d)\r\n", HAL_GetTick(),
+        		out_transfer->metadata.source_node_id, out_transfer->metadata.destination_node_id, out_transfer->metadata.port_id, out_transfer->metadata.transfer_id);
+        return result;
     }
 };
 

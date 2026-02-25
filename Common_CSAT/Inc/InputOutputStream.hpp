@@ -283,17 +283,74 @@ concept OutputStreamConcept = requires(T &stream, uint8_t *data, size_t size, co
     { stream.output(data, size) } -> std::convertible_to<bool>;
 };
 
-class TrivialOuputStream
+class TrivialOutputStream
 {
 public:
-    TrivialOuputStream() {}
+    TrivialOutputStream() {}
     bool initialize(const std::array<char, NAME_LENGTH> & /* name */) { return true; }
     bool finalize() { return true; }
     bool output(uint8_t * /*data*/, size_t /*size*/) { return true; }
 };
 
-static_assert(OutputStreamConcept<TrivialOuputStream>,
-              "TrivialOuputStream does not satisfy OutputStreamConcept");
+static_assert(OutputStreamConcept<TrivialOutputStream>,
+              "TrivialOutputStream does not satisfy OutputStreamConcept");
+
+class LoggingOutputStream
+{
+public:
+    LoggingOutputStream() = default;
+
+    bool initialize(const std::array<char, NAME_LENGTH> &name)
+    {
+#ifdef LOGGER_ENABLED
+        // Convert name to hex for consistent logging
+        constexpr size_t BUF_SIZE = 256;
+        char hex_name[BUF_SIZE];
+        uchar_buffer_to_hex(
+            reinterpret_cast<const unsigned char*>(name.data()),
+            NAME_LENGTH,
+            hex_name,
+            BUF_SIZE
+        );
+
+        log(LOG_LEVEL_INFO, "LoggingOutputStream::initialize name=%s\r\n", hex_name);
+#endif
+        return true;
+    }
+
+    bool output(uint8_t *data, size_t size)
+    {
+#ifdef LOGGER_ENABLED
+        constexpr size_t BUF_SIZE = 1024;
+        char hex_data[BUF_SIZE];
+
+        uchar_buffer_to_hex(
+            reinterpret_cast<const unsigned char*>(data),
+            size,
+            hex_data,
+            BUF_SIZE
+        );
+
+        log(LOG_LEVEL_DEBUG,
+            "LoggingOutputStream::output size=%u data=%s\r\n",
+            static_cast<unsigned>(size),
+            hex_data
+        );
+#endif
+        return true;
+    }
+
+    bool finalize()
+    {
+#ifdef LOGGER_ENABLED
+        log(LOG_LEVEL_INFO, "LoggingOutputStream::finalize\r\n");
+#endif
+        return true;
+    }
+};
+
+static_assert(OutputStreamConcept<LoggingOutputStream>,
+              "LoggingOutputStream does not satisfy OutputStreamConcept");
 
 class OutputStreamToFile
 {
