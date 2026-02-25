@@ -57,8 +57,8 @@ public:
                          const size_t payload_size,
                          const void *const payload)
     {
-        log(LOG_LEVEL_INFO, "canardTxPush at %08u: %3d -> %3d (%4d %3d)\r\n", HAL_GetTick(),
-        		metadata->source_node_id, metadata->destination_node_id, metadata->port_id, metadata->transfer_id);
+        log(LOG_LEVEL_INFO, "canardTxPush at %08u: %3d (%3d -> %3d) (%4d %3d)\r\n", HAL_GetTick(),
+        		metadata->remote_node_id, metadata->source_node_id, metadata->destination_node_id, metadata->port_id, metadata->transfer_id);
 
 
     	auto res = canardTxPush(&adapter_->que, &adapter_->ins, tx_deadline_usec, reinterpret_cast<const CanardTransferMetadata *>(metadata), payload_size, payload);

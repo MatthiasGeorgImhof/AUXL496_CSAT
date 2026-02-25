@@ -43,6 +43,13 @@ public:
     constexpr static uint32_t TIMEOUT_FACTOR = 100U;
     constexpr static uint8_t MAX_NUM_TRIES = 5U;
 
+    enum TransferIDState
+	{
+    	OK = 0,
+    	STALE = 1,
+		FUTURE = 2
+	};
+
 public:
     TaskRequestWrite() = delete;
     TaskRequestWrite(InputStream &stream,
@@ -54,7 +61,7 @@ public:
                      std::tuple<Adapters...> &adapters)
         : TaskForClient<CyphalBuffer8, Adapters...>(sleep_interval, tick, node_id, transfer_id, adapters),
           TaskPacing(sleep_interval, operate_interval),
-          stream_(stream), total_size_(0), name_{}, write_state_(IDLE, 0, 0, wrap_transfer_id(transfer_id), 0), values_{}, num_values_(0)
+          stream_(stream), total_size_(0), name_{}, write_state_(IDLE, 0, 0, 0, 0), values_{}, num_values_(0)
     {
     }
 
@@ -76,7 +83,7 @@ protected:
     std::shared_ptr<CyphalTransfer> pop_response();
     bool validate_response(const std::shared_ptr<CyphalTransfer>& t);
     bool deserialize_response(const std::shared_ptr<CyphalTransfer>& t, uavcan_file_Write_Response_1_1& out);
-    bool validate_transfer_id(const std::shared_ptr<CyphalTransfer>& t);
+    TransferIDState validate_transfer_id(const std::shared_ptr<CyphalTransfer>& t) const;
     bool validate_state_for_response() const;
     bool handle_response_code(const uavcan_file_Write_Response_1_1& data);
 
@@ -115,7 +122,7 @@ void TaskRequestWrite<InputStream, Adapters...>::reset()
         TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
     }
     
-    write_state_ = WriteState{IDLE, 0, 0, wrap_transfer_id(this->transfer_id_), 0};
+    write_state_ = WriteState{IDLE, 0, 0, 0, 0};
     this->transfer_id_ = wrap_transfer_id(this->transfer_id_ + 1);
     log(LOG_LEVEL_WARNING, "TaskRequestWrite: reset, transfer_id  %d -> %d\r\n", write_state_.last_transfer_id, this->transfer_id_);
 
@@ -184,14 +191,30 @@ bool TaskRequestWrite<InputStream, Adapters...>::validate_response(const std::sh
 }
 
 template <InputStreamConcept InputStream, typename... Adapters>
-bool TaskRequestWrite<InputStream, Adapters...>::validate_transfer_id(const std::shared_ptr<CyphalTransfer>& t)
+TaskRequestWrite<InputStream, Adapters...>::TransferIDState TaskRequestWrite<InputStream, Adapters...>::validate_transfer_id(const std::shared_ptr<CyphalTransfer>& t) const
 {
-    if (t->metadata.transfer_id == write_state_.last_transfer_id)
-        return true;
+    const uint8_t expected = write_state_.last_transfer_id;
+    const uint8_t received = t->metadata.transfer_id;
+    const uint8_t delta = (received - expected) & 31;   // 5-bit cyclic distance
 
-    log(LOG_LEVEL_ERROR, "TaskRequestWrite: Unexpected transfer-ID: expected %d, got %d\r\n", write_state_.last_transfer_id, t->metadata.transfer_id);
+    if (delta == 0)
+    {
+        // Correct TID
+        return TransferIDState::OK;
+    }
 
-    return false;
+    if (delta < 16)
+    {
+        // FUTURE TID → server jumped ahead → fatal
+        log(LOG_LEVEL_ERROR, "TaskRequestWrite: FUTURE transfer-ID: expected %d, got %d (delta=%d)\r\n", expected, received, delta);
+        return TransferIDState::FUTURE;   // fatal
+    }
+
+    // OLD TID → stale/duplicate → ignore
+    log(LOG_LEVEL_DEBUG, "TaskRequestWrite: stale transfer-ID: expected %d, got %d (delta=%d)\r\n", expected, received, delta);
+
+    // Caller must IGNORE this response
+    return TransferIDState::STALE;
 }
 
 template <InputStreamConcept InputStream, typename... Adapters>
@@ -267,17 +290,28 @@ bool TaskRequestWrite<InputStream, Adapters...>::respond()
     while (!no_response_available())
     {
         auto transfer = pop_response();
+        log(LOG_LEVEL_DEBUG, "TaskRequestWrite: respond() received transfer_id %2d with message %2x\r\n", transfer->metadata.transfer_id, reinterpret_cast<uint8_t*>(transfer->payload)[0]);
 
         // Ignore unrelated messages (wrong kind, wrong port-ID)
         if (!validate_response(transfer))
             continue;
 
+        auto tid_state = validate_transfer_id(transfer);
+        switch(tid_state)
+        {
+		case TransferIDState::OK:
+			break;
+		case TransferIDState::STALE:
+			continue;
+		case TransferIDState::FUTURE:
+			return reset_and_fail();
+		default:
+			break;
+        }
+
         // Now we know it's a response for THIS task
         uavcan_file_Write_Response_1_1 data;
         if (!deserialize_response(transfer, data))
-            return reset_and_fail();
-
-        if (!validate_transfer_id(transfer))
             return reset_and_fail();
 
         if (!validate_state_for_response())

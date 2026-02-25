@@ -13,7 +13,8 @@ void CanTxQueueDrainer::drain()
 	const CanardTxQueueItem* ti = nullptr;
     while ((ti = canardTxPeek(&adapter_->que)) != nullptr)
     {
-        if (HAL_CAN_GetTxMailboxesFreeLevel(hcan_) == 0)
+    	auto num_mailboxes = HAL_CAN_GetTxMailboxesFreeLevel(hcan_);
+    	if (num_mailboxes == 0)
             break;
 
         CAN_TxHeaderTypeDef header;
@@ -24,6 +25,11 @@ void CanTxQueueDrainer::drain()
 
         uint32_t mailbox;
         HAL_CAN_AddTxMessage(hcan_, &header, (uint8_t*)ti->frame.payload, &mailbox);
+
+        CyphalHeader cyphal_header = parse_header(header.ExtId);
+        uint8_t transfer_id = reinterpret_cast<const uint8_t*>(ti->frame.payload)[header.DLC-1];
+        log(LOG_LEVEL_INFO, "CanTxQueueDrainer mailbox %d of %d available: %3d -> %3d subject %3d transfer_id %2x\r\n",
+        			mailbox, num_mailboxes, cyphal_header.source_id, cyphal_header.destination_id, cyphal_header.port_id, transfer_id);
 
         adapter_->ins.memory_free(&adapter_->ins, canardTxPop(&adapter_->que, ti));
     }

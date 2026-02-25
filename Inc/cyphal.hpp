@@ -83,7 +83,25 @@ CyphalTransfer createTransfer(size_t payload_size, uint8_t *payload, void *data,
 
 void unpackTransfer(const CyphalTransfer *transfer, int8_t (*deserialize)(uint8_t *data, const uint8_t *payload, size_t *payload_size), uint8_t *data);
 
-CyphalTransferID wrap_transfer_id(CyphalTransferID id);
-
 template <typename Adapter>
 class Cyphal;
+
+#
+#
+#
+
+struct CyphalHeader {
+	bool is_service;
+	CyphalPortID port_id;
+	CyphalNodeID source_id;
+	CyphalNodeID destination_id;
+};
+
+bool is_service(uint32_t ext_id);
+
+CyphalHeader parse_message_header(uint32_t header);
+CyphalHeader parse_service_header(uint32_t header);
+CyphalHeader parse_header(uint32_t header);
+
+CyphalTransferID wrap_transfer_id(CyphalTransferID id);
+
