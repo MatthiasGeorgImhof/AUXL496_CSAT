@@ -61,8 +61,8 @@ public:
         return all_successful; // Return success status
     }
 
-    template <typename... Adapters>
-    void CanProcessRxQueue(Cyphal<CanardAdapter> *cyphal, ServiceManager *service_manager, std::tuple<Adapters...> &adapters, CircularBuffer<CanRxFrame, 64> &can_rx_buffer)
+    template <size_t N, typename... Adapters>
+    void CanProcessRxQueue(Cyphal<CanardAdapter> *cyphal, ServiceManager *service_manager, std::tuple<Adapters...> &adapters, CircularBuffer<CanRxFrame, N> &can_rx_buffer)
     {
         size_t num_frames = can_rx_buffer.size();
         for (uint32_t n = 0; n < num_frames; ++n)
@@ -84,8 +84,8 @@ public:
         }
     }
 
-    template <typename... Adapters>
-    void SerialProcessRxQueue(Cyphal<SerardAdapter> *cyphal, ServiceManager *service_manager, std::tuple<Adapters...> &adapters, CircularBuffer<SerialFrame, 4> &serial_buffer)
+    template <size_t N, typename... Adapters>
+    void SerialProcessRxQueue(Cyphal<SerardAdapter> *cyphal, ServiceManager *service_manager, std::tuple<Adapters...> &adapters, CircularBuffer<SerialFrame, N> &serial_buffer)
     {
         size_t num_frames = serial_buffer.size();
         log(LOG_LEVEL_TRACE, "LoopManager::SerialProcessRxQueue size: %d\r\n", num_frames);
