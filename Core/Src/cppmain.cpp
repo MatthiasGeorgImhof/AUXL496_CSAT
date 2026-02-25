@@ -1,3 +1,5 @@
+// AUX
+
 #include <cppmain.h>
 #include <cpphal.h>
 #include "usb_device.h"
@@ -66,7 +68,7 @@ constexpr size_t SERIAL_BUFFER_SIZE = 4;
 using SerialCircularBuffer = CircularBuffer<SerialFrame, SERIAL_BUFFER_SIZE>;
 SerialCircularBuffer serial_buffer;
 
-constexpr size_t CAN_RX_BUFFER_SIZE = 64;
+constexpr size_t CAN_RX_BUFFER_SIZE = 128;
 using CanCircularBuffer = CircularBuffer<CanRxFrame, CAN_RX_BUFFER_SIZE>;
 CanCircularBuffer can_rx_buffer;
 
@@ -109,15 +111,10 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t pos)
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-	uint32_t num_messages = HAL_CAN_GetRxFifoFillLevel(hcan, CAN_RX_FIFO0);
-//	log(LOG_LEVEL_TRACE, "HAL_CAN_RxFifo0MsgPendingCallback %d\r\n", num_messages);
-	for(uint32_t n=0; n<num_messages; ++n)
+	while(HAL_CAN_GetRxFifoFillLevel(hcan, CAN_RX_FIFO0) != 0)
 	{
-		if (can_rx_buffer.is_full()) return;
-
 		CanRxFrame &frame = can_rx_buffer.next();
 		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &frame.header, frame.data);
-//		log(LOG_LEVEL_DEBUG, "HAL_CAN_RxFifo0MsgPendingCallback %x\r\n", frame.header.ExtId);
 	}
 }
 
@@ -236,19 +233,19 @@ void cppmain()
 //	using TRequestInfoSerard = TaskRequestGetInfo<SerardCyphal, CanardCyphal>;
 //	register_task_with_heap<TRequestInfoSerard>(registration_manager, 10000, 800, 121, 0, sercan_adapters);
 
-//	using TTrivialImageBuffer = TrivialImageBuffer<1024>;
-//	using TSyntheticImageGenerator = TaskSyntheticImageGenerator<TTrivialImageBuffer, ContinuousTrigger, 640>;
+//	using TTrivialImageBuffer = TrivialImageBuffer<10000>;
+//	using TSyntheticImageGenerator = TaskSyntheticImageGenerator<TTrivialImageBuffer, ContinuousTrigger, 8192>;
 //	TTrivialImageBuffer img_buf;
-//	register_task_with_heap<TSyntheticImageGenerator>(registration_manager, img_buf, ContinuousTrigger{}, 2000, 200);
+//	register_task_with_heap<TSyntheticImageGenerator>(registration_manager, img_buf, ContinuousTrigger{}, 60000, 0);
 //
 //	using TrivialPipeline = ImageInputStream<TTrivialImageBuffer>;
 //	using TRequestWrite = TaskRequestWrite<TrivialPipeline, SerardCyphal>;
 //	ImageInputStream<TTrivialImageBuffer> stream(img_buf);
-//	register_task_with_heap<TRequestWrite>(registration_manager, stream, 1000, 100, 0, 121, 0, serard_adapters);
+//	register_task_with_heap<TRequestWrite>(registration_manager, stream, 2000, 200, 50, 121, 7, serard_adapters);
 
-//	using TBlink = TaskBlinkLED;
-//	register_task_with_heap<TBlink>(registration_manager, GPIOC, LED1_Pin, 1000, 100);
-//
+	using TBlink = TaskBlinkLED;
+	register_task_with_heap<TBlink>(registration_manager, GPIOC, LED1_Pin, 1000, 100);
+
 //	using TCheckMem = TaskCheckMemory;
 //	register_task_with_heap<TCheckMem>(registration_manager, o1heap, 250, 100);
 
@@ -290,7 +287,6 @@ void cppmain()
 		loop_manager.CanProcessRxQueue(&canard_cyphal, &service_manager, serard_adapters, can_rx_buffer);
 		loop_manager.LoopProcessRxQueue(&loopard_cyphal, &service_manager, empty_adapters);
 		service_manager.handleServices();
-		HAL_Delay(1);
 
 //		char buffer[1024];
 //		size_t pos = 0;
