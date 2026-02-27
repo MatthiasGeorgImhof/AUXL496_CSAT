@@ -10,7 +10,7 @@
 template <typename Source>
 concept FileSourceConcept = requires(Source &s)
 {
-    { s.getPath() } -> std::same_as<const std::array<char, NAME_LENGTH>>;
+    { s.getPath() } -> std::same_as<const std::array<char, NAME_LENGTH>&>;
     { s.getPathLength() } -> std::convertible_to<size_t>;
 };
 
@@ -27,9 +27,10 @@ public:
         path_length_ = std::min<std::size_t>(NAME_LENGTH, path.length());
         std::memset(path_.data(), 0, NAME_LENGTH);
         std::memcpy(path_.data(), path.data(), path_length_);
+        path_.data()[std::min(NAME_LENGTH, path_length+1)] = '\0';
     }
 
-    const std::array<char, NAME_LENGTH> getPath() const {
+    const std::array<char, NAME_LENGTH>& getPath() const {
         return path_;
     }
 

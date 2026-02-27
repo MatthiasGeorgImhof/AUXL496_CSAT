@@ -64,7 +64,7 @@ CanTxQueueDrainer tx_drainer(&canard_adapter, &hcan1);
 constexpr CyphalNodeID cyphal_node_id = CYPHAL_NODE_ID;
 
 constexpr uint32_t SERIAL_TIMEOUT = 1000;
-constexpr size_t SERIAL_BUFFER_SIZE = 4;
+constexpr size_t SERIAL_BUFFER_SIZE = 32;
 using SerialCircularBuffer = CircularBuffer<SerialFrame, SERIAL_BUFFER_SIZE>;
 SerialCircularBuffer serial_buffer;
 
@@ -183,7 +183,7 @@ void cppmain()
 	canard_adapter.ins.forward_start_id = 64;
 	canard_adapter.ins.forward_end_id = 127;
 
-	struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, LocalHeap::serardMemoryDeallocate, LocalHeap::serardMemoryAllocate};
+	struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, LocalHeap::serardMemoryAllocate, LocalHeap::serardMemoryDeallocate};
 	using SerardCyphal = Cyphal<SerardAdapter>;
 	serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
 	serard_adapter.emitter = serial_send;
@@ -250,17 +250,17 @@ void cppmain()
 //	register_task_with_heap<TCheckMem>(registration_manager, o1heap, 250, 100);
 
 	subscription_manager.subscribeAll(registration_manager, sercan_adapters);
-//	subscription_manager.subscribe<SubscriptionManager::MessageTag>(static_cast<CyphalPortID>(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_), sercan_adapters);
+	subscription_manager.subscribe<SubscriptionManager::MessageTag>(static_cast<CyphalPortID>(uavcan_node_Heartbeat_1_0_FIXED_PORT_ID_), sercan_adapters);
 //	subscription_manager.subscribe<SubscriptionManager::MessageTag>(static_cast<CyphalPortID>(uavcan_node_port_List_1_0_FIXED_PORT_ID_), sercan_adapters);
 //	subscription_manager.subscribe<SubscriptionManager::MessageTag>(static_cast<CyphalPortID>(uavcan_diagnostic_Record_1_1_FIXED_PORT_ID_), sercan_adapters);
 //
 //	subscription_manager.subscribe<SubscriptionManager::RequestTag>(static_cast<CyphalPortID>(uavcan_node_GetInfo_1_0_FIXED_PORT_ID_), sercan_adapters);
 	subscription_manager.subscribe<SubscriptionManager::RequestTag>(static_cast<CyphalPortID>(uavcan_file_Write_1_1_FIXED_PORT_ID_), canard_adapters);
-//	subscription_manager.subscribe<SubscriptionManager::RequestTag>(static_cast<CyphalPortID>(uavcan_file_Read_1_1_FIXED_PORT_ID_), sercan_adapters);
+	subscription_manager.subscribe<SubscriptionManager::RequestTag>(static_cast<CyphalPortID>(uavcan_file_Read_1_1_FIXED_PORT_ID_), canard_adapters);
 //
 //	subscription_manager.subscribe<SubscriptionManager::ResponseTag>(static_cast<CyphalPortID>(uavcan_node_GetInfo_1_0_FIXED_PORT_ID_), sercan_adapters);
 	subscription_manager.subscribe<SubscriptionManager::ResponseTag>(static_cast<CyphalPortID>(uavcan_file_Write_1_1_FIXED_PORT_ID_), serard_adapters);
-//	subscription_manager.subscribe<SubscriptionManager::ResponseTag>(static_cast<CyphalPortID>(uavcan_file_Read_1_1_FIXED_PORT_ID_), sercan_adapters);
+	subscription_manager.subscribe<SubscriptionManager::ResponseTag>(static_cast<CyphalPortID>(uavcan_file_Read_1_1_FIXED_PORT_ID_), serard_adapters);
 
     ServiceManager service_manager(registration_manager.getHandlers());
 	service_manager.initializeServices(HAL_GetTick());

@@ -160,7 +160,9 @@ public:
 
     int32_t cyphalRxReceive(size_t *frame_size, const uint8_t *const frame, CyphalTransfer *out_transfer)
     {
-        SerardRxSubscription *sub;
+    	log(LOG_LEVEL_DEBUG, "serardRxReceive at %08u: size %d\r\n", HAL_GetTick(), static_cast<uint16_t>(*frame_size));
+
+    	SerardRxSubscription *sub;
         struct SerardRxTransfer serard_transfer{};
         int8_t result = serardRxAccept(&adapter_->ins, &adapter_->reass, 0, frame_size, frame, 0, &serard_transfer, &sub);
         out_transfer->metadata.priority = static_cast<CyphalPriority>(serard_transfer.metadata.priority);
@@ -174,9 +176,12 @@ public:
         out_transfer->payload_size = serard_transfer.payload_size;
         out_transfer->timestamp_usec = serard_transfer.timestamp_usec;
         if (result==1)
-        	log(LOG_LEVEL_DEBUG, "serardRxReceive at %08u: %3d -> %3d (%4d %3d [%ld -> %3d])\r\n", HAL_GetTick(),
+        	log(LOG_LEVEL_DEBUG, "serardRxReceive at %08u: %3d -> %3d (%4d %3d [%ld -> %3d]) with residual size %d\r\n", HAL_GetTick(),
         		out_transfer->metadata.source_node_id, out_transfer->metadata.destination_node_id, out_transfer->metadata.port_id, out_transfer->metadata.transfer_id,
-				static_cast<uint32_t>(serard_transfer.metadata.transfer_id), serardTransferIdToCyphal(serard_transfer.metadata.transfer_id));
+				static_cast<uint32_t>(serard_transfer.metadata.transfer_id), serardTransferIdToCyphal(serard_transfer.metadata.transfer_id),
+				static_cast<uint16_t>(*frame_size));
+        else
+        	log(LOG_LEVEL_DEBUG, "serardRxReceive error at %08u: %2d with residual size %d\r\n", HAL_GetTick(), result, static_cast<uint16_t>(*frame_size));
         return result;
     }
 };
