@@ -12,7 +12,7 @@ static_assert(sizeof(CyphalTransferMetadata) != sizeof(SerardTransferMetadata), 
 struct SerardAdapter
 {
     static constexpr uint8_t SUBSCRIPTIONS = 32;
-    struct Serard ins;
+    struct SerardRx ins;
     struct SerardReassembler reass;
     SerardTxEmit emitter;
     void *user_reference;
@@ -103,8 +103,7 @@ public:
         SerardTransferMetadata serard_metadata = cyphalMetadataToSerard(*metadata);
         log(LOG_LEVEL_DEBUG, "serardTxPush at %08u: %3d -> %3d (%4d %3d)\r\n", HAL_GetTick(),
         		metadata->source_node_id, metadata->destination_node_id, metadata->port_id, metadata->transfer_id);
-
-        return serardTxPush(&adapter_->ins, &serard_metadata, payload_size, payload, adapter_->user_reference, adapter_->emitter);
+        return serardTxPush(adapter_->ins.node_id, &serard_metadata, payload_size, payload, adapter_->user_reference, adapter_->emitter);
     }
 
     inline CanardNodeID getNodeID() const { return serardNodeIdToCyphal(adapter_->ins.node_id); }
@@ -163,7 +162,7 @@ public:
     {
         SerardRxSubscription *sub;
         struct SerardRxTransfer serard_transfer{};
-        int8_t result = serardRxAccept(&adapter_->ins, &adapter_->reass, 0, frame_size, frame, &serard_transfer, &sub);
+        int8_t result = serardRxAccept(&adapter_->ins, &adapter_->reass, 0, frame_size, frame, 0, &serard_transfer, &sub);
         out_transfer->metadata.priority = static_cast<CyphalPriority>(serard_transfer.metadata.priority);
         out_transfer->metadata.transfer_kind = static_cast<CyphalTransferKind>(serard_transfer.metadata.transfer_kind);
         out_transfer->metadata.port_id = serard_transfer.metadata.port_id;

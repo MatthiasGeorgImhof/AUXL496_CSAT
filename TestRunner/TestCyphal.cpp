@@ -328,7 +328,7 @@ TEST_CASE("Serard Basics")
 TEST_CASE("Serard Adapter")
 {
     SerardAdapter adapter;
-    struct SerardMemoryResource serard_memory_resource = {&adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
+    struct SerardMemoryResource serard_memory_resource = {&adapter.ins, serardMemoryAllocate, serardMemoryDeallocate};
     adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
     adapter.ins.node_id = 11; // Set initial node ID
     adapter.emitter = [](void *, uint8_t, const uint8_t *) -> bool
@@ -362,7 +362,7 @@ TEST_CASE("Serard Adapter")
     SUBCASE("cyphalTxForward")
     {
         SerardAdapter adapter2;
-        struct SerardMemoryResource serard_memory_resource2 = {&adapter2.ins, serardMemoryDeallocate, serardMemoryAllocate};
+        struct SerardMemoryResource serard_memory_resource2 = {&adapter2.ins, serardMemoryAllocate, serardMemoryDeallocate};
         adapter2.ins = serardInit(serard_memory_resource2, serard_memory_resource2);
         adapter2.emitter = [](void *, uint8_t, const uint8_t *) -> bool
         { return true; };
@@ -411,7 +411,7 @@ TEST_CASE("Cyphal<serard_adapter> Send Receive")
     rxtx_buffer.clear();
 
     SerardAdapter adapter;
-    struct SerardMemoryResource serard_memory_resource = {&adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
+    struct SerardMemoryResource serard_memory_resource = {&adapter.ins, serardMemoryAllocate, serardMemoryDeallocate};
     adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
     adapter.ins.node_id = 11;
     adapter.user_reference = &adapter.ins;
@@ -482,7 +482,7 @@ TEST_CASE("Cyphal<serard_adapter> Send Forward Receive")
     CyphalNodeID forward_id = 22;
 
     SerardAdapter adapter;
-    struct SerardMemoryResource serard_memory_resource = {&adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
+    struct SerardMemoryResource serard_memory_resource = {&adapter.ins, serardMemoryAllocate, serardMemoryDeallocate};
     adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
     adapter.ins.node_id = my_id;
     adapter.user_reference = &adapter.ins;
@@ -945,7 +945,7 @@ TEST_CASE("All Combined Unroll")
     udpard_adapter.memory_resources = {udpard_memory_resource, udpard_memory_resource, udpard_memory_deleter};
 
     SerardAdapter serard_adapter;
-    struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
+    struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryAllocate, serardMemoryDeallocate};
     serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
     serard_adapter.ins.node_id = 11;
     serard_adapter.user_reference = &serard_adapter.ins;
@@ -988,7 +988,7 @@ TEST_CASE("All Combined Loop")
     udpard_adapter.memory_resources = {udpard_memory_resource, udpard_memory_resource, udpard_memory_deleter};
 
     SerardAdapter serard_adapter;
-    struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
+    struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryAllocate, serardMemoryDeallocate};
     serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
     serard_adapter.ins.node_id = 11;
     serard_adapter.user_reference = &serard_adapter.ins;
