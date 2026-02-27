@@ -17,16 +17,16 @@ concept FileSourceConcept = requires(Source &s)
 class SimpleFileSource
 {
 public:
-    SimpleFileSource(const std::string& path = "default.txt")
+    SimpleFileSource(std::string_view path = "default.txt")
     {  
         setPath(path);
     }
 
-    void setPath(const std::string& path)
+    void setPath(const std::string_view& path)
     {
         path_length_ = std::min<std::size_t>(NAME_LENGTH, path.length());
         std::memset(path_.data(), 0, NAME_LENGTH);
-        std::memcpy(path_.data(), path.c_str(), path_length_);
+        std::memcpy(path_.data(), path.data(), path_length_);
     }
 
     const std::array<char, NAME_LENGTH> getPath() const {
