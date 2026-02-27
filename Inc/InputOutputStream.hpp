@@ -304,7 +304,7 @@ public:
     {
 #ifdef LOGGER_ENABLED
         // Convert name to hex for consistent logging
-        constexpr size_t BUF_SIZE = 256;
+        constexpr size_t BUF_SIZE = 1024;
         char hex_name[BUF_SIZE];
         uchar_buffer_to_hex(
             reinterpret_cast<const unsigned char*>(name.data()),
@@ -324,18 +324,17 @@ public:
         constexpr size_t BUF_SIZE = 1024;
         char hex_data[BUF_SIZE];
 
-        uchar_buffer_to_hex(
-            reinterpret_cast<const unsigned char*>(data),
-            size,
-            hex_data,
-            BUF_SIZE
-        );
+        if (size)
+        {
+        	uchar_buffer_to_hex(reinterpret_cast<const unsigned char*>(data), size, hex_data, BUF_SIZE);
 
-        log(LOG_LEVEL_DEBUG,
-            "LoggingOutputStream::output size=%u data=%s\r\n",
-            static_cast<unsigned>(size),
-            hex_data
-        );
+        	log(LOG_LEVEL_DEBUG, "LoggingOutputStream::output size=%u data=%s\r\n", static_cast<unsigned>(size), hex_data);
+        }
+        else
+        {
+            log(LOG_LEVEL_DEBUG, "LoggingOutputStream::output size=%u\r\n", static_cast<unsigned>(size));
+        }
+
 #endif
         return true;
     }
