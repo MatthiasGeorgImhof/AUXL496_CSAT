@@ -383,7 +383,7 @@ TEST_CASE("SerialProcessRxQueue with SerardAdapter and MockTask")
     Heap::initialize();
 
     SerardAdapter serard_adapter;
-    SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, Heap::serardMemoryDeallocate, Heap::serardMemoryAllocate};
+    SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, Heap::serardMemoryAllocate, Heap::serardMemoryDeallocate};
     serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
     serard_adapter.ins.node_id = node_id;
     serard_adapter.user_reference = &serard_adapter.ins;
@@ -436,7 +436,7 @@ TEST_CASE("SerialProcessRxQueue multiple frames with Serard")
     Heap::initialize();
     
     SerardAdapter serard_adapter;
-    SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, Heap::serardMemoryDeallocate, Heap::serardMemoryAllocate};
+    SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, Heap::serardMemoryAllocate, Heap::serardMemoryDeallocate};
     serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
     serard_adapter.ins.node_id = node_id;
     serard_adapter.user_reference = &serard_adapter.ins;

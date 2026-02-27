@@ -139,7 +139,7 @@ TEST_CASE("TaskMainLoop: TaskSendHeartBeat TaskBlinkLED TaskCheckMemory")
     loopard_cyphal.setNodeID(cyphal_node_id);
 
     SerardAdapter serard_adapter;
-    struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryDeallocate, serardMemoryAllocate};
+    struct SerardMemoryResource serard_memory_resource = {&serard_adapter.ins, serardMemoryAllocate, serardMemoryDeallocate};
     serard_adapter.ins = serardInit(serard_memory_resource, serard_memory_resource);
     serard_adapter.emitter = serial_send;
     Cyphal<SerardAdapter> serard_cyphal(&serard_adapter);

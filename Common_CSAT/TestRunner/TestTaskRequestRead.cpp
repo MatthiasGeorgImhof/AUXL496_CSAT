@@ -80,6 +80,7 @@ public:
     {
         std::strncpy(path_.data(), filepath.c_str(), NAME_LENGTH - 1);
         path_[NAME_LENGTH - 1] = '\0';
+        path_length_ = std::min(filepath.size(), static_cast<size_t>(NAME_LENGTH - 1));
     }
 
     bool open(const std::array<char, NAME_LENGTH> & /*path*/)
@@ -101,12 +102,11 @@ public:
         return bytes_to_read; // return the bytes
     }
 
-    void setPath(const std::array<char, NAME_LENGTH> &path)
-    {
-        std::copy(path.begin(), path.end(), path_.begin());
+    size_t getPathLength() const {
+        return path_length_;
     }
 
-    std::array<char, NAME_LENGTH> getPath() const
+    const std::array<char, NAME_LENGTH> getPath() const
     {
         return path_;
     }
@@ -134,6 +134,7 @@ private:
     std::string content_;
     size_t offset_;
     std::array<char, NAME_LENGTH> path_;
+    size_t path_length_;
     size_t chunk_size_ = 256;
 };
 
@@ -222,6 +223,8 @@ static_assert(FileAccessConcept<MockAccessor>, "MockAccessor does not satisfy Fi
 
 TEST_CASE("TaskRequestRead - Handles a simple Read Request")
 {
+    LocalHeap::initialize();
+
     // Setup
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;
@@ -236,7 +239,7 @@ TEST_CASE("TaskRequestRead - Handles a simple Read Request")
     MockOutputStream output_stream;
     MockAccessor accessor;
 
-    TaskRequestRead request(file_source, output_stream, 1000, 0, 42, 7, adapters);
+    TaskRequestRead request(file_source, output_stream, 1000, 100, 0, 11, 7, adapters);
     TaskRespondRead respond(accessor, 1000, 0, adapters);
     request.handleTaskImpl();
     CHECK(output_stream.getReceivedData().size() == 0);
@@ -300,6 +303,8 @@ TEST_CASE("TaskRequestRead - Handles a simple Read Request")
 
 TEST_CASE("TaskRequestRead - Handles a Read Request with Errors")
 {
+    LocalHeap::initialize();
+
     // Setup
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;
@@ -314,7 +319,7 @@ TEST_CASE("TaskRequestRead - Handles a Read Request with Errors")
     MockOutputStream output_stream;
     MockAccessor accessor;
 
-    TaskRequestRead request(file_source, output_stream, 1000, 0, 42, 7, adapters);
+    TaskRequestRead request(file_source, output_stream, 1000, 100, 0, 11, 7, adapters);
     TaskRespondRead respond(accessor, 1000, 0, adapters);
     RespondWithError error(accessor, 1000, 0, adapters);
     request.handleTaskImpl();
@@ -411,7 +416,10 @@ TEST_CASE("TaskRequestRead - Handles a Read Request with Errors")
     CHECK(output_stream.isFinalized());
 }
 
-TEST_CASE("TaskRequestRead - Handles a short file") {
+TEST_CASE("TaskRequestRead - Handles a short file") 
+{
+    LocalHeap::initialize();
+   
     // Setup (same as before, but with an empty file)
     MockFileSource file_source("");
     MockOutputStream output_stream;
@@ -425,7 +433,7 @@ TEST_CASE("TaskRequestRead - Handles a short file") {
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
     MockAccessor accessor(size);
 
-    TaskRequestRead request(file_source, output_stream, 1000, 0, 42, 7, adapters);
+    TaskRequestRead request(file_source, output_stream, 1000, 100, 0, 11, 7, adapters);
     TaskRespondRead respond(accessor, 1000, 0, adapters);
 
     // Act
@@ -456,7 +464,10 @@ TEST_CASE("TaskRequestRead - Handles a short file") {
 }
 
 
-TEST_CASE("TaskRequestRead - Handles a zero-length file") {
+TEST_CASE("TaskRequestRead - Handles a zero-length file") 
+{
+    LocalHeap::initialize();
+   
     // Setup (same as before, but with an empty file)
     MockFileSource file_source("");
     MockOutputStream output_stream;
@@ -469,7 +480,7 @@ TEST_CASE("TaskRequestRead - Handles a zero-length file") {
     std::tuple<Cyphal<LoopardAdapter>> adapters(loopard_cyphal);
     MockAccessor accessor(0);
 
-    TaskRequestRead request(file_source, output_stream, 1000, 0, 42, 7, adapters);
+    TaskRequestRead request(file_source, output_stream, 1000, 100, 0, 11, 7, adapters);
     TaskRespondRead respond(accessor, 1000, 0, adapters);
 
     // Act
@@ -491,6 +502,8 @@ TEST_CASE("TaskRequestRead - Handles a zero-length file") {
 
 TEST_CASE("TaskRequestRead: Registers and Unregisters correctly")
 {
+    LocalHeap::initialize();
+   
     // Adapter
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;
@@ -513,7 +526,7 @@ TEST_CASE("TaskRequestRead: Registers and Unregisters correctly")
     RegistrationManager reg;
 
     auto task = std::make_shared<TaskRequestRead<MockFileSource, MockOutputStream, Cyphal<LoopardAdapter>>>(
-        file_source, output_stream, interval, tick, node_id, transfer_id, adapters);
+        file_source, output_stream, interval, interval, tick, node_id, transfer_id, adapters);
 
     CHECK(reg.getClients().size() == 0);
 
@@ -531,6 +544,8 @@ TEST_CASE("TaskRequestRead: Registers and Unregisters correctly")
 
 TEST_CASE("TaskRespondRead: Registers and Unregisters correctly")
 {
+    LocalHeap::initialize();
+   
     // Adapter
     LoopardAdapter loopard;
     loopard.memory_allocate = loopardMemoryAllocate;
