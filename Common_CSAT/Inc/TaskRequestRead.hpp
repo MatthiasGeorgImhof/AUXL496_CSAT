@@ -17,10 +17,11 @@ class TaskRequestRead : public TaskForClient<CyphalBuffer8, Adapters...>, privat
 public:
     enum State
     {
-        IDLE,
-        SEND_REQUEST,
-        RESEND_REQUEST,
-        WAIT_RESPONSE,
+        START = 0,
+        SEND_REQUEST = 1,
+        RESEND_REQUEST = 2,
+        WAIT_RESPONSE = 3,
+		SLEEP = 4
     };
 
     struct ReadState
@@ -42,7 +43,7 @@ public:
     TaskRequestRead(FileSource &source, OutputStream &output, uint32_t sleep_interval, uint32_t operate_interval,
                     uint32_t tick, CyphalNodeID node_id, CyphalTransferID transfer_id, std::tuple<Adapters...> &adapters)
         : TaskForClient<CyphalBuffer8, Adapters...>(sleep_interval, tick, node_id, transfer_id, adapters), TaskPacing(sleep_interval, operate_interval),
-          source_(source), output_(output), read_state_(IDLE, 0, 0), values_{}
+          source_(source), output_(output), read_state_(START, 0, 0), values_{}
     {
     }
 
@@ -156,7 +157,7 @@ void TaskRequestRead<FileSource, OutputStream, Adapters...>::reset()
     {
         TaskForClient<CyphalBuffer8, Adapters...>::buffer_.pop();
     }
-    read_state_ = ReadState{IDLE, 0, 0};
+    read_state_ = ReadState{START, 0, 0};
     this->transfer_id_ = wrap_transfer_id(this->transfer_id_ + 1);
     TaskPacing::sleep(*this);
 
@@ -274,7 +275,7 @@ bool TaskRequestRead<FileSource, OutputStream, Adapters...>::respond()
         {
             log(LOG_LEVEL_INFO, "TaskRequestRead: EOF reached, finalizing\r\n");
             output_.finalize();
-            reset();
+            read_state_.state = SLEEP;
             return true;
         }
 
@@ -309,9 +310,10 @@ bool TaskRequestRead<FileSource, OutputStream, Adapters...>::request()
     auto request_data = make_on_local_heap<uavcan_file_Read_Request_1_1>();
     switch (read_state_.state)
     {
-    case IDLE:
-        log(LOG_LEVEL_DEBUG, "TaskRequestRead: IDLE -> SEND_REQUEST\r\n");
+    case START:
+        log(LOG_LEVEL_DEBUG, "TaskRequestRead: START -> SEND_REQUEST\r\n");
         read_state_.state = SEND_REQUEST;
+        read_state_.offset = 0;
         TaskPacing::operate(*this);
         [[fallthrough]];
     case SEND_REQUEST:
@@ -323,6 +325,10 @@ bool TaskRequestRead<FileSource, OutputStream, Adapters...>::request()
         break;
     case WAIT_RESPONSE:
         return true; // waiting for response
+    case SLEEP:
+    	read_state_.state = START;
+    	TaskPacing::sleep(*this);
+    	return true;
     default:
         log(LOG_LEVEL_ERROR, "TaskRequestRead: request() unknown state %d\r\n", read_state_.state);
         return false;
@@ -334,8 +340,9 @@ bool TaskRequestRead<FileSource, OutputStream, Adapters...>::request()
     TaskForClient<CyphalBuffer8, Adapters...>::publish(PAYLOAD_SIZE, payload, request_data.get(),
                                                        reinterpret_cast<int8_t (*)(const void *const, uint8_t *const, size_t *const)>(uavcan_file_Read_Request_1_1_serialize_),
                                                        uavcan_file_Read_1_1_FIXED_PORT_ID_, TaskForClient<CyphalBuffer8, Adapters...>::node_id_);
-    log(LOG_LEVEL_DEBUG, "TaskRequestRead: Sent request for offset %d, path '%.*s' of length %d\r\n", request_data->offset,
-        request_data->path.path.count, request_data->path.path.elements, request_data->path.path.count);
+
+    log(LOG_LEVEL_DEBUG, "TaskRequestRead: Sent request for offset %d, path %s of length %d\r\n",
+    		read_state_.offset, source_.getPath().data(), static_cast<uint16_t>(source_.getPathLength()));
 
     this->transfer_id_ = wrap_transfer_id(this->transfer_id_ + 1);
     read_state_.state = WAIT_RESPONSE;
